@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>TD Muse Studio 9:16</title>
+  <style>
+    :root {
+      --bg: #09090b;
+      --card: #141418;
+      --card-border: #27272a;
+      --primary: #8b5cf6;
+      --primary-hover: #7c3aed;
+      --accent: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --text: #fafafa;
+      --muted: #a1a1aa;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      background-color: #000;
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    /* Khung chuẩn 9:16 Mobile First */
+    .app-shell {
+      width: 100%;
+      max-width: 430px;
+      min-height: 100vh;
+      background-color: var(--bg);
+      border-left: 1px solid var(--card-border);
+      border-right: 1px solid var(--card-border);
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      padding-bottom: 40px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 14px;
+    }
+    .brand { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px; }
+    .brand span { background: linear-gradient(135deg, #a78bfa, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .status-pill {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 99px;
+      background: #18181b;
+      border: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warning); }
+    .dot.online { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+    .dot.offline { background: var(--danger); }
+
+    /* Tabs */
+    .tabs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      background: var(--card);
+      padding: 4px;
+      border-radius: 12px;
+      border: 1px solid var(--card-border);
+      margin-bottom: 16px;
+    }
+    .tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--muted);
+      padding: 10px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn.active {
+      background: #27272a;
+      color: var(--text);
+    }
+
+    .panel { display: none; flex-direction: column; gap: 14px; }
+    .panel.active { display: flex; }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    input, textarea, select {
+      width: 100%;
+      background: #09090b;
+      border: 1px solid var(--card-border);
+      color: var(--text);
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      outline: none;
+    }
+    input:focus, textarea:focus, select:focus { border-color: var(--primary); }
+    textarea { resize: vertical; min-height: 100px; line-height: 1.4; }
+
+    .btn {
+      width: 100%;
+      padding: 13px;
+      border-radius: 12px;
+      border: none;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      transition: opacity 0.2s;
+    }
+    .btn:active { opacity: 0.8; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-accent { background: var(--accent); color: #052e16; }
+    .btn-outline { background: transparent; border: 1px solid var(--card-border); color: var(--text); }
+
+    /* Khung Preview Video 9:16 */
+    .video-stage {
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      background: #050507;
+      border: 1px dashed var(--card-border);
+      border-radius: 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .video-stage video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .placeholder-text {
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      padding: 20px;
+      line-height: 1.5;
+    }
+    .log-box {
+      font-family: ui-monospace, SFMono-Regular, monospace;
+      font-size: 12px;
+      background: #050507;
+      border: 1px solid var(--card-border);
+      padding: 10px;
+      border-radius: 10px;
+      color: #a7f3d0;
+      max-height: 140px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .hint { font-size: 11px; color: var(--muted); line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header>
+      <div class="brand">🎬 <span>TD MUSE STUDIO</span></div>
+      <div class="status-pill" onclick="pingServer()" title="Bấm để đánh thức server Render">
+        <div id="statusDot" class="dot"></div>
+        <span id="statusText">Chạm để kết nối</span>
+      </div>
+    </header>
+
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('studio', this)">🎥 Xưởng Tạo Video</button>
+      <button class="tab-btn" onclick="switchTab('settings', this)">⚙️ Nạp Cookie & Key</button>
+    </div>
+
+    <!-- TAB 1: XƯỞNG TẠO VIDEO -->
+    <div id="panel-studio" class="panel active">
+      <div class="card">
+        <div class="row-2">
+          <div>
+            <label>Model xử lý</label>
+            <select id="modelSelect">
+              <option value="muse-video">muse-video (Mặc định)</option>
+            </select>
+          </div>
+          <div>
+            <label>Khung hình</label>
+            <select id="ratioSelect">
+              <option value="9:16">9:16 (TikTok / Reels)</option>
+              <option value="16:9">16:9 (Ngang)</option>
+              <option value="1:1">1:1 (Vuông)</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label>Kịch bản / Prompt cảnh quay</label>
+          <textarea id="promptInput" placeholder="Ví dụ: Cận cảnh bàn tay cầm máy thổi bụi mini thổi bay lớp bụi trên bàn phím cơ, ánh sáng studio sắc nét, chuyển động mượt 9:16..."></textarea>
+        </div>
+
+        <button id="generateBtn" class="btn btn-primary" onclick="generateVideo()">
+          ⚡ Bắt Đầu Xuất Video
+        </button>
+      </div>
+
+      <div id="studioLog" class="log-box" style="display:none;"></div>
+
+      <div class="video-stage" id="videoStage">
+        <div class="placeholder-text">
+          Khung xem trước chuẩn 9:16<br/>
+          Video render xong sẽ tự động phát tại đây
+        </div>
+      </div>
+
+      <a id="downloadBtn" class="btn btn-accent" style="display:none; text-decoration:none;" target="_blank" download="muse_video.mp4">
+        ⬇️ Tải Video Về Máy
+      </a>
+    </div>
+
+    <!-- TAB 2: NẠP COOKIE & CẤU HÌNH -->
+    <div id="panel-settings" class="panel">
+      <div class="card">
+        <label>1. Địa chỉ Server Render</label>
+        <input type="url" id="baseUrlInput" value="https://muse2api-6211.onrender.com" placeholder="https://muse2api-xxxx.onrender.com" />
+
+        <label>2. Mã khóa MUSE2API_KEY</label>
+        <input type="password" id="apiKeyInput" placeholder="Nhập mã MUSE2API_KEY sếp đã đặt..." />
+
+        <button class="btn btn-outline" onclick="saveConfig()">
+          💾 Lưu Cấu Hình & Kiểm Tra Xưởng
+        </button>
+      </div>
+
+      <div class="card">
+        <label>3. Bơm JSON Cookie vào bể tài khoản</label>
+        <input type="text" id="accountLabelInput" value="Nick Phu 1" placeholder="Tên gợi nhớ (VD: Nick Phu 1)" />
+        <textarea id="cookieJsonInput" placeholder="Dán toàn bộ đoạn mã JSON Cookie từ app Ghi chú vào đây (bắt đầu bằng dấu [ và kết thúc bằng ])..."></textarea>
+        <div class="hint">
+          * Hệ thống tự động bóc tách chuỗi Cookie từ JSON Cookie-Editor và đẩy thẳng vào cổng <b>/admin/accounts</b>.
+        </div>
+        <button id="importCookieBtn" class="btn btn-accent" onclick="pushCookieToServer()">
+          🚀 Nạp Cookie Vào Xưởng Ngay
+        </button>
+      </div>
+
+      <div id="settingsLog" class="log-box" style="display:none;"></div>
+    </div>
+  </div>
+
+  <script>
+    // Khởi tạo dữ liệu đã lưu trên iPhone
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedUrl = localStorage.getItem('td_muse_url');
+      const savedKey = localStorage.getItem('td_muse_key');
+      if (savedUrl) document.getElementById('baseUrlInput').value = savedUrl;
+      if (savedKey) document.getElementById('apiKeyInput').value = savedKey;
+      if (savedUrl && savedKey) {
+        pingServer(true);
+      }
+    });
+
+    function switchTab(tabName, el) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      document.getElementById('panel-' + tabName).classList.add('active');
+    }
+
+    function logMsg(boxId, msg, isError = false) {
+      const box = document.getElementById(boxId);
+      box.style.display = 'block';
+      box.style.color = isError ? '#fca5a5' : '#a7f3d0';
+      const time = new Date().toLocaleTimeString('vi-VN');
+      box.textContent = `[${time}] ${msg}`;
+    }
+
+    function getCleanUrl() {
+      return document.getElementById('baseUrlInput').value.trim().replace(/\/+$/, '');
+    }
+
+    function saveConfig() {
+      const url = getCleanUrl();
+      const key = document.getElementById('apiKeyInput').value.trim();
+      if (!url || !key) {
+        logMsg('settingsLog', 'Sếp chưa nhập đủ Link Render hoặc MUSE2API_KEY!', true);
+        return;
+      }
+      localStorage.setItem('td_muse_url', url);
+      localStorage.setItem('td_muse_key', key);
+      logMsg('settingsLog', 'Đã lưu cấu hình vào máy! Đang đánh thức server Render...');
+      pingServer(false);
+    }
+
+    // Đánh thức server Render (Free tier ngủ sau 15p) và lấy danh sách Model
+    async function pingServer(silent = false) {
+      const url = getCleanUrl();
+      const key = document.getElementById('apiKeyInput').value.trim();
+      const dot = document.getElementById('statusDot');
+      const txt = document.getElementById('statusText');
+
+      if (!url || !key) {
+        txt.textContent = 'Chưa nhập Key';
+        return;
+      }
+
+      dot.className = 'dot';
+      txt.textContent = 'Đang gọi xưởng...';
+      if (!silent) logMsg('settingsLog', 'Đang kết nối tới Render (nếu server đang ngủ có thể mất 30-50 giây)...');
+
+      try {
+        const res = await fetch(`${url}/v1/models`, {
+          headers: { 'Authorization': `Bearer ${key}` }
+        });
+
+        if (res.status === 401) {
+          dot.className = 'dot offline';
+          txt.textContent = 'Sai API Key';
+          if (!silent) logMsg('settingsLog', 'Lỗi 401: Sai mã MUSE2API_KEY rồi sếp ơi, check lại trên Render nhé!', true);
+          return;
+        }
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        const data = await res.json();
+        dot.className = 'dot online';
+        txt.textContent = 'Xưởng Online';
+
+        // Nạp danh sách model thực tế từ server vào dropdown
+        if (data && Array.isArray(data.data) && data.data.length > 0) {
+          const select = document.getElementById('modelSelect');
+          select.innerHTML = '';
+          data.data.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m.id;
+            opt.textContent = m.id;
+            select.appendChild(opt);
+          });
+        }
+        if (!silent) logMsg('settingsLog', `Kết nối thành công! Xưởng đã sẵn sàng hoạt động.`);
+      } catch (err) {
+        dot.className = 'dot offline';
+        txt.textContent = 'Mất kết nối';
+        if (!silent) logMsg('settingsLog', `Chưa gọi được xưởng (${err.message}). Sếp bấm lại nút trạng thái góc trên sau 30 giây nhé!`, true);
+      }
+    }
+
+    // Chuyển đổi JSON Cookie-Editor thành chuỗi Cookie chuẩn và đẩy lên /admin/accounts
+    async function pushCookieToServer() {
+      const url = getCleanUrl();
+      const key = document.getElementById('apiKeyInput').value.trim();
+      const label = document.getElementById('accountLabelInput').value.trim() || 'Nick Phu 1';
+      const rawInput = document.getElementById('cookieJsonInput').value.trim();
+      const btn = document.getElementById('importCookieBtn');
+
+      if (!url || !key) {
+        logMsg('settingsLog', 'Sếp điền Link Render và MUSE2API_KEY ở trên trước nhé!', true);
+        return;
+      }
+      if (!rawInput) {
+        logMsg('settingsLog', 'Sếp chưa dán chuỗi JSON Cookie vào ô trống!', true);
+        return;
+      }
+
+      let cookieStr = rawInput;
+      let maxExpires = null;
+
+      // Tự động parse nếu là mảng JSON từ Cookie-Editor
+      try {
+        const parsed = JSON.parse(rawInput);
+        if (Array.isArray(parsed)) {
+          cookieStr = parsed
+            .filter(c => c.name && c.value)
+            .map(c => `${c.name}=${c.value}`)
+            .join('; ');
+          const expList = parsed.map(c => c.expirationDate).filter(Boolean);
+          if (expList.length > 0) maxExpires = Math.max(...expList);
+        }
+      } catch (e) {
+        // Nếu người dùng dán sẵn chuỗi key=value; thì giữ nguyên
+      }
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Đang bơm Cookie vào xưởng...';
+      logMsg('settingsLog', 'Đang gửi dữ liệu tới cổng /admin/accounts...');
+
+      try {
+        const payload = { label: label, cookies: cookieStr };
+        if (maxExpires) payload.expires = Math.floor(maxExpires);
+
+        const res = await fetch(`${url}/admin/accounts`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`
+          },
+          body: JSON.stringify(payload)
+        });
+
+        const text = await res.text();
+        if (res.status === 401) {
+          logMsg('settingsLog', 'Lỗi 401: Sai mã MUSE2API_KEY!', true);
+          return;
+        }
+        if (!res.ok) {
+          logMsg('settingsLog', `Server từ chối (HTTP ${res.status}): ${text}`, true);
+          return;
+        }
+
+        localStorage.setItem('td_muse_url', url);
+        localStorage.setItem('td_muse_key', key);
+        logMsg('settingsLog', `🎉 BƠM COOKIE THÀNH CÔNG! Xưởng đã nhận tài khoản "${label}". Sếp chuyển sang tab "Xưởng Tạo Video" để quất luôn!`);
+        pingServer(true);
+      } catch (err) {
+        logMsg('settingsLog', `Lỗi gửi dữ liệu: ${err.message}. Có thể server Render đang ngủ, sếp đợi 30s rồi bấm lại nhé!`, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🚀 Nạp Cookie Vào Xưởng Ngay';
+      }
+    }
+
+    // Gọi API tạo video
+    async function generateVideo() {
+      const url = getCleanUrl();
+      const key = document.getElementById('apiKeyInput').value.trim();
+      const model = document.getElementById('modelSelect').value;
+      const ratio = document.getElementById('ratioSelect').value;
+      const prompt = document.getElementById('promptInput').value.trim();
+      const btn = document.getElementById('generateBtn');
+      const dlBtn = document.getElementById('downloadBtn');
+
+      if (!url || !key) {
+        logMsg('studioLog', 'Sếp sang tab "Nạp Cookie & Key" điền thông tin server trước nhé!', true);
+        return;
+      }
+      if (!prompt) {
+        logMsg('studioLog', 'Sếp nhập mô tả cảnh quay vào ô Prompt đã nào!', true);
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Đang render video (mất 1 - 3 phút)...';
+      dlBtn.style.display = 'none';
+      logMsg('studioLog', `Đang gửi lệnh tới ${model} [Khung ${ratio}]...\nSếp giữ màn hình sáng, đừng tắt trình duyệt nhé.`);
+
+      try {
+        const finalPrompt = `${prompt} --ar ${ratio}`;
+        const res = await fetch(`${url}/v1/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${key}`
+          },
+          body: JSON.stringify({
+            model: model,
+            messages: [{ role: 'user', content: finalPrompt }],
+            stream: false
+          })
+        });
+
+        const rawText = await res.text();
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${rawText.slice(0, 150)}`);
+        }
+
+        const data = JSON.parse(rawText);
+        const content = data.choices?.[0]?.message?.content || '';
+
+        // Bóc tách link video từ nội dung trả về
+        const urlMatch = content.match(/https?:\/\/[^\s"'<>)]+\.(mp4|mov|webm)[^\s"'<>)]*/i) 
+                      || content.match(/\((https?:\/\/[^\s)]+)\)/i)
+                      || content.match(/(https?:\/\/[^\s"'<>]+)/i);
+
+        if (urlMatch) {
+          const videoUrl = urlMatch[1] || urlMatch[0];
+          const stage = document.getElementById('videoStage');
+          stage.innerHTML = `<video src="${videoUrl}" controls autoplay loop playsinline></video>`;
+          dlBtn.href = videoUrl;
+          dlBtn.style.display = 'flex';
+          logMsg('studioLog', `✅ XUẤT XƯỞNG THÀNH CÔNG!\nLink gốc: ${videoUrl}`);
+        } else {
+          logMsg('studioLog', `Xưởng phản hồi nhưng chưa thấy link video:\n${content}`, true);
+        }
+      } catch (err) {
+        logMsg('studioLog', `❌ Lỗi tạo video: ${err.message}`, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '⚡ Bắt Đầu Xuất Video';
+      }
+    }
+  </script>
+</body>
+</html>
