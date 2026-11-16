@@ -287,7 +287,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V7</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V7.1</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div>
 </header>
 <div id="app">
@@ -1024,14 +1024,36 @@ function setFormat(id){ const F=FORMATS[id]; if(!F) return;
   save(); closeFormats(); renderControl(); toast('Đã chuyển dạng: '+F.name); }
 
 /* ---------------- Phân tích sản phẩm từ ảnh ---------------- */
+/* Đọc JSON do AI trả về — chịu các lỗi cú pháp thường gặp: nháy đơn, khóa không nháy, thừa dấu phẩy cuối, True/False kiểu Python, xuống dòng thô trong chuỗi */
+function __escCtrl(s){ let out='', inStr=false, esc=false; for(let i=0;i<s.length;i++){ const ch=s[i]; if(esc){ out+=ch; esc=false; continue; } if(ch==='\\'){ out+=ch; esc=true; continue; } if(ch==='"'){ inStr=!inStr; out+=ch; continue; } if(inStr&&ch==='\n'){ out+='\\n'; continue; } if(inStr&&ch==='\r'){ continue; } if(inStr&&ch==='\t'){ out+='\\t'; continue; } out+=ch; } return out; }
+function parseLooseJSON(text){
+  if(!text) return null;
+  const t=String(text).replace(/```(?:json)?/gi,'').trim();
+  const starts=[t.indexOf('{'), t.indexOf('[')].filter(i=>i>=0); if(!starts.length) return null;
+  const start=Math.min.apply(null,starts); const end=Math.max(t.lastIndexOf('}'), t.lastIndexOf(']'));
+  if(end<=start) return null;
+  let cand=t.slice(start, end+1);
+  const tp=s=>{ try{ return JSON.parse(s); }catch(e){ return undefined; } };
+  let v=tp(cand); if(v!==undefined) return v;
+  cand=__escCtrl(cand); v=tp(cand); if(v!==undefined) return v;
+  cand=cand.replace(/,\s*([}\]])/g,'$1'); v=tp(cand); if(v!==undefined) return v;
+  cand=cand.replace(/\bTrue\b/g,'true').replace(/\bFalse\b/g,'false').replace(/\bNone\b/g,'null'); v=tp(cand); if(v!==undefined) return v;
+  cand=cand.replace(/'([^'\\]*)'\s*:/g,'"$1":').replace(/:\s*'([^'\\]*)'/g,': "$1"'); v=tp(cand); if(v!==undefined) return v;
+  cand=cand.replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g,'$1"$2":'); v=tp(cand); if(v!==undefined) return v;
+  cand=__escCtrl(cand); v=tp(cand); if(v!==undefined) return v;
+  return null;
+}
 async function analyzeImages(images){
   const imgs=(images||[]).slice(0,5); if(!imgs.length) throw new Error('Chưa có ảnh sản phẩm để phân tích');
   const content=[{ type:'text', text:'Bạn nhận được các ảnh của MỘT sản phẩm cần bán, gồm 2 loại: ẢNH CHỤP SẢN PHẨM (nhìn thấy hình dáng sản phẩm) và ẢNH CHỮ (ảnh chụp màn hình thông số kỹ thuật, mô tả sản phẩm, hoặc chữ trên bao bì). CÁCH ĐỌC: (1) Tên sản phẩm: xác định từ ẢNH CHỤP — hình dáng sản phẩm, kèm hãng/model nếu thấy chữ in trên sản phẩm hoặc bao bì; tên ngắn gọn. (2) Điểm bán hàng: GỘP CẢ HAI NGUỒN — đặc điểm nhìn thấy trong ảnh chụp (hình dáng, chất liệu, công năng) VÀ thông số/mô tả đọc được từ ẢNH CHỮ: chép lại CHÍNH XÁC các con số và thông số như trong ảnh (không làm tròn, không bịa thêm, không suy đoán). Mỗi điểm một dòng, các dòng thông số để ở cuối. (3) Chỉ khi ẢNH CHỮ rõ ràng nói về một sản phẩm KHÁC HẲN với ảnh chụp (khác loại sản phẩm) thì mới bỏ qua ảnh chữ đó và đặt "mixed":true; nếu tất cả cùng một sản phẩm thì "mixed":false. Trả về DUY NHẤT một JSON, không giải thích thêm: {"name":"tên sản phẩm","points":"các điểm bán hàng và thông số, mỗi ý một dòng","mixed":false}' }];
   imgs.forEach(u=>content.push({ type:'image_url', image_url:{ url:u } }));
-  const data=await api('/v1/chat/completions',{ method:'POST', body:JSON.stringify({ model:'muse-spark', stream:false, messages:[{ role:'user', content }] }) });
-  const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
-  const m=text.match(/\{[\s\S]*\}/); if(!m) throw new Error('AI không đọc được ảnh này');
-  const j=JSON.parse(m[0]);
+  const ask=async(extra)=>{ const c=extra? content.concat([{type:'text', text:extra}]) : content;
+    const data=await api('/v1/chat/completions',{ method:'POST', body:JSON.stringify({ model:'muse-spark', stream:false, messages:[{ role:'user', content:c }] }) });
+    const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+    return parseLooseJSON(text); };
+  let j=await ask('');
+  if(!j) j=await ask('LƯU Ý: lần trả trước bị lỗi cú pháp JSON. Lần này CHỈ trả về một JSON hợp lệ duy nhất: khóa và chuỗi bọc trong dấu ngoặc kép ", không markdown, không giải thích thêm.');
+  if(!j) throw new Error('AI không đọc được ảnh này');
   return { name:String(j.name||'').slice(0,120), points:String(j.points||'').slice(0,600), mixed: !!j.mixed };
 }
 async function analyzeBatch(id){ const b=S.batch.find(x=>x.id===id); if(!b) return;
@@ -1332,12 +1354,14 @@ async function genScriptAI(prod, st){
     st.dialogue===false ? 'KHÔNG có lời thoại: trường dialogue của mọi cảnh để trống "".' : ('Lời thoại '+(LANGS[st.language]||'tiếng Việt')+', tối đa 26 từ mỗi cảnh, '+(st.noPrice?'TUYỆT ĐỐI không nhắc giá tiền':'có thể nhắc ưu đãi')+'.'),
     'Trả về JSON: [{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại"}] đủ '+st.scenes+' cảnh.'
   ].filter(Boolean).join('\n');
-  const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
+  const ask=async(extra)=>{ const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
     model:'muse-spark', stream:false,
-    messages:[{role:'system',content:sys},{role:'user',content:usr}] })});
-  const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
-  const m=text.match(/\[[\s\S]*\]/); if(!m) throw new Error('AI không trả JSON');
-  const arr=JSON.parse(m[0]); if(!Array.isArray(arr)||!arr.length) throw new Error('JSON rỗng');
+    messages:[{role:'system',content:sys},{role:'user',content:usr+extra}] })});
+    const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+    let a=parseLooseJSON(text); if(a && !Array.isArray(a) && Array.isArray(a.scenes)) a=a.scenes; return a; };
+  let arr=await ask('');
+  if(!Array.isArray(arr)||!arr.length) arr=await ask('\nLƯU Ý: lần trả trước bị lỗi cú pháp JSON. CHỈ trả mảng JSON hợp lệ, khóa và chuỗi bọc trong dấu ngoặc kép ".');
+  if(!Array.isArray(arr)||!arr.length) throw new Error('AI không trả JSON hợp lệ');
   return arr.slice(0, st.scenes).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',28) }));
 }
 function genScriptFallback(prod, st){
@@ -1567,11 +1591,13 @@ async function genScriptStructured(ctx, st, count){
     'Lời thoại '+(LANGS[st.language]||'tiếng Việt')+', tối đa 26 từ mỗi cảnh'+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'.',
     'Trả về JSON: {"style":"một đoạn mô tả phong cách/giọng điệu chung của video, 2-3 câu","scenes":[{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại"}]} đủ '+count+' cảnh.'
   ].join('\n');
-  const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
-    model:'muse-spark', stream:false, messages:[{role:'system',content:sys},{role:'user',content:usr}] })});
-  const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
-  const m=text.match(/\{[\s\S]*\}/); if(!m) throw new Error('AI không trả JSON');
-  const obj=JSON.parse(m[0]); if(!obj||!Array.isArray(obj.scenes)||!obj.scenes.length) throw new Error('JSON thiếu scenes');
+  const ask=async(extra)=>{ const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
+    model:'muse-spark', stream:false, messages:[{role:'system',content:sys},{role:'user',content:usr+extra}] })});
+    const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+    let o=parseLooseJSON(text); if(Array.isArray(o)) o={ style:'', scenes:o }; return o; };
+  let obj=await ask('');
+  if(!obj||!Array.isArray(obj.scenes)||!obj.scenes.length) obj=await ask('\nLƯU Ý: lần trả trước bị lỗi cú pháp JSON. CHỈ trả một JSON object hợp lệ, khóa và chuỗi bọc trong dấu ngoặc kép ".');
+  if(!obj||!Array.isArray(obj.scenes)||!obj.scenes.length) throw new Error('AI không trả JSON hợp lệ');
   return { style:String(obj.style||''), scenes:obj.scenes.slice(0,count).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',28) })) };
 }
 async function aiScript(){
@@ -1585,7 +1611,11 @@ async function aiScript(){
     r.scenes.forEach((sc,i)=>{ if(p.segments[i]){ p.segments[i].visual=sc.visual; p.segments[i].dialogue=sc.dialogue; } });
     if(r.style) p.stylePara=r.style;
     save(); renderWorkspace(); toast('Đã lập kịch bản xong');
-  }catch(e){ toast('AI lập kịch bản lỗi: '+e.message); }
+  }catch(e){
+    const fb=genScriptFallback({ name:p.product||ctx, desc:p.points||'' }, st);
+    fb.forEach((sc,i)=>{ if(p.segments[i]){ p.segments[i].visual=sc.visual||''; p.segments[i].dialogue=sc.dialogue||''; } });
+    save(); renderWorkspace(); toast('AI trả dữ liệu lỗi — đã dùng kịch bản mẫu, m chỉnh tay được');
+  }
 }
 
 /* ---------------- V4: Ghép phim (ffmpeg) ---------------- */
