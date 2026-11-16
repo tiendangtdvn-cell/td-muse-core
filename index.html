@@ -287,7 +287,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.1</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.3</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
@@ -421,19 +421,33 @@ async function api(path, opts={}){
   const headers=Object.assign({}, opts.headers||{});
   if(!opts.form){ headers['Content-Type']='application/json'; }
   if(key) headers['Authorization']='Bearer '+key;
+  let roleKey='';
   try{
     const roles=(typeof S!=='undefined' && S.settings && S.settings.accRoles)||null;
     if(roles && opts.body && typeof opts.body==='string'){
-      const role = path.indexOf('/v1/chat/')===0 ? roles.chat
-                 : path.indexOf('/v1/images/')===0 ? roles.image
-                 : path.indexOf('/v1/videos')===0 ? roles.video : '';
+      roleKey = path.indexOf('/v1/chat/')===0 ? 'chat'
+              : path.indexOf('/v1/images/')===0 ? 'image'
+              : path.indexOf('/v1/videos')===0 ? 'video' : '';
+      const role = roleKey? roles[roleKey] : '';
       if(role){ const b=JSON.parse(opts.body); if(b && typeof b==='object' && !b.account_id){ b.account_id=role; opts=Object.assign({}, opts, {body:JSON.stringify(b)}); } }
     }
   }catch(e){}
   const res=await fetch(url+path, Object.assign({}, opts, {headers}));
   const text=await res.text();
   let data=null; try{ data=text?JSON.parse(text):null; }catch(e){}
-  if(!res.ok){ const m=(data&&(data.detail||data.error||data.message))||text||('HTTP '+res.status); throw new Error(typeof m==='string'?m:JSON.stringify(m)); }
+  if(!res.ok){
+    const m=(data&&(data.detail||data.error||data.message))||text||('HTTP '+res.status);
+    const msg=typeof m==='string'? m : ((m && m.message) || JSON.stringify(m));
+    // Gán vai trỏ vào nick không còn trong bể → xoá gán vai đó, thử lại để cầu tự chọn nick
+    if(roleKey && /Assigned account/i.test(msg) && /not found/i.test(msg) && typeof S!=='undefined' && S.settings && S.settings.accRoles && opts.body){
+      const dead=S.settings.accRoles[roleKey];
+      S.settings.accRoles[roleKey]=''; save();
+      toast('Nick được gán vai ("'+dead+'") không còn trong bể — đã chuyển vai này về Tự động và thử lại', 5000);
+      const b2=JSON.parse(opts.body); delete b2.account_id;
+      return api(path, Object.assign({}, opts, {body:JSON.stringify(b2)}));
+    }
+    throw new Error(msg);
+  }
   return data;
 }
 function resolveUrl(u){
@@ -1053,6 +1067,19 @@ function setFormat(id){ const F=FORMATS[id]; if(!F) return;
 /* ---------------- Phân tích sản phẩm từ ảnh ---------------- */
 /* Đọc JSON do AI trả về — chịu các lỗi cú pháp thường gặp: nháy đơn, khóa không nháy, thừa dấu phẩy cuối, True/False kiểu Python, xuống dòng thô trong chuỗi */
 function __escCtrl(s){ let out='', inStr=false, esc=false; for(let i=0;i<s.length;i++){ const ch=s[i]; if(esc){ out+=ch; esc=false; continue; } if(ch==='\\'){ out+=ch; esc=true; continue; } if(ch==='"'){ inStr=!inStr; out+=ch; continue; } if(inStr&&ch==='\n'){ out+='\\n'; continue; } if(inStr&&ch==='\r'){ continue; } if(inStr&&ch==='\t'){ out+='\\t'; continue; } out+=ch; } return out; }
+function scanJsonObjects(text){
+  const out=[]; const stack=[]; let inStr=false, esc=false;
+  for(let i=0;i<text.length;i++){
+    const ch=text[i];
+    if(inStr){ if(esc) esc=false; else if(ch==='\\') esc=true; else if(ch==='"') inStr=false; continue; }
+    if(ch==='"'){ inStr=true; continue; }
+    if(ch==='{') stack.push(i);
+    else if(ch==='}'){ const st=stack.pop(); if(st!==undefined){ const cand=text.slice(st, i+1);
+      let o; try{ o=JSON.parse(cand); }catch(e){ try{ o=JSON.parse(__escCtrl(cand)); }catch(e2){ o=undefined; } }
+      if(o && typeof o==='object' && !Array.isArray(o)) out.push(o); } }
+  }
+  return out;
+}
 function parseLooseJSON(text){
   if(!text) return null;
   const t=String(text).replace(/```(?:json)?/gi,'').trim();
@@ -1068,6 +1095,24 @@ function parseLooseJSON(text){
   cand=cand.replace(/'([^'\\]*)'\s*:/g,'"$1":').replace(/:\s*'([^'\\]*)'/g,': "$1"'); v=tp(cand); if(v!==undefined) return v;
   cand=cand.replace(/([{,]\s*)([A-Za-z_$][\w$]*)\s*:/g,'$1"$2":'); v=tp(cand); if(v!==undefined) return v;
   cand=__escCtrl(cand); v=tp(cand); if(v!==undefined) return v;
+  // Cầu/AI đôi khi trả 2 bản JSON nối nhau (bản đầu cụt) — thử parse từ từng điểm bắt đầu, chỉ nhận kết quả đúng hình dạng cấp cao nhất
+  const startsAt=[]; for(let i=1;i<t.length;i++){ if(t[i]==='{'||t[i]==='[') startsAt.push(i); }
+  for(const i of startsAt){
+    let c2=t.slice(i); let v2=tp(c2);
+    if(v2===undefined){ c2=__escCtrl(c2); v2=tp(c2); }
+    if(v2===undefined){ c2=c2.replace(/,\s*([}\]])/g,'$1'); v2=tp(c2); }
+    if(v2!==undefined && (Array.isArray(v2) || (v2 && typeof v2==='object' && (v2.profile || v2.scenes || v2.start_state || v2.name)))) return v2;
+  }
+  // Cứu hộ cấu trúc: AI hay quên cặp ngoặc mảng của "scenes" — quét từng object cân bằng ngoặc rồi ghép lại
+  const objs=scanJsonObjects(t);
+  if(objs.length){
+    const prof=objs.find(o=>o && ('product_lock' in o));
+    const dlgObjs=objs.filter(o=>o && ('dialogue' in o));
+    if(prof && dlgObjs.length) return { profile:prof, scenes:dlgObjs };
+    if(dlgObjs.length) return dlgObjs;
+    const stObj=objs.find(o=>o && ('start_state' in o));
+    if(stObj) return stObj;
+  }
   return null;
 }
 async function analyzeImages(images){
@@ -1384,11 +1429,12 @@ async function genScriptAI(prod, st){
 }
 
 /* ---------------- Schema V2: continuity JSON + app-compiled prompts ---------------- */
+let lastAiError='';
 async function askChatJSON(sys, usr){
   const ask=async(extra)=>{ try{ const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
     model:'muse-spark', stream:false, messages:[{role:'system',content:sys},{role:'user',content:usr+extra}] })});
     const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
-    return parseLooseJSON(text); }catch(e){ return null; } };
+    return parseLooseJSON(text); }catch(e){ lastAiError=String((e && e.message) || e); return null; } };
   let o=await ask('');
   if(!o) o=await ask('\nLƯU Ý: lần trả trước bị lỗi cú pháp JSON. CHỈ trả JSON hợp lệ, khóa và chuỗi bọc trong dấu ngoặc kép ".');
   return o;
@@ -1422,7 +1468,7 @@ async function genScriptV2(prod, st){
     'Nhiệm vụ 1 — MASTER PROFILE khoá cứng cho cả video: product_lock = mô tả ngoại hình sản phẩm đúng như ảnh tham chiếu (hình dáng, màu sắc, chất liệu nhìn thấy, các bộ phận chính, chữ/logo in sẵn nếu có — giữ nguyên, không thêm bớt); wardrobe = MỘT bộ trang phục cụ thể cho nhân vật trong video này (chọn hợp bối cảnh và sản phẩm); environment = MỘT địa điểm cụ thể duy nhất (mô tả vị trí các đồ vật chính); lighting = hướng và chất lượng ánh sáng; style = phong cách hình ảnh (chân thực như quay bằng điện thoại xịn, UGC TikTok). TUYỆT ĐỐI không mô tả ngoại hình nhân vật (mặt, tóc, vóc dáng) — nhân vật lấy từ ảnh tham chiếu.',
     st.dialogue===false ? 'KHÔNG có lời thoại: dialogue của mọi cảnh để trống "".' :
       ('Nhiệm vụ 2 — dialogue từng cảnh bằng '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh 37–40 từ (tốc độ nói 3,7–4 từ/giây trong 10 giây), câu ngắn dễ khớp khẩu hình, giàu thông tin đúng điểm bán'+(isRev?', nhịp review nhanh, gãy gọn':'')+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'. Chữ "giỏ hàng" chỉ được xuất hiện trong dialogue của cảnh cuối.'),
-    'Trả về JSON: {"profile":{"product_lock":"...","wardrobe":"...","environment":"...","lighting":"...","style":"..."},"scenes":[{"purpose":"mục đích cảnh, ngắn gọn","dialogue":"..."}]} đủ '+st.scenes+' cảnh.'
+    'Trả về JSON: {"profile":{"product_lock":"...","wardrobe":"...","environment":"...","lighting":"...","style":"..."},"scenes":[{"purpose":"mục đích cảnh, ngắn gọn","dialogue":"..."}]} đủ '+st.scenes+' cảnh. CẤU TRÚC BẮT BUỘC: "scenes" là một MẢNG — mở bằng ký tự [ và đóng bằng ký tự ], mọi cảnh nằm TRONG mảng, ngăn nhau bằng dấu phẩy.'
   ].filter(Boolean).join('\n');
   const a=await askChatJSON(sys, usrA);
   if(!a || !a.profile || !Array.isArray(a.scenes) || !a.scenes.length) return null;
@@ -1592,6 +1638,7 @@ async function runBatch(){
   toast('Đợt sản xuất đã kết thúc');
 }
 async function scriptIntoProject(proj, prod, st){
+  lastAiError='';
   let v2=null; try{ v2=await genScriptV2(prod, st); }catch(e){ v2=null; }
   if(v2){
     proj.schema='v2'; proj.scriptMode='v2';
@@ -1620,7 +1667,7 @@ async function rescript(){
   const prod={ name:p.product||p.name, desc:p.points||'', note:p.idea||'', images:p.refsProd||[] };
   await scriptIntoProject(p, prod, st);
   save(); renderWorkspace();
-  toast(p.scriptMode==='v2'? 'Đã soạn lại — kịch bản chuẩn continuity (schema mới)' : (p.scriptMode==='ai'? 'Đã soạn lại bằng AI (đường cũ)' : 'AI vẫn chưa trả lời — app giữ kịch bản mẫu, thử lại sau ít phút'));
+  toast(p.scriptMode==='v2'? 'Đã soạn lại — kịch bản chuẩn continuity (schema mới)' : (p.scriptMode==='ai'? 'Đã soạn lại bằng AI (đường cũ)' : ('AI lỗi: '+(lastAiError? lastAiError.slice(0,160) : 'không rõ')+' — app giữ kịch bản mẫu')), p.scriptMode==='v2'? undefined : 6000);
 }
 function ideaSubject(st){ const fm=curFmt(); switch(st.format){
   case 'drama': return (fm.plot||'Drama mới').split('\n')[0].slice(0,50) || 'Drama mới';
@@ -1659,7 +1706,7 @@ async function createScripts(){
       made=1;
     }
   } finally { scriptRunning=false; save(); renderBatch(); renderProjects(); }
-  if(fallbackUsed) toast('AI lỗi ở vài dự án nên đã dùng kịch bản mẫu — mở dự án kiểm tra lại nhé', 4500);
+  if(fallbackUsed) toast('AI lỗi ở vài dự án nên đã dùng kịch bản mẫu'+(lastAiError? ' — lỗi: '+lastAiError.slice(0,140) : '')+' — mở dự án kiểm tra lại nhé', 6000);
   if(made){ toast('Đã tạo '+made+' dự án có kịch bản — mở dự án để sản xuất'); gotoView('projects'); if(firstId) openProject(firstId); }
 }
 Object.assign(window.App,{ createScripts });
