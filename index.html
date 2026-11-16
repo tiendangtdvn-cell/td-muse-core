@@ -3,100 +3,157 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>TD Muse Studio v5 — Xưởng Sản Xuất Video</title>
+<title>TD Muse Studio v7 — Xưởng Sản Xuất Video</title>
 <style>
   :root{
-    --bg:#0e1013; --panel:#171a20; --panel2:#1e222b; --line:#2a2f3a;
-    --txt:#eef1f6; --dim:#9aa3b2; --acc:#6c8cff; --acc2:#8a6cff;
-    --ok:#2ecc71; --warn:#ffb020; --bad:#ff5a5a; --radius:14px;
+    --bg:#0a111f; --panel:#111c30; --panel2:#17263f; --panel3:#1d2f4d;
+    --line:#24365a; --line2:#2f4773;
+    --txt:#edf2fb; --dim:#95a8c7; --dim2:#6d81a3;
+    --acc:#0e8a3e; --acc2:#27b45e; --accink:#ffffff;
+    --ok:#34d399; --warn:#ffc53d; --bad:#ff6b6b; --radius:16px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
-  html,body{margin:0; padding:0; background:var(--bg); color:var(--txt);
+  html,body{margin:0; padding:0; color:var(--txt);
+    background:radial-gradient(1200px 600px at 80% -10%, #16294d 0%, var(--bg) 55%) fixed, var(--bg);
     font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;}
   button{font-family:inherit}
   /* ---------- Header ---------- */
   header{position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:10px;
-    padding:10px 14px; background:rgba(14,16,19,.92); backdrop-filter:blur(8px); border-bottom:1px solid var(--line)}
-  header .logo{font-weight:800; font-size:17px; letter-spacing:.2px}
-  header .logo span{color:var(--acc)}
+    padding:8px 12px; background:rgba(10,17,31,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--line)}
+  header .logo{display:flex; align-items:center; gap:10px; font-weight:800; font-size:16.5px; letter-spacing:.2px}
+  header .logo .mark{width:36px; height:36px; border-radius:11px; flex:none;
+    background:linear-gradient(135deg,var(--acc),var(--acc2)); display:flex; align-items:center; justify-content:center;
+    font-size:19px; box-shadow:0 4px 14px rgba(22,163,74,.35)}
+  header .logo span{color:var(--acc2)}
+  header .logo .ver{font-size:10.5px; font-weight:800; color:#bbf7d0; border:1px solid rgba(34,197,94,.5);
+    background:rgba(22,163,74,.12); padding:3px 8px; border-radius:999px; letter-spacing:.6px}
   .pill{margin-left:auto; display:flex; align-items:center; gap:7px; font-size:12px; color:var(--dim);
-    border:1px solid var(--line); padding:5px 10px; border-radius:999px; background:var(--panel)}
+    border:1px solid var(--line); padding:6px 11px; border-radius:999px; background:var(--panel)}
   .dot{width:9px; height:9px; border-radius:50%; background:#666}
   .dot.on{background:var(--ok); box-shadow:0 0 8px var(--ok)}
   .dot.off{background:var(--bad)}
   /* ---------- Layout ---------- */
-  #app{display:block; padding-bottom:86px}
-  main{padding:14px; max-width:1180px; margin:0 auto}
+  #app{display:block; padding-bottom:92px}
+  main{padding:10px; max-width:1180px; margin:0 auto}
   nav#tabs{position:fixed; left:0; right:0; bottom:0; z-index:30; display:flex;
-    background:rgba(18,20,25,.97); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom)}
-  nav#tabs button{flex:1; background:none; border:none; color:var(--dim); padding:10px 4px 12px;
-    font-size:12px; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer}
-  nav#tabs button .ic{font-size:20px}
-  nav#tabs button.active{color:var(--acc)}
-  /* Landscape / wide: side rail + two-pane workspace */
+    background:rgba(13,21,38,.97); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom)}
+  nav#tabs button{flex:1; background:none; border:none; color:var(--dim); padding:7px 4px 9px;
+    font-size:12px; font-weight:600; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer; position:relative}
+  nav#tabs button .ic{font-size:21px; line-height:1.15}
+  nav#tabs button.active{color:var(--acc2)}
+  nav#tabs button.active::before{content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:34px; height:3px; border-radius:0 0 4px 4px; background:linear-gradient(90deg,var(--acc),var(--acc2))}
   @media (min-width:860px){
-    #app{display:grid; grid-template-columns:208px 1fr; padding-bottom:0; min-height:100vh}
-    nav#tabs{position:sticky; top:49px; height:calc(100vh - 49px); flex-direction:column; border-top:none;
+    #app{display:grid; grid-template-columns:212px 1fr; padding-bottom:0; min-height:100vh}
+    nav#tabs{position:sticky; top:57px; height:calc(100vh - 57px); flex-direction:column; border-top:none;
       border-right:1px solid var(--line); padding:14px 10px; gap:6px}
-    nav#tabs button{flex:none; flex-direction:row; justify-content:flex-start; gap:10px; padding:12px; border-radius:10px; font-size:14px}
-    nav#tabs button.active{background:var(--panel2)}
+    nav#tabs button{flex:none; flex-direction:row; justify-content:flex-start; gap:10px; padding:12px; border-radius:12px; font-size:14px}
+    nav#tabs button.active{background:var(--panel2); box-shadow:inset 3px 0 0 var(--acc)}
+    nav#tabs button.active::before{display:none}
     main{padding:20px; width:100%}
     .ws-grid{display:grid; grid-template-columns:minmax(320px,430px) 1fr; gap:18px; align-items:start}
-    .ws-grid .stickycol{position:sticky; top:70px}
+    .ws-grid .stickycol{position:sticky; top:76px}
   }
   /* ---------- Cards & forms ---------- */
-  .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin-bottom:14px}
+  .card{background:linear-gradient(180deg,var(--panel),#0f1930); border:1px solid var(--line); border-radius:var(--radius);
+    padding:12px; margin-bottom:10px; box-shadow:0 8px 22px rgba(0,0,0,.28)}
   .card h3{margin:0 0 10px; font-size:15px}
   .card h3 .sub{color:var(--dim); font-weight:400; font-size:12px}
-  label.fl{display:block; font-size:12px; color:var(--dim); margin:10px 0 5px}
-  input[type=text],input[type=url],textarea,select{width:100%; background:var(--panel2); color:var(--txt);
-    border:1px solid var(--line); border-radius:10px; padding:11px; font-size:14px; outline:none}
-  textarea{resize:vertical; min-height:64px; line-height:1.45}
-  input:focus,textarea:focus,select:focus{border-color:var(--acc)}
-  .btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:44px;
-    padding:10px 16px; border-radius:11px; border:1px solid var(--line); background:var(--panel2);
+  label.fl{display:block; font-size:12px; color:var(--dim); margin:9px 0 4px; font-weight:600}
+  input[type=text],input[type=url],textarea,select{width:100%; background:#0c1730; color:var(--txt);
+    border:1px solid var(--line); border-radius:11px; padding:9px 10px; font-size:13.5px; outline:none; transition:border-color .15s, box-shadow .15s}
+  textarea{resize:vertical; min-height:52px; line-height:1.45}
+  input:focus,textarea:focus,select:focus{border-color:var(--acc); box-shadow:0 0 0 3px rgba(22,163,74,.18)}
+  select{appearance:none; -webkit-appearance:none; padding-right:34px;
+    background-image:url("data:image/svg+xml;charset=utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%2322c55e' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 12px center}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:40px;
+    padding:8px 13px; border-radius:12px; border:1px solid var(--line2); background:var(--panel2);
     color:var(--txt); font-size:14px; font-weight:600; cursor:pointer}
   .btn:active{transform:scale(.98)}
-  .btn.primary{background:linear-gradient(135deg,var(--acc),var(--acc2)); border:none; color:#fff}
-  .btn.ok{background:var(--ok); border:none; color:#06280f}
+  .btn.primary{background:linear-gradient(135deg,var(--acc),var(--acc2)); border:none; color:var(--accink);
+    font-weight:800; box-shadow:0 6px 18px rgba(22,163,74,.30)}
+  .btn.ok{background:var(--ok); border:none; color:#052e1f; font-weight:800}
   .btn.danger{background:none; border-color:var(--bad); color:var(--bad)}
-  .btn.small{min-height:38px; padding:7px 12px; font-size:13px}
+  .btn.small{min-height:34px; padding:6px 11px; font-size:12.5px}
   .btn[disabled]{opacity:.45; pointer-events:none}
   .btnrow{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
   .muted{color:var(--dim); font-size:12.5px; line-height:1.5}
-  .log{background:#0a0c0f; border:1px solid var(--line); border-radius:10px; padding:10px;
+  .log{background:#081020; border:1px solid var(--line); border-radius:12px; padding:10px;
     font-size:12px; line-height:1.55; max-height:180px; overflow:auto; white-space:pre-wrap; word-break:break-word}
   .log .e{color:var(--bad)} .log .g{color:var(--ok)}
+  /* ---------- Section cards (v6) ---------- */
+  .sechead{display:flex; align-items:center; gap:10px; margin-bottom:6px}
+  .secnum{width:24px; height:24px; border-radius:10px; flex:none;
+    background:linear-gradient(135deg,var(--acc),var(--acc2)); color:var(--accink);
+    font-weight:800; font-size:14.5px; display:flex; align-items:center; justify-content:center;
+    box-shadow:0 4px 12px rgba(22,163,74,.30)}
+  .sectitle{font-size:13px; font-weight:800; letter-spacing:.5px; text-transform:uppercase}
+  .secchip{margin-left:auto; font-size:11px; font-weight:700; color:#bbf7d0; text-align:right;
+    border:1px solid rgba(34,197,94,.45); background:rgba(22,163,74,.10); padding:4px 9px; border-radius:8px; max-width:46%}
+  /* ---------- Choice cards (v6) ---------- */
+  .choicegrid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px}
+  .choicegrid.one{grid-template-columns:1fr}
+  .choice{position:relative; text-align:left; border:1.5px solid var(--line); background:var(--panel2);
+    border-radius:12px; padding:10px 11px; cursor:pointer; color:var(--txt); width:100%}
+  .choice:active{transform:scale(.99)}
+  .choice .cic{font-size:19px; line-height:1.2}
+  .choice .ct{font-weight:800; font-size:13.5px; margin-top:5px}
+  .choice .cs{font-size:12px; color:var(--dim); line-height:1.45; margin-top:3px}
+  .choice.sel{border-color:var(--acc); background:linear-gradient(180deg,rgba(22,163,74,.17),rgba(22,163,74,.05));
+    box-shadow:0 0 0 1px var(--acc), 0 6px 16px rgba(22,163,74,.12)}
+  .choice.sel::after{content:'✓'; position:absolute; top:9px; right:9px; width:21px; height:21px; border-radius:50%;
+    background:linear-gradient(135deg,var(--acc),var(--acc2)); color:var(--accink); font-size:12.5px; font-weight:900;
+    display:flex; align-items:center; justify-content:center}
+  .choice.row{display:flex; align-items:center; gap:11px; padding:12px 13px}
+  .choice.row .cic{font-size:20px; margin:0}
+  .choice.row .ct{margin:0; font-size:14px}
+  .choice.row .cs{margin:0}
+  /* ---------- Switch rows (v6) ---------- */
+  .switchrow{display:flex; align-items:center; gap:11px; padding:9px 0 2px; font-size:14px}
+  .switchrow .grow{flex:1; min-width:0}
+  .switchrow .grow b{display:block; font-weight:700}
+  .switchrow .grow span{font-size:12px; color:var(--dim); line-height:1.4; display:block; margin-top:2px}
+  .switch{position:relative; width:49px; height:29px; flex:none}
+  .switch input{opacity:0; width:100%; height:100%; position:absolute; margin:0; z-index:2; cursor:pointer}
+  .switch i{position:absolute; inset:0; background:#2a3c61; border-radius:99px; transition:.2s}
+  .switch i::after{content:''; position:absolute; top:3px; left:3px; width:23px; height:23px; border-radius:50%; background:#c9d5ea; transition:.2s}
+  .switch input:checked + i{background:linear-gradient(135deg,var(--acc),var(--acc2))}
+  .switch input:checked + i::after{left:23px; background:#fff}
+  .infobox{background:rgba(70,140,255,.09); border:1px solid rgba(70,140,255,.32); color:#cfe2ff;
+    border-radius:12px; padding:11px 12px; font-size:12.5px; line-height:1.55; margin-top:12px}
+  .infobox b{color:#9ec2ff}
   /* ---------- Projects ---------- */
   .proj{display:flex; gap:12px; align-items:center; cursor:pointer}
-  .proj .thumb{width:54px; height:72px; border-radius:9px; object-fit:cover; background:var(--panel2); flex:none}
+  .proj .thumb{width:54px; height:72px; border-radius:10px; object-fit:cover; background:var(--panel2); flex:none}
   .proj .meta{flex:1; min-width:0}
   .proj .name{font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .badge{display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--dim)}
+  .badge{display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; border:1px solid var(--line2); color:var(--dim)}
   .badge.run{color:var(--warn); border-color:var(--warn)}
   .badge.done{color:var(--ok); border-color:var(--ok)}
   /* ---------- Stepper ---------- */
-  .steps{display:flex; gap:6px; overflow-x:auto; padding:2px 0 10px; scrollbar-width:none}
+  .steps{display:flex; gap:7px; overflow-x:auto; padding:2px 0 12px; scrollbar-width:none}
   .steps::-webkit-scrollbar{display:none}
-  .step{flex:none; font-size:12.5px; padding:7px 12px; border-radius:999px; border:1px solid var(--line);
+  .step{flex:none; font-size:12.5px; font-weight:600; padding:8px 13px; border-radius:999px; border:1px solid var(--line);
     color:var(--dim); background:var(--panel); cursor:pointer; white-space:nowrap}
-  .step.cur{color:#fff; background:linear-gradient(135deg,var(--acc),var(--acc2)); border:none; font-weight:700}
+  .step.cur{color:var(--accink); background:linear-gradient(135deg,var(--acc),var(--acc2)); border:none; font-weight:800}
   .step.done{color:var(--ok); border-color:var(--ok)}
   /* ---------- Refs ---------- */
   .refs{display:flex; gap:8px; flex-wrap:wrap}
-  .refbox{position:relative; width:74px; height:92px; border-radius:10px; overflow:hidden; background:var(--panel2); border:1px solid var(--line)}
+  .refbox{position:relative; width:64px; height:80px; border-radius:11px; overflow:hidden; background:var(--panel2); border:1px solid var(--line)}
   .refbox img{width:100%; height:100%; object-fit:cover}
   .refbox button{position:absolute; top:3px; right:3px; width:22px; height:22px; border-radius:50%; border:none;
     background:rgba(0,0,0,.65); color:#fff; font-size:13px; line-height:1; cursor:pointer}
-  .addref{width:74px; height:92px; border-radius:10px; border:1.5px dashed var(--line); background:none;
-    color:var(--dim); font-size:22px; cursor:pointer}
+  .addref{width:64px; height:80px; border-radius:11px; border:1.5px dashed var(--line2); background:rgba(22,163,74,.04);
+    color:var(--acc2); font-size:24px; cursor:pointer}
   /* ---------- Segments ---------- */
-  .seg{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); margin-bottom:14px; overflow:hidden}
-  .seg-head{display:flex; align-items:center; gap:8px; padding:11px 13px; background:var(--panel2); border-bottom:1px solid var(--line)}
+  .seg{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); margin-bottom:14px; overflow:hidden;
+    box-shadow:0 8px 22px rgba(0,0,0,.25)}
+  .seg-head{display:flex; align-items:center; gap:8px; padding:9px 12px; background:var(--panel2); border-bottom:1px solid var(--line)}
   .seg-head b{font-size:14px}
-  .seg-body{padding:13px}
+  .seg-body{padding:11px}
   .stagebox{position:relative; width:100%; max-width:300px; margin:0 auto 10px; aspect-ratio:9/16;
-    background:#000; border-radius:12px; overflow:hidden; border:1px solid var(--line)}
+    background:#000; border-radius:13px; overflow:hidden; border:1px solid var(--line)}
   .stagebox.wide{aspect-ratio:16/9} .stagebox.sq{aspect-ratio:1/1}
   .stagebox img,.stagebox video{width:100%; height:100%; object-fit:cover; display:block}
   .stagebox .empty{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
@@ -105,12 +162,12 @@
   .prog i{display:block; height:100%; background:linear-gradient(90deg,var(--acc),var(--acc2)); transition:width .4s}
   .statusline{font-size:12.5px; color:var(--dim)}
   .statusline .err{color:var(--bad)}
-  .qcitem{display:flex; gap:9px; align-items:flex-start; padding:7px 0; border-bottom:1px dashed var(--line); font-size:13.5px}
+  .qcitem{display:flex; gap:9px; align-items:flex-start; padding:8px 0; border-bottom:1px dashed var(--line); font-size:13.5px}
   .qcitem:last-child{border-bottom:none}
   .qcitem input{width:20px; height:20px; margin-top:1px; accent-color:var(--ok); flex:none}
   /* ---------- Library ---------- */
   .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); gap:10px}
-  .gitem{border:1px solid var(--line); border-radius:11px; overflow:hidden; background:var(--panel2); cursor:pointer}
+  .gitem{border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--panel2); cursor:pointer}
   .gitem .ph{aspect-ratio:9/12; background:#000; display:flex; align-items:center; justify-content:center; overflow:hidden}
   .gitem img,.gitem video{width:100%; height:100%; object-fit:cover}
   .gitem .cap{font-size:10.5px; color:var(--dim); padding:5px 7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -121,47 +178,116 @@
   #modal img,#modal video{max-width:min(92vw,430px); max-height:74vh; border-radius:12px}
   @media (min-width:860px){ .seglist{display:grid; grid-template-columns:1fr 1fr; gap:14px} .seglist .seg{margin-bottom:0} }
   .seglist{display:block}
-  .steptitle{font-size:16px; font-weight:800; margin:18px 0 10px}
+  .steptitle{font-size:14.5px; font-weight:800; margin:15px 0 8px; padding-left:11px; border-left:4px solid var(--acc)}
   .steptitle:first-child{margin-top:0}
   input[type=file].hiddenfile{display:none}
   .thumbrow{display:flex; gap:10px; align-items:center}
-  /* ---------- Control / batch (v3) ---------- */
-  @media (min-width:860px){ .ctl-grid{display:grid; grid-template-columns:348px 1fr; gap:18px; align-items:start}
-    .ctl-grid #optionsZone{position:sticky; top:70px} }
+  /* ---------- Control / batch ---------- */
+  @media (min-width:860px){ .ctl-grid{display:grid; grid-template-columns:400px 1fr; gap:18px; align-items:start}
+    .ctl-grid #optionsZone{position:sticky; top:76px} }
   .segbtn{display:flex; gap:8px}
-  .segbtn button{flex:1; min-height:44px; border-radius:11px; border:1px solid var(--line); background:var(--panel2);
-    color:var(--dim); font-size:13.5px; font-weight:600; cursor:pointer; padding:8px}
-  .segbtn button.active{background:linear-gradient(135deg,#e8b93c,#c9932b); color:#231a02; border:none}
+  .segbtn button{flex:1; min-height:40px; border-radius:12px; border:1px solid var(--line); background:var(--panel2);
+    color:var(--dim); font-size:13.5px; font-weight:600; cursor:pointer; padding:8px 6px; line-height:1.3}
+  .segbtn button small{display:block; font-size:11px; font-weight:500; opacity:.85}
+  .segbtn button.active{background:linear-gradient(135deg,var(--acc),var(--acc2)); color:var(--accink); border:none; font-weight:800;
+    box-shadow:0 5px 14px rgba(22,163,74,.28)}
   .optgroup{font-size:11px; letter-spacing:1.2px; color:var(--dim); margin:16px 0 6px; font-weight:700}
   .optgroup:first-child{margin-top:0}
   .checkrow{display:flex; gap:9px; align-items:center; font-size:14px; padding:9px 0 2px}
-  .checkrow input{width:20px; height:20px; accent-color:var(--warn)}
-  .goldbtn{width:100%; min-height:56px; border:none; border-radius:13px; cursor:pointer;
-    background:linear-gradient(135deg,#f0c44e,#d9a62e); color:#231a02; font-size:16.5px; font-weight:800; letter-spacing:.3px}
+  .checkrow input{width:20px; height:20px; accent-color:var(--acc)}
+  .goldbtn{width:100%; min-height:50px; border:none; border-radius:14px; cursor:pointer;
+    background:linear-gradient(135deg,var(--acc),var(--acc2)); color:var(--accink); font-size:15px; font-weight:800;
+    letter-spacing:.3px; box-shadow:0 8px 22px rgba(22,163,74,.32)}
   .goldbtn:active{transform:scale(.99)} .goldbtn[disabled]{opacity:.5}
-  .prodrow{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); padding:12px; margin-bottom:12px}
+  .prodrow{border:1px solid var(--line); border-radius:var(--radius); background:linear-gradient(180deg,var(--panel),#0f1930); padding:11px; margin-bottom:10px}
   .prodrow .phead{display:flex; align-items:center; gap:9px; margin-bottom:8px}
-  .pnum{width:26px; height:26px; border-radius:50%; background:linear-gradient(135deg,#e8b93c,#c9932b);
-    color:#231a02; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; flex:none}
-  .price{color:#f0c44e; font-weight:700; white-space:nowrap}
-  .jobrow{border:1px solid var(--line); border-radius:12px; padding:11px 12px; margin-bottom:10px; background:var(--panel2)}
+  .pnum{width:27px; height:27px; border-radius:50%; background:linear-gradient(135deg,var(--acc),var(--acc2));
+    color:var(--accink); font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; flex:none}
+  .price{color:var(--acc2); font-weight:700; white-space:nowrap}
+  .jobrow{border:1px solid var(--line); border-radius:13px; padding:12px; margin-bottom:10px; background:var(--panel2)}
   .jobrow .jhead{display:flex; align-items:center; gap:8px}
-  .jbadge{font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; background:#3a3f4d; color:#cfd6e4}
+  .jbadge{font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; background:#33436b; color:#cfd9ee}
   .jbadge.run{background:#5a4510; color:#ffd968} .jbadge.done{background:#14532d; color:#7be495}
   .jbadge.fail{background:#5a1d1d; color:#ff9a9a} .jbadge.stop{background:#333; color:#aaa}
   .sceneline{font-size:12px; color:var(--dim); margin-top:5px; line-height:1.5}
   .sceneline b{color:var(--txt); font-weight:600}
   .hidden{display:none !important}
-  .toast{position:fixed; left:50%; bottom:96px; transform:translateX(-50%); z-index:60; background:var(--panel2);
-    border:1px solid var(--line); color:var(--txt); padding:10px 16px; border-radius:999px; font-size:13.5px;
-    opacity:0; pointer-events:none; transition:opacity .25s; max-width:88vw; text-align:center}
+  .toast{position:fixed; left:50%; bottom:100px; transform:translateX(-50%); z-index:60; background:var(--panel3);
+    border:1px solid var(--line2); color:var(--txt); padding:11px 17px; border-radius:999px; font-size:13.5px;
+    opacity:0; pointer-events:none; transition:opacity .25s; max-width:88vw; text-align:center; box-shadow:0 10px 26px rgba(0,0,0,.4)}
   .toast.show{opacity:1}
   @media (min-width:860px){ .toast{bottom:26px} }
+
+
+  /* ---------- v7: layout + drawer dạng video ---------- */
+  @media (min-width:860px){ .ctl-grid{display:block; max-width:920px; margin:0 auto} }
+  #fmtBtn{flex:none; width:40px; height:40px; border-radius:11px; border:1px solid var(--line2); background:var(--panel2); color:var(--txt); font-size:19px; cursor:pointer}
+  .drawer{position:fixed; inset:0; z-index:70}
+  .drawer-bg{position:absolute; inset:0; background:rgba(0,0,0,.62)}
+  .drawer-panel{position:absolute; top:0; left:0; bottom:0; width:min(302px,85vw); background:var(--panel); border-right:1px solid var(--line2); padding:14px; overflow:auto}
+  .drawer-head{display:flex; align-items:center; margin-bottom:12px}
+  .drawer-head b{flex:1; font-size:15px}
+  .fmtitem{display:flex; align-items:center; gap:11px; width:100%; text-align:left; padding:12px; border-radius:12px; border:1.5px solid var(--line); background:var(--panel2); color:var(--txt); margin-bottom:8px; font-size:14px; font-weight:700; cursor:pointer}
+  .fmtitem .fic{font-size:20px}
+  .fmtitem.sel{border-color:var(--acc); background:rgba(22,163,74,.14)}
+  .fmtitem .fchk{margin-left:auto; color:var(--acc2); font-weight:900}
+  .fmtbar{display:flex; align-items:center; gap:11px}
+  .fmtbar-ic{font-size:24px}
+  .fmtbar-name{font-weight:800; font-size:15px}
+
+  /* ---------- v7.2 compact mobile ---------- */
+  body{font-size:13.5px}
+  .card{padding:10px; margin-bottom:8px; border-radius:14px}
+  .sectitle{font-size:12px}
+  .secnum{width:22px; height:22px; font-size:11.5px; border-radius:7px}
+  .secchip{font-size:10.5px; padding:3px 8px}
+  label.fl{font-size:11px; margin:7px 0 3px}
+  input[type=text],input[type=url],input[type=password],select,textarea{padding:8px 9px; font-size:13px; border-radius:10px}
+  textarea{min-height:46px}
+  .btn{min-height:36px; padding:7px 12px; font-size:12.5px; border-radius:10px}
+  .btn.small{min-height:32px; padding:5px 10px; font-size:12px}
+  .goldbtn{min-height:46px; font-size:14px; border-radius:12px}
+  .choice{padding:8px 9px; border-radius:11px}
+  .choice .cic{font-size:16px}
+  .choice .ct{font-size:12.5px}
+  .choicegrid{gap:7px}
+  .segbtn{gap:5px}
+  .segbtn button{min-height:36px; font-size:12px; padding:6px 3px; border-radius:9px}
+  .switchrow{padding:7px 0 2px; font-size:13px}
+  .switch{width:42px; height:24px}
+  .switch i::after{width:18px; height:18px}
+  .switch input:checked + i::after{left:21px}
+  .refbox{width:56px; height:70px; border-radius:9px}
+  .addref{width:56px; height:70px; border-radius:9px; font-size:12px}
+  .refs{gap:7px}
+  .prodrow{padding:9px; border-radius:11px; margin-bottom:9px}
+  .pnum{width:22px; height:22px; font-size:12px}
+  .fmtbar-ic{font-size:20px}
+  .fmtbar-name{font-size:14px}
+  #fmtBtn{width:36px; height:36px; font-size:17px}
+  .logo{font-size:14.5px}
+  .logo .mark{width:32px; height:32px; font-size:16px; border-radius:9px}
+  .pill{font-size:11px; padding:5px 9px}
+  nav#tabs button{font-size:10.5px; padding:6px 4px 8px}
+  nav#tabs button .ic{font-size:17px}
+  .steptitle{font-size:13.5px; margin:13px 0 7px}
+  .steptitle .n{width:21px; height:21px; font-size:11.5px}
+  .seg-head{padding:8px 10px}
+  .seg-body{padding:10px}
+  .optgroup{margin:11px 0 5px; font-size:10.5px}
+  .thumbrow{padding:7px 9px}
+  .drawer-panel{padding:12px}
+  .fmtitem{padding:10px; font-size:13.5px; margin-bottom:7px}
+  .fmtitem .fic{font-size:18px}
+
+  .addref.bgadd{gap:0; line-height:1.05}
+  .addref.bgadd small{font-size:9px; font-weight:700}
 </style>
 </head>
 <body>
 <header>
-  <div class="logo">TD MUSE <span>STUDIO v5</span></div>
+  <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V7</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div>
 </header>
 <div id="app">
@@ -176,11 +302,9 @@
     <section id="view-control">
       <div class="ctl-grid">
         <div id="optionsZone"></div>
-        <div>
-          <div id="batchZone"></div>
-          <div id="monitorZone"></div>
-        </div>
+        <div id="monitorZone"></div>
       </div>
+      <div id="runBar" style="max-width:920px; margin:12px auto 0"></div>
     </section>
     <!-- ================= PROJECTS ================= -->
     <section id="view-projects" class="hidden">
@@ -221,7 +345,14 @@
         <div class="log" id="accLog" style="margin-top:10px">Chưa nạp.</div>
       </div>
       <div class="card">
-        <h3>Về bản v2</h3>
+        <h3>Gán vai tài khoản</h3>
+        <p class="muted">Chọn nick chuyên trách cho từng loại việc. Để "Tự động" thì cầu tự chọn nick trong bể như trước. Nick đã gán bị lỗi sẽ thử lại đúng nick đó, không xoay sang nick khác.</p>
+        <div id="accRolesBox"><p class="muted">Đang chuẩn bị...</p></div>
+        <div class="btnrow"><button class="btn" id="accRolesLoad">↻ Tải danh sách nick</button></div>
+        <div class="log" id="accRolesLog" style="margin-top:10px"></div>
+      </div>
+      <div class="card">
+        <h3>Về TD Muse Studio</h3>
         <p class="muted">Dây chuyền: Dự án → Nguyên liệu → Kịch bản → Keyframe (duyệt) → Sản xuất (hàng đợi) → QC &amp; Xuất.
         Mọi video đều đi từ keyframe đã duyệt kèm ảnh tham chiếu để giữ mặt nhân vật và sản phẩm đồng nhất.
         Dữ liệu dự án lưu ngay trên máy này (trình duyệt) — hãy xuất JSON dự phòng cho dự án quan trọng.</p>
@@ -256,13 +387,14 @@ function toast(msg,ms=2600){ const t=$('#toast'); t.textContent=msg; t.classList
 function logTo(el,msg,cls){ const b=$(el); if(!b) return; const d=document.createElement('div'); if(cls) d.className=cls; d.textContent=msg; b.appendChild(d); b.scrollTop=b.scrollHeight; }
 
 /* ---------------- State ---------------- */
-let S = loadState();
-const DEFAULT_SETTINGS={ charMode:'pov', bgImage:'', charRefs:[], template:'review', language:'vi',
+const DEFAULT_SETTINGS={ charMode:'review', bgImage:'', charRefs:[], template:'review', language:'vi',
   region:'bac', voice:'nu-bac-chuan', scenes:3, ratio:'9:16', versions:1, noPrice:true,
   style:'chan-thuc', presets:[], speechSpeed:'vua', hookStyle:'ai', speakMode:'tnhien',
-  expression:'tnhien', animalTalk:false, retry:3, charLib:[], activeChar:'', char2:'', useChar2:false };
+  expression:'tnhien', animalTalk:false, retry:3, charLib:[], activeChar:'', char2:'', useChar2:false,
+  dialogue:true, format:'review', fmtStore:{} };
 const ASM_DEFAULTS={ trimSilence:true, subOn:true, subSize:'vua', subPos:'duoi', subStyle:'tiktok',
   subColor:'trang', coverTitle:'', ctaEnd:false, logo:'', speed:'1', musicName:'' };
+let S = loadState();
 function loadState(){
   let s={ projects:[], activeId:null };
   try{ const raw=localStorage.getItem(LS_STATE); if(raw){ const p=JSON.parse(raw); if(p && Array.isArray(p.projects)) s=p; } }catch(e){}
@@ -283,6 +415,15 @@ async function api(path, opts={}){
   const headers=Object.assign({}, opts.headers||{});
   if(!opts.form){ headers['Content-Type']='application/json'; }
   if(key) headers['Authorization']='Bearer '+key;
+  try{
+    const roles=(typeof S!=='undefined' && S.settings && S.settings.accRoles)||null;
+    if(roles && opts.body && typeof opts.body==='string'){
+      const role = path.indexOf('/v1/chat/')===0 ? roles.chat
+                 : path.indexOf('/v1/images/')===0 ? roles.image
+                 : path.indexOf('/v1/videos')===0 ? roles.video : '';
+      if(role){ const b=JSON.parse(opts.body); if(b && typeof b==='object' && !b.account_id){ b.account_id=role; opts=Object.assign({}, opts, {body:JSON.stringify(b)}); } }
+    }
+  }catch(e){}
   const res=await fetch(url+path, Object.assign({}, opts, {headers}));
   const text=await res.text();
   let data=null; try{ data=text?JSON.parse(text):null; }catch(e){}
@@ -323,6 +464,7 @@ $$('#tabs button').forEach(b=>b.addEventListener('click',()=>{
   $$('#tabs button').forEach(x=>x.classList.toggle('active',x===b));
   ['control','projects','library','settings'].forEach(v=>$('#view-'+v).classList.toggle('hidden', v!==b.dataset.view));
   if(b.dataset.view==='library') loadLibrary();
+  if(b.dataset.view==='settings'){ renderAccRoles(); if(!poolAccounts) loadPoolAccounts(); }
   window.scrollTo({top:0});
 }));
 
@@ -343,9 +485,9 @@ function newSegment(i){
 }
 function newProject(){
   const p={ id:uid(), name:'Video sản phẩm mới', brand:'', product:'', points:'', hook:HOOKS[0],
-    ratio:'9:16', identity:'Nhân vật: một cô gái Việt Nam trẻ, gương mặt, kiểu tóc và trang phục giống hệt ảnh tham chiếu trong mọi khung hình. Sản phẩm giống hệt ảnh tham chiếu, không thay đổi thiết kế, màu sắc, logo.',
+    ratio:'9:16', identity:'Nhân vật: một cô gái Việt Nam trẻ, gương mặt và kiểu tóc giống hệt ảnh tham chiếu trong mọi khung hình, không thay đổi đường nét khuôn mặt. Trang phục: tự chọn cho phù hợp với bối cảnh và sản phẩm của từng cảnh, không bắt buộc giống ảnh tham chiếu. Sản phẩm giống hệt ảnh tham chiếu, không thay đổi thiết kế, màu sắc, logo.',
     refsChar:[], refsProd:[], segments:[newSegment(0),newSegment(1),newSegment(2)], createdAt:Date.now(),
-    idea:'', stylePara:'', caption:'', retryLimit:S.settings.retry, exprText:EXPRESSIONS[S.settings.expression]||'', assembly:Object.assign({}, ASM_DEFAULTS) };
+    idea:'', stylePara:'', caption:'', voiceDir:voiceDirText(S.settings), styleText:(STYLES[S.settings.style]||''), fmtText:fmtPromptText(S.settings), charMode:S.settings.charMode, bgText: S.settings.bgImage? '' : bgAutoText('', '', S.settings), retryLimit:S.settings.retry, exprText:EXPRESSIONS[S.settings.expression]||'', assembly:Object.assign({}, ASM_DEFAULTS) };
   S.projects.unshift(p); S.activeId=p.id; save(); renderProjects(); renderWorkspace(); toast('Đã tạo dự án mới');
 }
 function projStatus(p){
@@ -360,13 +502,13 @@ function renderProjects(){
   const el=$('#projectList'); const ws=$('#workspace');
   if(S.activeId){ el.classList.add('hidden'); ws.classList.remove('hidden'); return; }
   ws.classList.add('hidden'); el.classList.remove('hidden');
-  el.innerHTML = `<div class="card"><h3>Dự án video <span class="sub">— mỗi dự án là 1 video sản phẩm</span></h3>
+  el.innerHTML = `<div class="card"><h3>Dự án video <span class="sub">— mỗi dự án là 1 video</span></h3>
     <div class="btnrow" style="margin-top:0">
       <button class="btn primary" onclick="App.newProject()">＋ Dự án mới</button>
       <button class="btn" onclick="document.getElementById('importFile').click()">Nhập JSON</button>
       <input type="file" id="importFile" accept="application/json" class="hiddenfile" onchange="App.importJSON(this)">
     </div></div>` +
-    (S.projects.length? '' : '<div class="card"><p class="muted">Chưa có dự án nào. Bấm “Dự án mới” để bắt đầu dây chuyền.</p></div>') +
+    (S.projects.length? '' : '<div class="card"><p class="muted">Chưa có dự án nào. Tạo hàng loạt ở tab Điều khiển (nút TẠO KỊCH BẢN), hoặc bấm “＋ Dự án mới” ở trên để làm 1 video lẻ.</p></div>') +
     S.projects.map(p=>{ const [cls,label]=projStatus(p); const thumb=p.refsProd[0]||p.segments.find(s=>s.kf.url)?.kf.url||'';
       return `<div class="card proj" onclick="App.openProject('${p.id}')">
         ${thumb?`<img class="thumb" src="${esc(thumb.startsWith('data:')?thumb:resolveUrl(thumb))}">`:'<div class="thumb"></div>'}
@@ -446,9 +588,9 @@ function renderWorkspace(){
       <div class="refs">${p.refsProd.map((r,i)=>`<div class="refbox"><img src="${r}"><button onclick="App.delRef('prod',${i})">×</button></div>`).join('')}
         <button class="addref" onclick="document.getElementById('refProdFile').click()">＋</button>
         <input type="file" id="refProdFile" accept="image/*" multiple class="hiddenfile" onchange="App.addRefs('prod',this)"></div>
+      <div class="btnrow"><button class="btn small" onclick="App.analyzeProject()">🔍 Phân tích SP từ ảnh</button></div>
       <label class="fl">Khối mô tả cố định (tự gắn vào MỌI prompt — giữ đồng nhất)</label>
       <textarea style="min-height:96px" oninput="App.setP('identity',this.value)">${esc(p.identity)}</textarea>
-      <p class="muted">Luật xưởng: không gen từ chữ thuần. Mọi keyframe/video đều đính kèm ảnh ref ở đây.</p>
     </div>
   </div>
 
@@ -494,24 +636,24 @@ function removeSegment(){ const p=activeProject(); if(!p||p.segments.length<=2) 
 /* ---------------- Prompt builders (luật đồng nhất) ---------------- */
 function buildImagePrompt(p,s){
   const styleAll=[p.styleText, p.stylePara].filter(Boolean).join('. ');
-  return [ p.identity,
+  return [ p.identity, p.fmtText||'', p.bgText||'',
     'Sản phẩm: '+(p.brand+' '+p.product).trim()+'.',
     s.visual,
     p.exprText ? 'Biểu cảm / thần thái: '+p.exprText+'.' : '',
     styleAll ? 'Phong cách hình ảnh: '+styleAll+'.' : '',
     'Khung hình tỉ lệ '+p.ratio+', phong cách điện ảnh chân thực, ánh sáng tự nhiên, chi tiết sắc nét.',
-    'Giữ khuôn mặt nhân vật và thiết kế sản phẩm giống hệt các ảnh tham chiếu. Không chèn chữ, không logo lạ, không watermark.'
+    'Giữ khuôn mặt và kiểu tóc nhân vật giống hệt ảnh tham chiếu (trang phục tự chọn theo bối cảnh); thiết kế sản phẩm giống hệt ảnh tham chiếu. Không chèn chữ, không logo lạ, không watermark.'
   ].filter(Boolean).join(' ');
 }
 function buildVideoPrompt(p,s,idx){
-  const parts=[ p.identity, s.visual ];
+  const parts=[ p.identity, p.fmtText||'', p.bgText||'', s.visual ];
   if(idx===0 && p.hook) parts.push('Nhịp mở đầu: '+p.hook+'.');
   const styleAll=[p.styleText, p.stylePara].filter(Boolean).join('. ');
   if(styleAll) parts.push('Phong cách hình ảnh: '+styleAll+'.');
   if(p.exprText) parts.push('Biểu cảm / thần thái xuyên suốt: '+p.exprText+'.');
   if(p.voiceDir) parts.push('Giọng đọc: '+p.voiceDir+'.');
   if(s.dialogue && s.dialogue.trim()) parts.push('Nhân vật nói đúng lời thoại sau, khẩu hình khớp lời, diễn tự nhiên: "'+s.dialogue.trim()+'"');
-  parts.push('Giữ nguyên khuôn mặt, trang phục và thiết kế sản phẩm như ảnh tham chiếu trong suốt đoạn. Chuyển động mượt mà, chân thực. Không chèn chữ, không phụ đề, không watermark.');
+  parts.push('Giữ nguyên khuôn mặt và kiểu tóc như ảnh tham chiếu trong suốt đoạn, trang phục tự chọn cho hợp bối cảnh; thiết kế sản phẩm giữ nguyên như ảnh tham chiếu. Chuyển động mượt mà, chân thực. Không chèn chữ, không phụ đề, không watermark.');
   return parts.filter(Boolean).join(' ');
 }
 
@@ -523,7 +665,9 @@ function findProjSeg(projId,segId){ const proj=S.projects.find(x=>x.id===projId)
 function renderProductionZone(){ const p=activeProject(); if(p && window.__renderProduction) window.__renderProduction(p); }
 
 async function startImageTask(proj,seg){
-  if(!proj.refsChar.length || !proj.refsProd.length){ toast('Thiếu ảnh tham chiếu nhân vật hoặc sản phẩm (chặng 1)'); return; }
+  const cm=proj.charMode||'review';
+  if(cm==='review' && !proj.refsChar.length){ toast('Thiếu ảnh nhân vật (chặng 1)'); return; }
+  if(cm!=='none' && !proj.refsProd.length){ toast('Thiếu ảnh sản phẩm (chặng 1)'); return; }
   seg.kf.status='queued'; seg.kf.error=''; seg.kf.approved=false; save(); renderProductionZone();
   try{
     const data=await api('/v1/images/tasks',{method:'POST', body:JSON.stringify({
@@ -586,7 +730,7 @@ function updateTaskDom(seg,kind){
 /* ---------------- Production stages 3-5 ---------------- */
 const QC_ITEMS=['Sản phẩm giống hệt ảnh ref, không biến dạng','Tên hãng đúng từng chữ, không chữ méo/loạn',
   'Có cảnh dùng thử / demo thật','Hook đủ mạnh trong 2 giây đầu (đoạn 1)','Màu da đều, tự nhiên giữa các cảnh',
-  'Khuôn mặt giống hệt ảnh ref','Trang phục & bối cảnh nhất quán','Khẩu hình khớp lời thoại (nếu có thoại)',
+  'Khuôn mặt & kiểu tóc giống hệt ảnh ref','Trang phục hợp bối cảnh & sản phẩm','Khẩu hình khớp lời thoại (nếu có thoại)',
   'Không đạo cụ thừa, không vật thể xuất hiện/biến mất lạ','Chất lượng nét, đúng tỉ lệ khung hình'];
 function stageClass(ratio){ return ratio==='16:9'?'stagebox wide':(ratio==='1:1'?'stagebox sq':'stagebox'); }
 window.__renderProduction=function(p){
@@ -620,6 +764,8 @@ window.__renderProduction=function(p){
     </div></div>`).join('');
   zone.innerHTML=`
   <div class="steptitle" id="sec3">3 · Keyframe — cổng duyệt 1</div>
+  <div class="card"><div class="btnrow" style="margin-top:0">
+    <button class="btn primary" onclick="App.produceAllScenes()">${producingAll? '■ Đang sản xuất tất cả cảnh — bấm để dừng' : '⚡ Sản xuất tất cả cảnh (keyframe → tự duyệt → video)'}</button></div></div>
   <div class="seglist">${kfCards}</div>
   <div class="steptitle" id="sec4">4 · Sản xuất video — hàng đợi tự động</div>
   <div class="card"><div class="btnrow" style="margin-top:0">
@@ -660,6 +806,32 @@ function vidStatusText(s){
 function genKeyframe(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(s) startImageTask(p,s); }
 function approveKeyframe(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(!s) return; s.kf.approved=true; save(); renderProductionZone(); toast('Đã duyệt keyframe'); }
 function genVideo(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(s){ s.vid.retries=0; startVideoTask(p,s); } }
+let producingAll=false;
+async function waitSegDone(seg, kind){
+  const t0=Date.now();
+  while(Date.now()-t0 < 20*60*1000){
+    if(batchStop) return false;
+    const st = kind==='kf'? seg.kf.status : seg.vid.status;
+    if(st==='done') return true;
+    if(st==='failed') return false;
+    await sleep(2500);
+  }
+  return false;
+}
+async function produceAllScenes(){
+  const p=activeProject(); if(!p) return;
+  if(producingAll){ batchStop=true; return; }
+  batchStop=false; producingAll=true; renderProductionZone();
+  try{
+    for(const seg of p.segments){
+      if(batchStop) break;
+      if(seg.kf.status!=='done'){ await startImageTask(p, seg); }
+      if(!(await waitSegDone(seg,'kf'))) continue;
+      if(!seg.kf.approved){ seg.kf.approved=true; save(); renderProductionZone(); }
+      if(seg.vid.status!=='done'){ await startVideoTask(p, seg); await waitSegDone(seg,'vid'); }
+    }
+  } finally { producingAll=false; save(); renderProductionZone(); toast('Sản xuất tất cả cảnh đã kết thúc'); }
+}
 async function queueAll(){ const p=activeProject(); if(!p) return; let n=0;
   for(const s of p.segments){ if(s.kf.approved && !['done','queued','processing'].includes(s.vid.status)){ s.vid.retries=0; startVideoTask(p,s); n++; await new Promise(r=>setTimeout(r,1200)); } }
   toast(n? ('Đã đẩy '+n+' đoạn vào hàng đợi') : 'Chưa có đoạn nào sẵn sàng (cần duyệt keyframe trước)'); }
@@ -672,6 +844,7 @@ function scriptPack(){ const p=activeProject(); if(!p) return;
   p.segments.forEach((s,i)=>{ lines.push('--- '+(s.title||('Đoạn '+(i+1)))+' ---','Hình ảnh: '+s.visual,'Lời thoại: '+(s.dialogue||'(không)'),'Clip: '+(s.vid.url?resolveUrl(s.vid.url):'(chưa có)'),''); });
   const blob=new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'}); const a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download='goi-kich-ban.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); }
+window.App = window.App || {};
 Object.assign(window.App,{ genKeyframe, approveKeyframe, genVideo, queueAll, qcToggle, downloadSeg, downloadAll, scriptPack });
 
 /* ---------------- Preview modal ---------------- */
@@ -728,6 +901,33 @@ $('#accImport').addEventListener('click',async()=>{
   }catch(e){ logTo('#accLog','Nạp thất bại: '+e.message,'e'); }
 });
 
+/* ---------------- Gán vai tài khoản ---------------- */
+let poolAccounts=null;
+function renderAccRoles(){
+  const box=$('#accRolesBox'); if(!box) return;
+  const roles=S.settings.accRoles||{chat:'',image:'',video:''};
+  const mk=function(key,label){
+    const cur=roles[key]||'';
+    let o='<option value="">Tự động — cầu tự chọn</option>';
+    if(poolAccounts){ poolAccounts.forEach(a=>{ o+='<option value="'+esc(a.id)+'"'+(a.id===cur?' selected':'')+'>'+esc(a.label||a.id)+(a.enabled===false?' (đã tắt)':'')+'</option>'; }); }
+    else if(cur){ o+='<option value="'+esc(cur)+'" selected>'+esc(cur)+' (bấm tải danh sách để đổi)</option>'; }
+    return '<label class="fl">'+label+'</label><select onchange="App.setAccRole(\''+key+'\',this.value)">'+o+'</select>';
+  };
+  box.innerHTML = mk('chat','Nick viết kịch bản') + mk('image','Nick sinh ảnh keyframe') + mk('video','Nick sinh video');
+}
+async function loadPoolAccounts(){
+  const lg=$('#accRolesLog'); if(lg) lg.textContent='Đang tải danh sách nick...';
+  try{ const d=await api('/admin/accounts'); poolAccounts=(d&&d.accounts)||[]; renderAccRoles();
+    if(lg) lg.textContent='Đã tải '+poolAccounts.length+' nick từ cầu.';
+  }catch(e){ if(lg) lg.textContent='Không tải được danh sách nick: '+e.message; renderAccRoles(); }
+}
+function setAccRole(k,v){
+  if(!S.settings.accRoles) S.settings.accRoles={chat:'',image:'',video:''};
+  S.settings.accRoles[k]=v; save(); toast(v?'Đã gán nick cho vai này':'Đã để cầu tự chọn nick');
+}
+Object.assign(window.App,{ setAccRole });
+$('#accRolesLoad').addEventListener('click', loadPoolAccounts);
+
 /* ============================================================
    V3 — BẢNG ĐIỀU KHIỂN: tuỳ chọn sản xuất + hàng loạt + giám sát
    ============================================================ */
@@ -740,12 +940,13 @@ const VOICES=[
   {id:'nam-nam', label:'Nam miền Nam chất phác', dir:'giọng nam miền Nam, chất phác gần gũi, rõ ràng, tốc độ vừa'}
 ];
 const REGIONS={ bac:'Miền Bắc (Hà Nội)', nam:'Miền Nam (Sài Gòn)', trung:'Miền Trung (Huế – Đà Nẵng)' };
-const TEMPLATES={ review:'Review sản phẩm', unbox:'Mở hộp / unbox', compare:'So sánh trước – sau', tips:'Mẹo & hướng dẫn dùng', story:'Kể chuyện trải nghiệm' };
+const TEMPLATES={ review:'Review sản phẩm', unbox:'Mở hộp / unbox', compare:'So sánh trước – sau', tips:'Mẹo & hướng dẫn dùng', story:'Kể chuyện trải nghiệm', that:'Nói thật / Review trung thực' };
 const STYLES={ 'chan-thuc':'Chân thực đời thường, ánh sáng tự nhiên như quay bằng điện thoại xịn',
   'dien-anh':'Điện ảnh, tương phản đẹp, màu phim', 'studio':'Sáng sạch kiểu studio, nền gọn, sáng đều',
   'am-cung':'Ấm cúng tại nhà, tông ấm, gần gũi' };
-const DEFAULT_IDENTITY='Nhân vật: một cô gái Việt Nam trẻ, gương mặt, kiểu tóc và trang phục giống hệt ảnh tham chiếu trong mọi khung hình. Sản phẩm giống hệt ảnh tham chiếu, không thay đổi thiết kế, màu sắc, logo.';
+const DEFAULT_IDENTITY='Nhân vật: một cô gái Việt Nam trẻ, gương mặt và kiểu tóc giống hệt ảnh tham chiếu trong mọi khung hình, không thay đổi đường nét khuôn mặt. Trang phục: tự chọn cho phù hợp với bối cảnh và sản phẩm của từng cảnh, không bắt buộc giống ảnh tham chiếu. Sản phẩm giống hệt ảnh tham chiếu, không thay đổi thiết kế, màu sắc, logo.';
 const POV_IDENTITY='Góc quay POV ngôi thứ nhất: chỉ thấy đôi tay người dùng thao tác trực tiếp với sản phẩm, không lộ mặt. Tay sạch, móng gọn, thao tác rõ ràng, cận cảnh sản phẩm.';
+const FACELESS_IDENTITY='Video faceless: không xuất hiện người dẫn chuyện hay nhân vật chính diện, chỉ có cảnh vật, không gian và hình minh hoạ theo câu chuyện.';
 const LANGS={ vi:'Tiếng Việt', en:'English (tiếng Anh)', fil:'Filipino', es:'Español (Tây Ban Nha)',
   fr:'Français (Pháp)', de:'Deutsch (Đức)', ru:'Русский (Nga)', ja:'日本語 (Nhật)', ko:'한국어 (Hàn)', zh:'中文 (Trung Quốc)' };
 const SPEEDS={ cham:'nói chậm rãi, rõ từng chữ', vua:'tốc độ nói vừa phải, tự nhiên', nhanh:'nói nhanh, dồn dập, bắt trend' };
@@ -755,6 +956,7 @@ const SPEAKMODES={ tnhien:'Nhân vật trực tiếp nói lời thoại, khẩu 
 const EXPRESSIONS={ tnhien:'tự nhiên, điềm đạm', vui:'vui tươi, năng lượng cao, cười tươi',
   chuyengia:'chuyên gia, điềm tĩnh, đáng tin cậy', hai:'hài hước, biểu cảm phóng đại vui nhộn' };
 function voiceDirText(st){
+  if(st.dialogue===false) return 'Không có lời thoại: không nhân vật nào nói, chỉ có nhạc nền và âm thanh môi trường tự nhiên';
   const v=VOICES.find(x=>x.id===st.voice)||VOICES[0];
   const langTxt = st.language==='vi' ? ('Lời thoại bằng tiếng Việt, giọng '+REGIONS[st.region]+'.')
     : ('Lời thoại bằng '+(LANGS[st.language]||'tiếng Việt')+'.');
@@ -762,49 +964,220 @@ function voiceDirText(st){
     +(SPEAKMODES[st.speakMode]||'')+(st.noPrice?' Tuyệt đối không nhắc giá tiền trong lời thoại.':'');
 }
 
+/* ---------------- Dạng video (FORMATS) ---------------- */
+const FORMATS={
+  review:{ name:'MC Review', icon:'🎬', patch:{ charMode:'review', template:'review', scenes:3, dialogue:true, noPrice:true, animalTalk:false, useChar2:false, speakMode:'tnhien' } },
+  pov:{ name:'POV', icon:'👁️', patch:{ charMode:'pov', template:'review', scenes:3, dialogue:true, noPrice:true, animalTalk:false, useChar2:false, speakMode:'tnhien' } },
+  family:{ name:'Gia Đình', icon:'🏠', patch:{ charMode:'review', template:'story', scenes:4, dialogue:true, noPrice:false, animalTalk:false, useChar2:true, speakMode:'tnhien' } },
+  drama:{ name:'Drama', icon:'🎭', patch:{ charMode:'review', template:'story', scenes:5, dialogue:true, noPrice:false, animalTalk:false, useChar2:true, speakMode:'tnhien' } },
+  farm:{ name:'Farm', icon:'🌾', patch:{ charMode:'pov', template:'story', scenes:4, dialogue:false, noPrice:false, animalTalk:false, useChar2:false, speakMode:'longtieng' } },
+  travel:{ name:'Travel', icon:'✈️', patch:{ charMode:'review', template:'story', scenes:5, dialogue:true, noPrice:false, animalTalk:false, useChar2:false, speakMode:'longtieng' } },
+  pet:{ name:'Thú Cưng Biết Nói', icon:'🐱', patch:{ charMode:'review', template:'story', scenes:3, dialogue:true, noPrice:false, animalTalk:true, useChar2:false, speakMode:'tnhien' } },
+  story:{ name:'Kể Chuyện', icon:'📖', patch:{ charMode:'none', template:'story', scenes:5, dialogue:true, noPrice:false, animalTalk:false, useChar2:false, speakMode:'longtieng' } }
+};
+const FMT_DEFAULTS={
+  review:{ hookFirst:'demo' }, pov:{ action:'' },
+  family:{ situation:'', homeScene:'bep', useProducts:false }, drama:{ plot:'', roles:'', openEnd:true, useProducts:false },
+  farm:{ activity:'cham-cay', useProducts:false }, travel:{ places:'', useProducts:false }, pet:{ petTrait:'', useProducts:false },
+  story:{ genre:'tam-su', illust:'dien-anh', useProducts:false }
+};
+function curFmt(){ const st=S.settings; const f=st.format||'review';
+  st.fmtStore=st.fmtStore||{}; if(!st.fmtStore[f]) st.fmtStore[f]=Object.assign({}, FMT_DEFAULTS[f]||{});
+  return st.fmtStore[f]; }
+function setFmt(k,v){ curFmt()[k]=v; save(); }
+function setFmtBool(k,v){ curFmt()[k]=!!v; save(); renderControl(); }
+function fmtPromptText(st){
+  const f=st.format||'review'; const fm=(st.fmtStore&&st.fmtStore[f])||{};
+  const homeScene={bep:'nhà bếp',khach:'phòng khách',san:'sân / hiên nhà',ngu:'phòng ngủ'};
+  const act={ 'cham-cay':'trồng và chăm cây','cho-an':'cho vật nuôi ăn','thu-hoach':'thu hoạch nông sản','vuon':'làm vườn, dọn vườn' };
+  const genre={ 'tam-su':'tâm sự, giãi bày','kinh-di':'kinh dị, rùng rợn nhẹ','hai':'hài hước','chua-lanh':'chữa lành, ấm áp' };
+  const illust={ 'dien-anh':'phong cách điện ảnh','anh-that':'ảnh thật chân thực','anime':'phong cách anime','tranh-ve':'tranh vẽ minh hoạ' };
+  const hookFirst={ demo:'demo sản phẩm đang hoạt động ngay khung đầu', unbox:'mở hộp ngay khung đầu', result:'cho xem kết quả trước rồi mới giới thiệu sản phẩm' };
+  switch(f){
+    case 'pov': return fm.action? ('Hành động chính xuyên suốt video: '+fm.action+'.') : '';
+    case 'family': return [fm.situation?('Tình huống: '+fm.situation+'.'):'', 'Bối cảnh chính trong nhà: '+(homeScene[fm.homeScene]||'nhà bếp')+'.'].filter(Boolean).join(' ');
+    case 'drama': return [fm.plot?('Cốt truyện: '+fm.plot+'.'):'', fm.roles?('Các vai diễn: '+String(fm.roles).replace(/\n/g,'; ')+'.'):'', fm.openEnd?'Kết mở, để ngỏ diễn biến cho tập sau.':''].filter(Boolean).join(' ');
+    case 'farm': return 'Hoạt động nông trại chính: '+(act[fm.activity]||'làm vườn')+', bối cảnh vườn / trang trại Việt Nam, ánh sáng tự nhiên.';
+    case 'travel': return fm.places? ('Địa điểm & lịch trình theo thứ tự: '+String(fm.places).replace(/\n/g,' → ')+'.') : '';
+    case 'pet': return fm.petTrait? ('Tính cách thú cưng: '+fm.petTrait+', lời thoại và biểu cảm đúng tính cách này.') : '';
+    case 'story': return 'Thể loại câu chuyện: '+(genre[fm.genre]||'tâm sự')+'. Hình minh hoạ: '+(illust[fm.illust]||'phong cách điện ảnh')+', không xuất hiện người dẫn chuyện.';
+    case 'review': return fm.hookFirst? ('Ưu tiên mở đầu: '+(hookFirst[fm.hookFirst]||'')+'.') : '';
+    default: return '';
+  }
+}
+function bgAutoText(prodName, points, st){
+  const f=(st&&st.format)||'review';
+  const base={ review:'không gian sống hiện đại, sạch đẹp, ánh sáng tự nhiên, làm nổi bật sản phẩm',
+    pov:'bề mặt làm việc gọn gàng, sáng sủa, nền trung tính làm nổi sản phẩm',
+    family:'không gian gia đình ấm cúng, đời thường', drama:'bối cảnh đúng với cốt truyện, tông màu điện ảnh',
+    farm:'vườn quê / trang trại Việt Nam, cây xanh, nắng tự nhiên', travel:'khung cảnh đúng địa điểm trong lịch trình, góc rộng, đẹp',
+    pet:'không gian trong nhà ấm cúng, sàn sạch, ánh sáng mềm', story:'bối cảnh minh hoạ đúng với diễn biến câu chuyện' }[f]||'không gian phù hợp với sản phẩm';
+  return 'Bối cảnh tự sinh: '+base+(prodName?(' — xoay quanh sản phẩm "'+prodName+'"'):'')+(points?('. Điểm nhấn: '+String(points).split('\n')[0].slice(0,80)):'')+'.';
+}
+function renderFormats(){ const z=$('#fmtList'); if(!z) return;
+  z.innerHTML=Object.entries(FORMATS).map(([id,f])=>`<button class="fmtitem ${S.settings.format===id?'sel':''}" onclick="App.setFormat('${id}')"><span class="fic">${f.icon}</span>${esc(f.name)}${S.settings.format===id?'<span class="fchk">✓</span>':''}</button>`).join(''); }
+function openFormats(){ renderFormats(); $('#fmtDrawer').classList.remove('hidden'); }
+function closeFormats(){ $('#fmtDrawer').classList.add('hidden'); }
+function setFormat(id){ const F=FORMATS[id]; if(!F) return;
+  Object.assign(S.settings, F.patch); S.settings.format=id; curFmt();
+  save(); closeFormats(); renderControl(); toast('Đã chuyển dạng: '+F.name); }
+
+/* ---------------- Phân tích sản phẩm từ ảnh ---------------- */
+async function analyzeImages(images){
+  const imgs=(images||[]).slice(0,3); if(!imgs.length) throw new Error('Chưa có ảnh sản phẩm để phân tích');
+  const content=[{ type:'text', text:'Đọc các ảnh sản phẩm này và trả về DUY NHẤT một JSON, không giải thích thêm: {"name":"tên sản phẩm ngắn gọn","points":"3-5 điểm bán hàng, mỗi điểm một dòng, chỉ dựa trên những gì thấy trong ảnh: hình dáng, chất liệu, công năng, chữ trên bao bì"}. Không bịa thông số không thấy trong ảnh.' }];
+  imgs.forEach(u=>content.push({ type:'image_url', image_url:{ url:u } }));
+  const data=await api('/v1/chat/completions',{ method:'POST', body:JSON.stringify({ model:'muse-spark', stream:false, messages:[{ role:'user', content }] }) });
+  const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+  const m=text.match(/\{[\s\S]*\}/); if(!m) throw new Error('AI không đọc được ảnh này');
+  const j=JSON.parse(m[0]);
+  return { name:String(j.name||'').slice(0,120), points:String(j.points||'').slice(0,600) };
+}
+async function analyzeBatch(id){ const b=S.batch.find(x=>x.id===id); if(!b) return;
+  try{ toast('Đang phân tích ảnh sản phẩm...');
+    const r=await analyzeImages(b.images);
+    if(r.name && !b.name.trim()) b.name=r.name;
+    if(r.points) b.desc=r.points;
+    save(); renderBatch(); toast('Đã điền từ phân tích — kiểm tra lại tên & điểm bán hàng');
+  }catch(e){ toast('Phân tích lỗi: '+e.message); } }
+async function analyzeProject(){ const p=activeProject(); if(!p) return;
+  try{ toast('Đang phân tích ảnh sản phẩm...');
+    const r=await analyzeImages(p.refsProd);
+    if(r.name && !p.product.trim()) p.product=r.name;
+    if(r.points) p.points=r.points;
+    save(); renderWorkspace(); toast('Đã điền từ phân tích — kiểm tra lại trước khi sản xuất');
+  }catch(e){ toast('Phân tích lỗi: '+e.message); } }
+Object.assign(window.App,{ openFormats, closeFormats, setFormat, setFmt, setFmtBool, analyzeBatch, analyzeProject });
+
 /* ---------------- Options panel ---------------- */
 function renderControl(){ renderOptions(); renderBatch(); renderMonitor(); }
 function selOpts(map,cur){ return Object.entries(map).map(([k,v])=>`<option value="${k}" ${cur===k?'selected':''}>${esc(v)}</option>`).join(''); }
 function renderOptions(){
   const st=S.settings, z=$('#optionsZone'); if(!z) return;
-  z.innerHTML=`<div class="card">
-    <h3>Tuỳ chọn sản xuất <span class="sub">— áp cho cả đợt hàng loạt</span></h3>
-    <div class="optgroup">NHÂN VẬT</div>
-    <div class="segbtn">
-      <button class="${st.charMode==='review'?'active':''}" onclick="App.setOpt('charMode','review')">Có người review</button>
-      <button class="${st.charMode==='pov'?'active':''}" onclick="App.setOpt('charMode','pov')">POV (chỉ tay)</button>
-    </div>
+  const F=FORMATS[st.format]||FORMATS.review; const fm=curFmt();
+  const tplIcons={ review:'🎬', unbox:'📦', compare:'🔀', tips:'💡', story:'📖', that:'💬' };
+  const fmtFields = {
+    review: `<label class="fl">Ưu tiên mở đầu</label>
+      <div class="segbtn">
+        <button class="${fm.hookFirst==='demo'?'active':''}" onclick="App.setFmt('hookFirst','demo'); App.renderOptionsOnly()">Demo trước</button>
+        <button class="${fm.hookFirst==='unbox'?'active':''}" onclick="App.setFmt('hookFirst','unbox'); App.renderOptionsOnly()">Mở hộp trước</button>
+        <button class="${fm.hookFirst==='result'?'active':''}" onclick="App.setFmt('hookFirst','result'); App.renderOptionsOnly()">Kết quả trước</button>
+      </div>`,
+    pov: `<label class="fl">Hành động chính</label>
+      <input type="text" value="${esc(fm.action||'')}" oninput="App.setFmt('action',this.value)" placeholder="VD: cầm, xịt, cắt, lắp ráp...">`,
+    family: `<label class="fl">Tình huống</label>
+      <input type="text" value="${esc(fm.situation||'')}" oninput="App.setFmt('situation',this.value)" placeholder="VD: con quấy khóc lúc nấu cơm, chồng vụng về phụ vợ...">
+      <label class="fl">Bối cảnh chính</label>
+      <div class="segbtn">
+        <button class="${fm.homeScene==='bep'?'active':''}" onclick="App.setFmt('homeScene','bep'); App.renderOptionsOnly()">Nhà bếp</button>
+        <button class="${fm.homeScene==='khach'?'active':''}" onclick="App.setFmt('homeScene','khach'); App.renderOptionsOnly()">Phòng khách</button>
+        <button class="${fm.homeScene==='san'?'active':''}" onclick="App.setFmt('homeScene','san'); App.renderOptionsOnly()">Sân nhà</button>
+        <button class="${fm.homeScene==='ngu'?'active':''}" onclick="App.setFmt('homeScene','ngu'); App.renderOptionsOnly()">Phòng ngủ</button>
+      </div>`,
+    drama: `<label class="fl">Cốt truyện</label>
+      <textarea oninput="App.setFmt('plot',this.value)" placeholder="Tóm tắt câu chuyện, mâu thuẫn chính, cái kết...">${esc(fm.plot||'')}</textarea>
+      <label class="fl">Vai + tính cách (mỗi vai 1 dòng)</label>
+      <textarea oninput="App.setFmt('roles',this.value)" placeholder="VD: Mẹ chồng — khó tính nhưng thương con">${esc(fm.roles||'')}</textarea>
+      <div class="switchrow"><span style="flex:1; font-weight:700">Kết mở cho tập sau</span>
+        <span class="switch"><input type="checkbox" ${fm.openEnd?'checked':''} onchange="App.setFmtBool('openEnd',this.checked)"><i></i></span></div>`,
+    farm: `<label class="fl">Hoạt động chính</label>
+      <div class="segbtn">
+        <button class="${fm.activity==='cham-cay'?'active':''}" onclick="App.setFmt('activity','cham-cay'); App.renderOptionsOnly()">Chăm cây</button>
+        <button class="${fm.activity==='cho-an'?'active':''}" onclick="App.setFmt('activity','cho-an'); App.renderOptionsOnly()">Cho ăn</button>
+        <button class="${fm.activity==='thu-hoach'?'active':''}" onclick="App.setFmt('activity','thu-hoach'); App.renderOptionsOnly()">Thu hoạch</button>
+        <button class="${fm.activity==='vuon'?'active':''}" onclick="App.setFmt('activity','vuon'); App.renderOptionsOnly()">Làm vườn</button>
+      </div>`,
+    travel: `<label class="fl">Địa điểm + lịch trình (mỗi dòng 1 điểm)</label>
+      <textarea oninput="App.setFmt('places',this.value)" placeholder="VD: Chợ Bến Thành&#10;Bãi biển Mỹ Khê&#10;Phố cổ về đêm">${esc(fm.places||'')}</textarea>`,
+    pet: `<label class="fl">Tính cách thú cưng</label>
+      <input type="text" value="${esc(fm.petTrait||'')}" oninput="App.setFmt('petTrait',this.value)" placeholder="VD: lém lỉnh, hay triết lý, ngáo...">`,
+    story: `<label class="fl">Thể loại</label>
+      <div class="segbtn">
+        <button class="${fm.genre==='tam-su'?'active':''}" onclick="App.setFmt('genre','tam-su'); App.renderOptionsOnly()">Tâm sự</button>
+        <button class="${fm.genre==='kinh-di'?'active':''}" onclick="App.setFmt('genre','kinh-di'); App.renderOptionsOnly()">Kinh dị</button>
+        <button class="${fm.genre==='hai'?'active':''}" onclick="App.setFmt('genre','hai'); App.renderOptionsOnly()">Hài</button>
+        <button class="${fm.genre==='chua-lanh'?'active':''}" onclick="App.setFmt('genre','chua-lanh'); App.renderOptionsOnly()">Chữa lành</button>
+      </div>
+      <label class="fl">Phong cách hình minh hoạ</label>
+      <div class="segbtn">
+        <button class="${fm.illust==='dien-anh'?'active':''}" onclick="App.setFmt('illust','dien-anh'); App.renderOptionsOnly()">Điện ảnh</button>
+        <button class="${fm.illust==='anh-that'?'active':''}" onclick="App.setFmt('illust','anh-that'); App.renderOptionsOnly()">Ảnh thật</button>
+        <button class="${fm.illust==='anime'?'active':''}" onclick="App.setFmt('illust','anime'); App.renderOptionsOnly()">Anime</button>
+        <button class="${fm.illust==='tranh-ve'?'active':''}" onclick="App.setFmt('illust','tranh-ve'); App.renderOptionsOnly()">Tranh vẽ</button>
+      </div>`
+  };
+  z.innerHTML=`
+  <div class="card fmtbar">
+    <span class="fmtbar-ic">${F.icon}</span>
+    <div class="fmtbar-name" style="flex:1">${esc(F.name)}</div>
+    <button class="btn small" onclick="App.openFormats()">☰ Đổi dạng</button>
+  </div>
+
+  <div class="card">
+    <div class="sechead"><span class="secnum">1</span><span class="sectitle">Nhân vật</span>
+      <span class="secchip">${({review:'Có người review',family:'Có người review',drama:'Có người review',travel:'Có người review',pet:'Thú cưng',pov:'POV chỉ tay',farm:'POV chỉ tay',story:'Không nhân vật'})[st.format]||''}</span></div>
+    ${st.format==='story'?`
+    <div class="choicegrid one"><div class="choice sel"><span class="cic">🎙️</span> <b>Không nhân vật — chỉ hình minh hoạ + giọng kể</b></div></div>`
+    :`
     ${st.charMode==='review'?`
-    <label class="fl">Ảnh nhân vật dùng chung (neo mặt cho mọi video)</label>
+    <label class="fl">Ảnh nhân vật & bối cảnh</label>
     <div class="refs">${st.charRefs.map((r,i)=>`<div class="refbox"><img src="${r}"><button onclick="App.delCharRef(${i})">×</button></div>`).join('')}
       <button class="addref" onclick="document.getElementById('setCharFile').click()">＋</button>
-      <input type="file" id="setCharFile" accept="image/*" multiple class="hiddenfile" onchange="App.addCharRefs(this)"></div>`:''}
-    <label class="fl">Ảnh bối cảnh (không bắt buộc)</label>
-    <div class="refs">${st.bgImage?`<div class="refbox"><img src="${st.bgImage}"><button onclick="App.delBg()">×</button></div>`
-      :`<button class="addref" onclick="document.getElementById('setBgFile').click()">＋</button>`}
+      <input type="file" id="setCharFile" accept="image/*" multiple class="hiddenfile" onchange="App.addCharRefs(this)">
+      ${st.bgImage?`<div class="refbox"><img src="${st.bgImage}"><button onclick="App.delBg()">×</button></div>`
+        :`<button class="addref bgadd" onclick="document.getElementById('setBgFile').click()">＋<small>Bối cảnh</small></button>`}
       <input type="file" id="setBgFile" accept="image/*" class="hiddenfile" onchange="App.addBg(this)"></div>
-    <div class="optgroup">THƯ VIỆN NHÂN VẬT</div>
-    ${st.charLib.map(c=>`<div class="thumbrow" style="margin-bottom:6px">
-      ${c.refs[0]?`<img src="${c.refs[0]}" style="width:38px; height:48px; object-fit:cover; border-radius:8px">`:'<div style="width:38px"></div>'}
+    ${!st.bgImage?'<p class="muted" style="margin-top:5px">Ảnh bối cảnh không bắt buộc</p>':''}`:''}
+    ${(st.format==='family'||st.format==='drama')?`<div class="switchrow"><span style="flex:1; font-weight:700">Thêm nhân vật 2</span>
+      <span class="switch"><input type="checkbox" ${st.useChar2?'checked':''} onchange="App.setOptBool('useChar2',this.checked)"><i></i></span></div>
+    ${(st.format==='family'||st.format==='drama') && st.useChar2?`<label class="fl">Nhân vật 2 (từ thư viện)</label><select onchange="App.setOpt('char2',this.value)"><option value="">— Chọn nhân vật 2 —</option>${st.charLib.map(c=>`<option value="${c.id}" ${st.char2===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`:''}`:''}
+    ${st.charMode==='review'?`<div class="optgroup">THƯ VIỆN NHÂN VẬT</div>
+    ${st.charLib.map(c=>`<div class="thumbrow" style="margin-bottom:7px">
+      ${c.refs[0]?`<img src="${c.refs[0]}" style="width:36px; height:45px; object-fit:cover; border-radius:8px">`:'<div style="width:36px"></div>'}
       <b style="flex:1">${esc(c.name)}</b>
-      <button class="btn small ${st.activeChar===c.id?'ok':''}" onclick="App.setActiveChar('${c.id}')">${st.activeChar===c.id?'Đang dùng':'Dùng'}</button>
+      <button class="btn small ${st.activeChar===c.id?'ok':''}" onclick="App.setActiveChar('${c.id}')">${st.activeChar===c.id?'✓ Đang dùng':'Dùng'}</button>
       <button class="btn small danger" onclick="App.delCharPack('${c.id}')">×</button></div>`).join('')}
     <div style="display:flex; gap:8px; margin-top:6px">
       <input type="text" id="charPackName" placeholder="Tên nhân vật mới..." style="flex:1">
       <button class="btn small" onclick="document.getElementById('charPackFile').click()">＋ Ảnh</button>
       <input type="file" id="charPackFile" accept="image/*" multiple class="hiddenfile" onchange="App.addCharPack(this)">
-    </div>
-    <label class="checkrow"><input type="checkbox" ${st.useChar2?'checked':''} onchange="App.setOptBool('useChar2',this.checked)"> Thêm nhân vật 2 (video 2 người)</label>
-    ${st.useChar2?`<label class="fl">Nhân vật 2 (từ thư viện)</label><select onchange="App.setOpt('char2',this.value)"><option value="">— Chọn nhân vật 2 —</option>${st.charLib.map(c=>`<option value="${c.id}" ${st.char2===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`:''}
-    <label class="checkrow"><input type="checkbox" ${st.animalTalk?'checked':''} onchange="App.setOptBool('animalTalk',this.checked)"> Nhân vật là động vật biết nói (nhép miệng như người)</label>
-    <div class="optgroup">KỊCH BẢN & GIỌNG</div>
+    </div>`:''}`}
+    ${st.charMode!=='review'?`
+    <label class="fl">Ảnh bối cảnh</label>
+    <div class="refs">${st.bgImage?`<div class="refbox"><img src="${st.bgImage}"><button onclick="App.delBg()">×</button></div>`
+      :`<button class="addref bgadd" onclick="document.getElementById('setBgFile').click()">＋<small>Bối cảnh</small></button>`}
+      <input type="file" id="setBgFile" accept="image/*" class="hiddenfile" onchange="App.addBg(this)"></div>
+    ${!st.bgImage?'<p class="muted" style="margin-top:5px">Ảnh bối cảnh không bắt buộc</p>':''}`:''}
+  </div>
+
+  <div id="batchSlot"></div>
+
+  <div class="card">
+    <div class="sechead"><span class="secnum">3</span><span class="sectitle">Thiết lập · ${esc(F.name)}</span></div>
+    ${fmtFields[st.format]||fmtFields.review}
+  </div>
+
+  <div class="card">
+    <div class="sechead"><span class="secnum">4</span><span class="sectitle">Kịch bản & giọng</span>
+      <span class="secchip">${st.dialogue?'Có thoại':'Không thoại'}</span></div>
     <label class="fl">Mẫu kịch bản</label>
-    <select onchange="App.setOpt('template',this.value)">${selOpts(TEMPLATES,st.template)}</select>
-    <label class="fl">Ngôn ngữ lời thoại</label>
-    <select onchange="App.setOpt('language',this.value)">${selOpts(LANGS,st.language)}</select>
-    <label class="fl">Vùng miền</label>
-    <select onchange="App.setOpt('region',this.value)">${selOpts(REGIONS,st.region)}</select>
-    <label class="fl">Giọng</label>
+    <div class="choicegrid">
+      ${Object.entries(TEMPLATES).map(([k,v])=>`<button class="choice row ${st.template===k?'sel':''}" onclick="App.setOpt('template','${k}')">
+        <span class="cic">${tplIcons[k]||'🎬'}</span><span class="ct">${esc(v)}</span></button>`).join('')}
+    </div>
+    <label class="fl">Thoại</label>
+    <div class="segbtn">
+      <button class="${st.dialogue?'active':''}" onclick="App.setOptBool('dialogue',true)">Có thoại</button>
+      <button class="${!st.dialogue?'active':''}" onclick="App.setOptBool('dialogue',false)">Không thoại</button>
+    </div>
+    ${st.dialogue?`
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+      <div><label class="fl">Ngôn ngữ</label>
+        <select onchange="App.setOpt('language',this.value)">${selOpts(LANGS,st.language)}</select></div>
+      <div><label class="fl">Vùng miền</label>
+        <select onchange="App.setOpt('region',this.value)">${selOpts(REGIONS,st.region)}</select></div>
+    </div>
+    <label class="fl">Giọng đọc</label>
     <select onchange="App.setOpt('voice',this.value)">${VOICES.map(v=>`<option value="${v.id}" ${st.voice===v.id?'selected':''}>${esc(v.label)}</option>`).join('')}</select>
     <label class="fl">Biểu cảm / thần thái</label>
     <select onchange="App.setOpt('expression',this.value)">${selOpts(EXPRESSIONS,st.expression)}</select>
@@ -821,22 +1194,33 @@ function renderOptions(){
       <button class="${st.speakMode==='nguyenvan'?'active':''}" onclick="App.setOpt('speakMode','nguyenvan')">Nguyên văn</button>
     </div>
     <label class="fl">Kiểu mở đầu (hook cảnh 1)</label>
-    <select onchange="App.setOpt('hookStyle',this.value)"><option value="ai" ${st.hookStyle==='ai'?'selected':''}>Tự chọn (AI quyết định)</option>${HOOKS.map(h=>`<option ${st.hookStyle===h?'selected':''}>${esc(h)}</option>`).join('')}</select>
-    <div class="optgroup">HÌNH ẢNH & SỐ LƯỢNG</div>
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
-      <div><label class="fl">Số cảnh / video</label>
-        <select onchange="App.setOptNum('scenes',this.value)">${[2,3,4,5].map(n=>`<option value="${n}" ${st.scenes===n?'selected':''}>${n} cảnh (~${n*10}s)</option>`).join('')}</select></div>
-      <div><label class="fl">Tỷ lệ</label>
-        <select onchange="App.setOpt('ratio',this.value)">${['9:16','16:9','1:1'].map(r=>`<option ${st.ratio===r?'selected':''}>${r}</option>`).join('')}</select></div>
+    <select onchange="App.setOpt('hookStyle',this.value)"><option value="ai" ${st.hookStyle==='ai'?'selected':''}>Tự chọn (AI quyết định)</option>${HOOKS.map(h=>`<option ${st.hookStyle===h?'selected':''}>${esc(h)}</option>`).join('')}</select>`:''}
+  </div>
+
+  <div class="card">
+    <div class="sechead"><span class="secnum">5</span><span class="sectitle">Hình ảnh & số lượng</span>
+      <span class="secchip">${st.scenes} cảnh · ${st.ratio}</span></div>
+    <label class="fl">Số cảnh / video</label>
+    <div class="segbtn">${[2,3,4,5].map(n=>`<button class="${st.scenes===n?'active':''}" onclick="App.setOptNum('scenes',${n})">${n} cảnh</button>`).join('')}</div>
+    <label class="fl">Tỷ lệ khung hình</label>
+    <div class="segbtn">
+      <button class="${st.ratio==='9:16'?'active':''}" onclick="App.setOpt('ratio','9:16')">9:16</button>
+      <button class="${st.ratio==='16:9'?'active':''}" onclick="App.setOpt('ratio','16:9')">16:9</button>
+      <button class="${st.ratio==='1:1'?'active':''}" onclick="App.setOpt('ratio','1:1')">1:1</button>
     </div>
     <label class="fl">Số phiên bản mỗi sản phẩm</label>
-    <select onchange="App.setOptNum('versions',this.value)">${[1,2,3].map(n=>`<option value="${n}" ${st.versions===n?'selected':''}>${n} video</option>`).join('')}</select>
+    <div class="segbtn">${[1,2,3].map(n=>`<button class="${st.versions===n?'active':''}" onclick="App.setOptNum('versions',${n})">${n} video</button>`).join('')}</div>
     <label class="fl">Tự tạo lại khi Muse báo sai (mỗi cảnh)</label>
-    <select onchange="App.setOptNum('retry',this.value)">${[0,1,2,3].map(n=>`<option value="${n}" ${st.retry===n?'selected':''}>${n===0?'Không tự tạo lại':'Tự tạo lại '+n+' lần'}</option>`).join('')}</select>
+    <div class="segbtn">${[0,1,2,3].map(n=>`<button class="${st.retry===n?'active':''}" onclick="App.setOptNum('retry',${n})">${n===0?'Không':n+' lần'}</button>`).join('')}</div>
     <label class="fl">Phong cách hình ảnh</label>
     <select onchange="App.setOpt('style',this.value)">${selOpts(STYLES,st.style)}</select>
-    <label class="checkrow"><input type="checkbox" ${st.noPrice?'checked':''} onchange="App.setOptBool('noPrice',this.checked)"> Không nhắc giá trong video (affiliate)</label>
-    <div class="optgroup">MẪU CÀI ĐẶT</div>
+    <div class="switchrow"><span style="flex:1; font-weight:700">Không nhắc giá trong video</span>
+      <span class="switch"><input type="checkbox" ${st.noPrice?'checked':''} onchange="App.setOptBool('noPrice',this.checked)"><i></i></span></div>
+  </div>
+
+  <div class="card">
+    <div class="sechead"><span class="secnum">6</span><span class="sectitle">Mẫu cài đặt</span>
+      <span class="secchip">${st.presets.length} mẫu</span></div>
     <div style="display:flex; gap:8px">
       <select id="presetSel" style="flex:1">${st.presets.length? st.presets.map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join('') : '<option value="">Chưa có mẫu cài đặt</option>'}</select>
       <button class="btn small" onclick="App.applyPreset()">Áp dụng</button>
@@ -848,36 +1232,50 @@ function renderOptions(){
     </div>
   </div>`;
 }
+function renderOptionsOnly(){ renderOptions(); renderBatch(); }
+Object.assign(window.App,{ renderOptionsOnly });
 function setOpt(k,v){ S.settings[k]=v; save(); renderOptions(); renderBatch(); }
 function setOptNum(k,v){ S.settings[k]=parseInt(v,10)||1; save(); renderOptions(); renderBatch(); }
-function setOptBool(k,v){ S.settings[k]=!!v; save(); renderOptions(); }
+function setOptBool(k,v){ S.settings[k]=!!v; save(); renderControl(); }
 async function addCharRefs(input){ const files=[...input.files].slice(0,6);
   for(const f of files){ try{ S.settings.charRefs.push(await downscaleImage(f)); }catch(e){} }
-  input.value=''; save(); renderOptions(); }
-function delCharRef(i){ S.settings.charRefs.splice(i,1); save(); renderOptions(); }
-async function addBg(input){ const f=input.files[0]; if(f){ try{ S.settings.bgImage=await downscaleImage(f); }catch(e){} } input.value=''; save(); renderOptions(); }
-function delBg(){ S.settings.bgImage=''; save(); renderOptions(); }
-function presetSnapshot(){ const {charMode,template,language,region,voice,scenes,ratio,versions,noPrice,style}=S.settings;
-  return {charMode,template,language,region,voice,scenes,ratio,versions,noPrice,style}; }
+  input.value=''; save(); renderControl(); }
+function delCharRef(i){ S.settings.charRefs.splice(i,1); save(); renderControl(); }
+async function addBg(input){ const f=input.files[0]; if(f){ try{ S.settings.bgImage=await downscaleImage(f); }catch(e){} } input.value=''; save(); renderControl(); }
+function delBg(){ S.settings.bgImage=''; save(); renderControl(); }
+function presetSnapshot(){ const s=S.settings; const o={};
+  ['charMode','template','language','region','voice','scenes','ratio','versions','noPrice','style','speechSpeed','speakMode','expression','hookStyle','retry','dialogue','animalTalk','useChar2','format','activeChar','char2'].forEach(k=>o[k]=s[k]);
+  return o; }
 function savePreset(){ const name=($('#presetName').value||'').trim(); if(!name){ toast('Nhập tên mẫu trước'); return; }
   S.settings.presets=S.settings.presets.filter(p=>p.name!==name); S.settings.presets.push({name, data:presetSnapshot()});
-  save(); renderOptions(); toast('Đã lưu mẫu "'+name+'"'); }
+  save(); renderControl(); toast('Đã lưu mẫu "'+name+'"'); }
 function applyPreset(){ const i=parseInt($('#presetSel').value,10); const p=S.settings.presets[i]; if(!p) return;
   Object.assign(S.settings, p.data); save(); renderControl(); toast('Đã áp dụng mẫu "'+p.name+'"'); }
 function deletePreset(){ const i=parseInt($('#presetSel').value,10); if(isNaN(i)||!S.settings.presets[i]) return;
-  S.settings.presets.splice(i,1); save(); renderOptions(); }
+  S.settings.presets.splice(i,1); save(); renderControl(); }
 
 /* ---------------- Batch products ---------------- */
 function newBatchProduct(){ return { id:uid(), name:'', price:'', note:'', desc:'', images:[] }; }
 function batchTotals(){ const n=S.batch.filter(b=>b.name.trim()).length; return { products:n, videos:n*S.settings.versions }; }
 function renderBatch(){
-  const z=$('#batchZone'); if(!z) return; const t=batchTotals();
+  const z=$('#batchSlot'); if(!z) return; const t=batchTotals(); const st=S.settings;
+  const needsProd=(st.format==='review'||st.format==='pov');
+  if(!needsProd && !curFmt().useProducts){
+    z.innerHTML=`<div class="card">
+      <div class="sechead"><span class="secnum">2</span><span class="sectitle">Sản phẩm</span><span class="secchip">Đang tắt</span></div>
+      <div class="switchrow"><span style="flex:1; font-weight:700">Thêm sản phẩm vào dạng này</span>
+        <span class="switch"><input type="checkbox" onchange="App.setFmtBool('useProducts',this.checked)"><i></i></span></div>
+    </div>`;
+    const rb0=$('#runBar'); if(rb0) rb0.innerHTML=`<button class="goldbtn" id="scriptBtn" onclick="App.createScripts()" ${(batchRunning||scriptRunning)?'disabled':''}>${scriptRunning? 'ĐANG TẠO KỊCH BẢN...' : 'TẠO KỊCH BẢN'}</button>`;
+    return;
+  }
   z.innerHTML=`<div class="card">
-    <h3>Sản phẩm hàng loạt <span class="sub">— mỗi SP: tên, giá, ảnh, lưu ý riêng</span></h3>
+    <div class="sechead"><span class="secnum">2</span><span class="sectitle">Sản phẩm</span><span class="secchip">${t.products} SP · ${t.videos} video</span></div>${needsProd?'':`<div class="switchrow"><span style="flex:1; font-weight:700">Thêm sản phẩm vào dạng này</span><span class="switch"><input type="checkbox" checked onchange="App.setFmtBool('useProducts',this.checked)"><i></i></span></div>`}
     ${S.batch.map((b,i)=>`<div class="prodrow">
       <div style="display:flex; gap:8px; margin-bottom:8px">
         <input type="url" id="link-${b.id}" placeholder="Dán link TikTok Shop / Shopee để tự lấy thông tin..." style="flex:1">
         <button class="btn small" onclick="App.fetchBatchLink('${b.id}')">🔗 Lấy tin</button>
+        <button class="btn small" onclick="App.analyzeBatch('${b.id}')">🔍 Phân tích</button>
       </div>
       <div class="phead"><span class="pnum">${i+1}</span>
         <input type="text" placeholder="Tên sản phẩm" value="${esc(b.name)}" oninput="App.setBatch('${b.id}','name',this.value)" style="flex:1">
@@ -890,13 +1288,11 @@ function renderBatch(){
       <textarea style="min-height:40px; margin-top:8px" placeholder="Mô tả sản phẩm (điểm bán hàng, chất liệu, công dụng...)" oninput="App.setBatch('${b.id}','desc',this.value)">${esc(b.desc)}</textarea>
     </div>`).join('')}
     <div class="btnrow" style="margin-top:0"><button class="btn" onclick="App.addBatch()">＋ Thêm sản phẩm</button></div>
-    <div style="height:10px"></div>
-    <button class="goldbtn" id="runBatchBtn" onclick="App.runBatch()" ${batchRunning?'disabled':''}>${t.videos? ('TẠO '+t.videos+' VIDEO CHO '+t.products+' SẢN PHẨM') : 'THÊM SẢN PHẨM ĐỂ BẮT ĐẦU'}</button>
-    <p class="muted" style="margin-top:8px">Mỗi video: AI tự soạn kịch bản theo mẫu đã chọn → gen keyframe từ ảnh SP → gen video từng cảnh. Xong việc nào hiện ở mục theo dõi bên dưới; dự án chi tiết nằm ở tab Xưởng để QC.</p>
   </div>`;
+  const rb=$('#runBar'); if(rb) rb.innerHTML=`<button class="goldbtn" id="scriptBtn" onclick="App.createScripts()" ${(batchRunning||scriptRunning)?'disabled':''}>${scriptRunning? 'ĐANG TẠO KỊCH BẢN...' : 'TẠO KỊCH BẢN'}</button>`;
 }
 function setBatch(id,k,v){ const b=S.batch.find(x=>x.id===id); if(!b) return; b[k]=v; save();
-  if(k==='name'){ const btn=$('#runBatchBtn'); if(btn && !batchRunning){ const t=batchTotals(); btn.textContent= t.videos? ('TẠO '+t.videos+' VIDEO CHO '+t.products+' SẢN PHẨM') : 'THÊM SẢN PHẨM ĐỂ BẮT ĐẦU'; } } }
+ }
 function addBatch(){ S.batch.push(newBatchProduct()); save(); renderBatch(); }
 function delBatch(id){ S.batch=S.batch.filter(x=>x.id!==id); save(); renderBatch(); }
 async function addBatchImgs(id,input){ const b=S.batch.find(x=>x.id===id); if(!b) return;
@@ -910,8 +1306,8 @@ async function addCharPack(input){ const nameEl=document.getElementById('charPac
   input.value=''; if(!refs.length){ toast('Chưa có ảnh nào dùng được'); return; }
   const pack={id:uid(), name, refs}; S.settings.charLib.push(pack);
   if(!S.settings.activeChar) S.settings.activeChar=pack.id;
-  save(); renderOptions(); toast('Đã lưu nhân vật "'+name+'" vào thư viện'); }
-function setActiveChar(id){ S.settings.activeChar=id; save(); renderOptions(); }
+  save(); renderControl(); toast('Đã lưu nhân vật "'+name+'" vào thư viện'); }
+function setActiveChar(id){ S.settings.activeChar=id; save(); renderControl(); }
 function delCharPack(id){ S.settings.charLib=S.settings.charLib.filter(c=>c.id!==id);
   if(S.settings.activeChar===id) S.settings.activeChar=''; if(S.settings.char2===id) S.settings.char2='';
   save(); renderOptions(); }
@@ -925,13 +1321,14 @@ Object.assign(window.App,{ setOpt, setOptNum, setOptBool, addCharRefs, delCharRe
 /* ---------------- Script generation (AI + fallback) ---------------- */
 function capWords(t,n){ const w=String(t||'').trim().split(/\s+/).filter(Boolean); return w.slice(0,n).join(' '); }
 async function genScriptAI(prod, st){
-  const sys='Bạn là biên kịch video review affiliate ngắn cho TikTok/Reels. Chỉ trả về DUY NHẤT một mảng JSON, không giải thích, không markdown.';
-  const usr=['Sản phẩm: '+prod.name,
+  const sys='Bạn là biên kịch video ngắn cho TikTok/Reels. Chỉ trả về DUY NHẤT một mảng JSON, không giải thích, không markdown.';
+  const usr=[((st.format==='review'||st.format==='pov')? 'Sản phẩm: ' : 'Chủ đề video: ')+prod.name,
     prod.desc? 'Mô tả/điểm bán hàng: '+prod.desc : '',
     prod.note? 'Lưu ý bắt buộc: '+prod.note : '',
     'Mẫu kịch bản: '+TEMPLATES[st.template]+'. Số cảnh: '+st.scenes+' (mỗi cảnh ~10 giây).',
+    fmtPromptText(st)? ('Ý đồ của dạng video: '+fmtPromptText(st)) : '',
     'Cảnh 1 phải là hook demo trực diện: sản phẩm đang hoạt động, kết quả thấy ngay trong 2 giây đầu.',
-    'Lời thoại '+(LANGS[st.language]||'tiếng Việt')+', tối đa 26 từ mỗi cảnh, '+(st.noPrice?'TUYỆT ĐỐI không nhắc giá tiền':'có thể nhắc ưu đãi')+'.',
+    st.dialogue===false ? 'KHÔNG có lời thoại: trường dialogue của mọi cảnh để trống "".' : ('Lời thoại '+(LANGS[st.language]||'tiếng Việt')+', tối đa 26 từ mỗi cảnh, '+(st.noPrice?'TUYỆT ĐỐI không nhắc giá tiền':'có thể nhắc ưu đãi')+'.'),
     'Trả về JSON: [{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại"}] đủ '+st.scenes+' cảnh.'
   ].filter(Boolean).join('\n');
   const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
@@ -951,7 +1348,7 @@ function genScriptFallback(prod, st){
     { visual:'So sánh nhanh sản phẩm '+name+' với cách làm thông thường, khác biệt rõ rệt', dialogue:capWords('Từ ngày có '+name+', mọi thứ nhanh gọn hơn hẳn',28) },
     { visual:'Tổng kết: sản phẩm '+name+' trên tay, nền bối cảnh đẹp, gật đầu hài lòng', dialogue:capWords('Chốt lại là rất đáng mua, mọi người tham khảo ở giỏ hàng nhé!',28) }
   ];
-  return base.slice(0, st.scenes);
+  const outArr=base.slice(0, st.scenes); if(st.dialogue===false) outArr.forEach(s=>s.dialogue=''); return outArr;
 }
 
 /* ---------------- Batch engine ---------------- */
@@ -964,17 +1361,18 @@ function createAutoProject(prod, st, version){
     if(st.useChar2&&pack2) refsChar=refsChar.concat(pack2.refs); }
   let identity = st.animalTalk
     ? 'Nhân vật chính là một con vật biết nói như người, nhép miệng khớp lời thoại, biểu cảm sinh động như người. Sản phẩm giống hệt ảnh tham chiếu, không thay đổi thiết kế.'
-    : (st.charMode==='pov' ? POV_IDENTITY : DEFAULT_IDENTITY);
+    : (st.charMode==='none' ? FACELESS_IDENTITY : (st.charMode==='pov' ? POV_IDENTITY : DEFAULT_IDENTITY));
   if(st.useChar2&&pack2&&st.charMode==='review') identity+=' Có nhân vật thứ hai xuất hiện cùng trong khung hình: giữ đúng diện mạo nhân vật 2 theo các ảnh tham chiếu của nhân vật 2.';
   const tone={ review:'Giọng điệu: nhanh, rõ ràng, đáng tin; nhấn vào trải nghiệm thật và kết quả thấy ngay.',
     unbox:'Giọng điệu: tò mò, hồi hộp tăng dần theo từng lớp mở hộp, kết ở cảm giác đáng tiền.',
     compare:'Giọng điệu: tương phản mạnh trước–sau, kết quả là điểm nhấn.',
     tips:'Giọng điệu: hướng dẫn rõ ràng, từng bước dễ làm theo.',
-    story:'Giọng điệu: kể chuyện gần gũi, có cảm xúc, kết ấm áp.' }[st.template]||'';
+    story:'Giọng điệu: kể chuyện gần gũi, có cảm xúc, kết ấm áp.',
+    that:'Giọng điệu: thẳng thắn như nói thật với bạn bè — nêu điểm chưa ưng trước, điểm tốt sau, kết luận rõ ràng có đáng mua hay không; tuyệt đối không quảng cáo lộ liễu.' }[st.template]||'';
   const p={ id:uid(), name:prod.name+(st.versions>1? ' — bản '+version : ''), brand:'', product:prod.name,
     points:prod.desc||'', hook:(st.hookStyle&&st.hookStyle!=='ai')? st.hookStyle : HOOKS[0], ratio:st.ratio,
     identity, refsChar, refsProd:[...prod.images],
-    voiceDir: voiceDirText(st), styleText:(STYLES[st.style]||'')+'. '+tone,
+    voiceDir: voiceDirText(st), fmtText: fmtPromptText(st), charMode: st.charMode, bgText: S.settings.bgImage? '' : bgAutoText(prod.name, prod.desc, st), styleText:(STYLES[st.style]||'')+'. '+tone,
     exprText: EXPRESSIONS[st.expression]||'', retryLimit: st.retry,
     idea: prod.note||'', stylePara:'', caption:'', assembly:Object.assign({}, ASM_DEFAULTS),
     segments:[], createdAt:Date.now(), auto:true };
@@ -1006,9 +1404,7 @@ async function produceJob(job){
   if(!prod){ job.status='failed'; job.step='Sản phẩm đã bị xoá'; return; }
   job.status='running'; job.step='Đang soạn kịch bản'; renderMonitor();
   const proj=createAutoProject(prod, st, job.version); job.projId=proj.id; save();
-  let scenes=null; try{ scenes=await genScriptAI(prod, st); }catch(e){ scenes=null; }
-  if(!scenes) scenes=genScriptFallback(prod, st);
-  scenes.forEach((sc,i)=>{ if(proj.segments[i]){ proj.segments[i].visual=sc.visual||''; proj.segments[i].dialogue=sc.dialogue||''; } });
+  await scriptIntoProject(proj, prod, st);
   save(); if(batchStop){ job.status='stopped'; return; }
   job.step='Đang tạo keyframe'; renderMonitor();
   for(const seg of proj.segments){ await batchStartKF(proj,seg); await sleep(700); }
@@ -1031,7 +1427,7 @@ async function runBatch(){
   const st=S.settings;
   const prods=S.batch.filter(b=>b.name.trim());
   if(!prods.length){ toast('Chưa có sản phẩm nào có tên'); return; }
-  if(prods.some(b=>!b.images.length)){ toast('Mỗi sản phẩm cần ít nhất 1 ảnh'); return; }
+  if(st.format!=='story' && prods.some(b=>!b.images.length)){ toast('Mỗi sản phẩm cần ít nhất 1 ảnh'); return; }
   if(st.charMode==='review' && !st.charRefs.length){ toast('Chế độ Có người review cần ảnh nhân vật dùng chung'); return; }
   if(!cfg().url){ toast('Chưa cấu hình địa chỉ Worker (tab Cài đặt)'); return; }
   batchStop=false; batchRunning=true; requestWake();
@@ -1042,6 +1438,51 @@ async function runBatch(){
   batchRunning=false; save(); renderBatch(); renderMonitor();
   toast('Đợt sản xuất đã kết thúc');
 }
+async function scriptIntoProject(proj, prod, st){
+  let scenes=null;
+  try{ scenes=await genScriptAI(prod, st); }catch(e){ scenes=null; }
+  if(!scenes) scenes=genScriptFallback(prod, st);
+  scenes.forEach((sc,i)=>{ if(proj.segments[i]){ proj.segments[i].visual=sc.visual||''; proj.segments[i].dialogue=sc.dialogue||''; } });
+}
+function ideaSubject(st){ const fm=curFmt(); switch(st.format){
+  case 'drama': return (fm.plot||'Drama mới').split('\n')[0].slice(0,50) || 'Drama mới';
+  case 'family': return (fm.situation||'Chuyện gia đình').slice(0,50);
+  case 'travel': return (String(fm.places||'Chuyến đi mới').split('\n')[0]||'Chuyến đi mới').slice(0,50);
+  case 'pet': return fm.petTrait? ('Thú cưng ' + fm.petTrait).slice(0,50) : 'Thú cưng biết nói';
+  case 'farm': return 'Một ngày ở nông trại';
+  case 'story': return ({ 'tam-su':'Kể chuyện tâm sự', 'kinh-di':'Kể chuyện kinh dị', 'hai':'Kể chuyện hài', 'chua-lanh':'Kể chuyện chữa lành' })[fm.genre] || 'Kể chuyện';
+  default: return 'Video mới'; } }
+let scriptRunning=false;
+async function createScripts(){
+  if(scriptRunning || batchRunning) return;
+  const st=S.settings;
+  if(!cfg().url){ toast('Chưa cấu hình địa chỉ Worker (tab Cài đặt)'); return; }
+  const needsProd=(st.format==='review'||st.format==='pov');
+  const prods=S.batch.filter(b=>b.name.trim());
+  const useProds = prods.length>0 && (needsProd || !!curFmt().useProducts);
+  if(needsProd && !prods.length){ toast('Thêm ít nhất 1 sản phẩm trước'); return; }
+  scriptRunning=true; renderBatch();
+  let made=0;
+  try{
+    if(useProds){
+      for(const prod of prods) for(let v=1; v<=st.versions; v++){
+        const proj=createAutoProject(prod, st, v);
+        await scriptIntoProject(proj, prod, st);
+        made++;
+      }
+    } else {
+      const subj=ideaSubject(st);
+      const pseudo={ name:subj, desc:fmtPromptText(st), note:'', images:[] };
+      const proj=createAutoProject(pseudo, st, 1);
+      proj.name=((FORMATS[st.format]||{}).name||st.format)+' — '+subj;
+      await scriptIntoProject(proj, pseudo, st);
+      made=1;
+    }
+  } finally { scriptRunning=false; save(); renderBatch(); renderProjects(); }
+  if(made){ toast('Đã tạo '+made+' dự án có kịch bản'); gotoView('projects'); }
+}
+Object.assign(window.App,{ createScripts });
+
 async function stopAll(){
   batchStop=true;
   S.jobs.forEach(j=>{ if(['queued','running'].includes(j.status)){ j.status='stopped'; j.step='Đã dừng'; } });
@@ -1096,13 +1537,21 @@ function renderMonitor(){
     <p class="muted">Video xong nằm trong dự án tương ứng ở tab Xưởng (QC & tải) và trong Thư viện của bridge.</p>
   </div>`;
 }
+function gotoView(v){
+  $$('#tabs button').forEach(x=>x.classList.toggle('active', x.dataset.view===v));
+  ['control','projects','library','settings'].forEach(x=>$('#view-'+x).classList.toggle('hidden', x!==v));
+  window.scrollTo({top:0});
+}
 function openJob(projId){
   $$('#tabs button').forEach(x=>x.classList.toggle('active', x.dataset.view==='projects'));
   ['control','projects','library','settings'].forEach(v=>$('#view-'+v).classList.toggle('hidden', v!=='projects'));
   openProject(projId);
 }
-Object.assign(window.App,{ runBatch, stopAll, openJob });
+Object.assign(window.App,{ runBatch, stopAll, openJob, produceAllScenes });
 setInterval(()=>{ if(S.jobs.some(j=>['queued','running'].includes(j.status))) renderMonitor(); }, 3000);
+/* Đồng bộ dạng video với chế độ bên trong khi mở app */
+if(!S.settings.fmtSynced){ const __F=FORMATS[S.settings.format]||FORMATS.review; Object.assign(S.settings, __F.patch); S.settings.fmtSynced=true; save(); }
+if(!S.settings.accRoles){ S.settings.accRoles={chat:'',image:'',video:''}; save(); }
 renderControl();
 
 /* ---------------- V4: kịch bản từ ý tưởng ---------------- */
@@ -1126,6 +1575,7 @@ async function aiScript(){
   const p=activeProject(); if(!p) return; const st=S.settings;
   const ctx=(p.idea||'').trim() || [p.brand, p.product, p.points].filter(Boolean).join(' — ');
   if(!ctx){ toast('Nhập ý tưởng hoặc thông tin SP trước'); return; }
+  if(!st.bgImage) p.bgText=bgAutoText(p.product, p.points, st);
   toast('AI đang lập kịch bản...');
   try{
     const r=await genScriptStructured(ctx, st, p.segments.length);
@@ -1295,11 +1745,13 @@ Object.assign(window.App,{ fetchBatchLink, fetchProjLink });
   ping(true); setInterval(()=>ping(true), 90000);
 })();
 </script>
-</body>
-</html>
-</script>
-</body>
-</html>
-</script>
+
+<div id="fmtDrawer" class="drawer hidden">
+  <div class="drawer-bg" onclick="App.closeFormats()"></div>
+  <div class="drawer-panel">
+    <div class="drawer-head"><b>Chọn dạng video</b><button class="btn small" onclick="App.closeFormats()">✕ Đóng</button></div>
+    <div id="fmtList"></div>
+  </div>
+</div>
 </body>
 </html>
