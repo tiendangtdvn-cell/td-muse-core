@@ -287,8 +287,8 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V7.1</span></div>
-  <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V7.3</span></div>
+  <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
   <nav id="tabs">
@@ -326,8 +326,6 @@
         <h3>Kết nối xưởng</h3>
         <label class="fl">Địa chỉ Worker (cầu nối tới bridge)</label>
         <input type="url" id="cfgUrl" placeholder="https://...workers.dev">
-        <label class="fl">API key của bridge</label>
-        <input type="text" id="cfgKey" placeholder="Key bridge (để trống nếu Worker đã bơm key)">
         <div class="btnrow">
           <button class="btn primary" id="cfgSave">Lưu cấu hình</button>
           <button class="btn" id="cfgTest">Kiểm tra kết nối</button>
@@ -336,9 +334,8 @@
       </div>
       <div class="card">
         <h3>Nạp tài khoản Muse (cookie)</h3>
-        <p class="muted">Dán JSON từ Cookie-Editor của nick Muse Mỹ. Hệ thống tự bóc tách và đẩy lên bridge qua /admin/accounts. Chỉ nạp lại khi phiên hết hạn hoặc đổi tài khoản.</p>
         <label class="fl">Tên nhãn tài khoản</label>
-        <input type="text" id="accLabel" placeholder="VD: Nick Mỹ chính">
+        <input type="text" id="accLabel" placeholder="VD: Acc 1, Acc 2... (để trống = tự đặt Acc tiếp theo)">
         <label class="fl">Cookie JSON</label>
         <textarea id="accCookie" placeholder='Dán JSON cookie vào đây...'></textarea>
         <div class="btnrow"><button class="btn primary" id="accImport">Nạp lên bridge</button></div>
@@ -393,7 +390,7 @@ const DEFAULT_SETTINGS={ charMode:'review', bgImage:'', charRefs:[], template:'r
   expression:'tnhien', animalTalk:false, retry:3, charLib:[], activeChar:'', char2:'', useChar2:false,
   dialogue:true, format:'review', fmtStore:{} };
 const ASM_DEFAULTS={ trimSilence:true, subOn:true, subSize:'vua', subPos:'duoi', subStyle:'tiktok',
-  subColor:'trang', coverTitle:'', ctaEnd:false, logo:'', speed:'1', musicName:'' };
+  subColor:'trang', coverTitle:'', ctaEnd:false, logo:'', speed:'1', musicName:'', headCut:'0' };
 let S = loadState();
 function loadState(){
   let s={ projects:[], activeId:null };
@@ -405,7 +402,8 @@ function loadState(){
 }
 let saveTimer=null;
 function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ try{ localStorage.setItem(LS_STATE, JSON.stringify(S)); }catch(e){ toast('Bộ nhớ trình duyệt đầy — hãy xuất JSON dự phòng!'); } },250); }
-function cfg(){ return { url:(localStorage.getItem(LS_URL)||'').replace(/\/+$/,''), key:localStorage.getItem(LS_KEY)||'' }; }
+const DEFAULT_WORKER='https://tdstudio.tiendang-tdvn.workers.dev';
+function cfg(){ return { url:((localStorage.getItem(LS_URL)||'').trim()||DEFAULT_WORKER).replace(/\/+$/,''), key:'' }; }
 function activeProject(){ return S.projects.find(p=>p.id===S.activeId) || null; }
 
 /* ---------------- API ---------------- */
@@ -478,26 +476,25 @@ const HOOKS=[
 ];
 const SEG_TITLES=['Đoạn 1 — Hook + Demo','Đoạn 2 — Chi tiết nổi bật','Đoạn 3 — Kết quả + Kêu gọi'];
 function newSegment(i){
-  return { id:uid(), title:SEG_TITLES[i]||('Đoạn '+(i+1)), visual:'', dialogue:'', hasProduct:true, mute:false,
+  return { id:uid(), title:SEG_TITLES[i]||('Đoạn '+(i+1)), visual:'', dialogue:'', camera:'', timeline:'', promptKf:'', promptVid:'', endFrame:'', hasProduct:true, mute:false,
     kf:{status:'idle',taskId:null,url:'',approved:false,error:''},
     vid:{status:'idle',taskId:null,url:'',progress:0,error:'',retries:0},
     qc:{c1:false,c2:false,c3:false,c4:false,c5:false,c6:false,c7:false,c8:false,c9:false,c10:false} };
 }
 function newProject(){
   const p={ id:uid(), name:'Video sản phẩm mới', brand:'', product:'', points:'', hook:HOOKS[0],
-    ratio:'9:16', identity:'Nhân vật: một cô gái Việt Nam trẻ, gương mặt và kiểu tóc giống hệt ảnh tham chiếu trong mọi khung hình, không thay đổi đường nét khuôn mặt. Trang phục: tự chọn cho phù hợp với bối cảnh và sản phẩm của từng cảnh, không bắt buộc giống ảnh tham chiếu. Sản phẩm giống hệt ảnh tham chiếu, không thay đổi thiết kế, màu sắc, logo.',
+    ratio:'9:16', identity:DEFAULT_IDENTITY,
     refsChar:[], refsProd:[], segments:[newSegment(0),newSegment(1),newSegment(2)], createdAt:Date.now(),
     idea:'', stylePara:'', caption:'', voiceDir:voiceDirText(S.settings), styleText:(STYLES[S.settings.style]||''), fmtText:fmtPromptText(S.settings), charMode:S.settings.charMode, bgText: S.settings.bgImage? '' : bgAutoText('', '', S.settings), retryLimit:S.settings.retry, exprText:EXPRESSIONS[S.settings.expression]||'', assembly:Object.assign({}, ASM_DEFAULTS) };
   S.projects.unshift(p); S.activeId=p.id; save(); renderProjects(); renderWorkspace(); toast('Đã tạo dự án mới');
 }
 function projStatus(p){
   const vids=p.segments.map(s=>s.vid.status);
-  if(vids.every(v=>v==='done') && p.segments.every(s=>qcPass(s))) return ['done','Hoàn thiện'];
+  if(vids.every(v=>v==='done')) return ['done','Hoàn thiện'];
   if(vids.some(v=>['queued','processing'].includes(v)) || p.segments.some(s=>['queued','processing'].includes(s.kf.status))) return ['run','Đang sản xuất'];
   if(vids.some(v=>v==='done')) return ['','Đang làm dở'];
   return ['','Nháp'];
 }
-function qcPass(s){ return Object.values(s.qc).every(Boolean); }
 function renderProjects(){
   const el=$('#projectList'); const ws=$('#workspace');
   if(S.activeId){ el.classList.add('hidden'); ws.classList.remove('hidden'); return; }
@@ -535,14 +532,14 @@ function stageDone(p,stage){
   if(stage===2) return p.segments.every(s=>s.visual.trim());
   if(stage===3) return p.segments.every(s=>s.kf.status==='done' && s.kf.approved);
   if(stage===4) return p.segments.every(s=>s.vid.status==='done');
-  if(stage===5) return p.segments.every(s=>qcPass(s));
+  if(stage===5) return p.segments.every(s=>s.vid.status==='done');
   return false;
 }
 function renderWorkspace(){
   const ws=$('#workspace'); const p=activeProject(); if(!p){ ws.classList.add('hidden'); return; }
   ws.classList.remove('hidden');
   const [cls,label]=projStatus(p);
-  const steps=['Nguyên liệu','Kịch bản','Keyframe','Sản xuất','QC & Xuất'];
+  const steps=['Nguyên liệu','Kịch bản','Keyframe','Render','Xuất & nối'];
   ws.innerHTML=`
   <div class="thumbrow" style="margin-bottom:10px">
     <button class="btn small" onclick="App.closeProject()">← Tất cả dự án</button>
@@ -557,11 +554,6 @@ function renderWorkspace(){
   <div class="ws-grid">
     <div class="card">
       <h3>Thông tin sản phẩm</h3>
-      <label class="fl">Link sản phẩm (tự lấy thông tin)</label>
-      <div style="display:flex; gap:8px">
-        <input type="url" id="projLink" placeholder="Dán link TikTok Shop / Shopee..." style="flex:1">
-        <button class="btn small" onclick="App.fetchProjLink()">🔗 Lấy tin</button>
-      </div>
       <label class="fl">Tên dự án</label>
       <input type="text" value="${esc(p.name)}" oninput="App.setP('name',this.value)">
       <label class="fl">Tên hãng (khoá chính tả — dùng để QC từng chữ)</label>
@@ -589,8 +581,6 @@ function renderWorkspace(){
         <button class="addref" onclick="document.getElementById('refProdFile').click()">＋</button>
         <input type="file" id="refProdFile" accept="image/*" multiple class="hiddenfile" onchange="App.addRefs('prod',this)"></div>
       <div class="btnrow"><button class="btn small" onclick="App.analyzeProject()">🔍 Phân tích SP từ ảnh</button></div>
-      <label class="fl">Khối mô tả cố định (tự gắn vào MỌI prompt — giữ đồng nhất)</label>
-      <textarea style="min-height:96px" oninput="App.setP('identity',this.value)">${esc(p.identity)}</textarea>
     </div>
   </div>
 
@@ -598,7 +588,7 @@ function renderWorkspace(){
   <div class="card">
     <label class="fl">Ý tưởng video (AI bung thành kịch bản)</label>
     <textarea oninput="App.setP('idea',this.value)" placeholder="VD: tạo video giới thiệu hộp quà noel, set gồm 01 hũ nến thơm, hộp quà sang, thiệp viết tay...">${esc(p.idea||'')}</textarea>
-    <div class="btnrow"><button class="btn primary small" onclick="App.aiScript()">✨ AI lập kịch bản từ ý tưởng / thông tin SP</button></div>
+    <p class="muted">Kịch bản do AI tạo ngay ở tab Điều khiển khi bấm TẠO KỊCH BẢN. Tại đây m xem và chỉnh tay từng đoạn.</p>
     <label class="fl">Phong cách chung của video (áp cho mọi cảnh — AI tự viết khi lập kịch bản)</label>
     <textarea oninput="App.setP('stylePara',this.value)" placeholder="VD: Giọng điệu nhanh, dồn dập, hào hứng nhưng ấm áp và chân thành...">${esc(p.stylePara||'')}</textarea>
     ${p.segments.map((s,i)=>`
@@ -606,8 +596,12 @@ function renderWorkspace(){
       <label class="fl">Mô tả hình ảnh / hành động của đoạn</label>
       <textarea oninput="App.setSeg('${s.id}','visual',this.value)" placeholder="VD: Cô gái cầm máy thổi lá, lá khô bay tung trên sân gạch, máy quay cận cảnh...">${esc(s.visual)}</textarea>
       <label class="fl">Lời thoại (nếu có — sẽ đưa vào prompt gen video)</label>
-      <textarea style="min-height:44px" oninput="App.setSeg('${s.id}','dialogue',this.value)" placeholder="Tối đa ~28 từ cho 10 giây">${esc(s.dialogue)}</textarea>
-      <div class="muted">Độ dài lời thoại: <span id="wc-${s.id}">${wordCount(s.dialogue)}</span>/28 từ</div>
+      <textarea style="min-height:44px" oninput="App.setSeg('${s.id}','dialogue',this.value)" placeholder="Vừa đủ nói trong 10 giây với nhịp nhanh (~30–40 từ)">${esc(s.dialogue)}</textarea>
+      <div class="muted">Độ dài lời thoại: <span id="wc-${s.id}">${wordCount(s.dialogue)}</span> từ — vừa 10 giây nói nhanh là ~30–40 từ</div>
+      <label class="fl">Góc máy</label>
+      <textarea style="min-height:36px" oninput="App.setSeg('${s.id}','camera',this.value)" placeholder="VD: Cận cảnh ngang tầm mắt, máy tĩnh / Trung cảnh, máy lia chậm theo tay">${esc(s.camera||'')}</textarea>
+      <label class="fl">Timeline trong đoạn (theo mốc giây)</label>
+      <textarea style="min-height:44px" oninput="App.setSeg('${s.id}','timeline',this.value)" placeholder="VD: 0–2s: ...; 2–6s: ...; 6–10s: ...">${esc(s.timeline||'')}</textarea>
       <div style="display:flex; gap:18px; flex-wrap:wrap">
         <label class="checkrow"><input type="checkbox" ${s.hasProduct!==false?'checked':''} onchange="App.setSegBool('${s.id}','hasProduct',this.checked)"> Có sản phẩm trong cảnh</label>
         <label class="checkrow"><input type="checkbox" ${s.mute?'checked':''} onchange="App.setSegBool('${s.id}','mute',this.checked)"> Tắt tiếng cảnh này khi ghép</label>
@@ -617,7 +611,7 @@ function renderWorkspace(){
       ${p.segments.length<5?`<button class="btn small" onclick="App.addSegment()">＋ Thêm đoạn</button>`:''}
       ${p.segments.length>2?`<button class="btn small danger" onclick="App.removeSegment()">− Bớt đoạn cuối</button>`:''}
     </div>
-    <p class="muted">Đoạn 1 áp công thức hook đã chọn ở chặng 1. Viết mô tả càng cụ thể (hành động, bối cảnh, góc máy) video càng chuẩn.</p>
+    <p class="muted">Đoạn 1 áp công thức hook đã chọn ở chặng 1. Góc máy + timeline càng cụ thể, prompt gửi sang model càng chuẩn.</p>
   </div>
   <div id="productionZone"></div>`;
   if(window.__renderProduction) window.__renderProduction(p);
@@ -634,6 +628,7 @@ function addSegment(){ const p=activeProject(); if(!p||p.segments.length>=5) ret
 function removeSegment(){ const p=activeProject(); if(!p||p.segments.length<=2) return; p.segments.pop(); save(); renderWorkspace(); }
 
 /* ---------------- Prompt builders (luật đồng nhất) ---------------- */
+const PROMPT_LOCKS='KHÓA CỨNG CHO MỌI CẢNH: (1) TUYỆT ĐỐI không in, vẽ hay hiển thị bất kỳ chữ, ký tự, tên hãng, logo nào trên sản phẩm, trên điện thoại hay bất kỳ vật thể nào trong khung hình — bề mặt sản phẩm và điện thoại để trơn sạch, không chữ. (2) Nếu có điện thoại trong cảnh: màn hình điện thoại TẮT hẳn (màn hình đen) hoặc mặt lưng quay về phía camera; không hiện hình người trên màn hình, không giao diện quay phim, không nút ghi hình, không số đếm giờ. (3) Sản phẩm phải giống hệt ảnh tham chiếu: đúng hình dáng, đúng từng chi tiết (đầu kẹp, tay cầm, remote, khớp nối), đúng màu sắc — không tự thiết kế lại, không thêm bớt chi tiết. (4) Toàn bộ video chỉ quay ở MỘT bối cảnh duy nhất: cùng một phòng/không gian, cùng vị trí đồ đạc, cùng ánh sáng trong mọi cảnh; nhân vật mặc cùng một bộ trang phục trong mọi cảnh.';
 function buildImagePrompt(p,s){
   const styleAll=[p.styleText, p.stylePara].filter(Boolean).join('. ');
   return [ p.identity, p.fmtText||'', p.bgText||'',
@@ -641,19 +636,25 @@ function buildImagePrompt(p,s){
     s.visual,
     p.exprText ? 'Biểu cảm / thần thái: '+p.exprText+'.' : '',
     styleAll ? 'Phong cách hình ảnh: '+styleAll+'.' : '',
+    s.camera ? 'Góc máy: '+s.camera+'.' : '',
+    'Đây là khung hình mở đầu của đoạn — bố cục, vị trí nhân vật và sản phẩm phải sẵn sàng cho diễn biến của đoạn.',
     'Khung hình tỉ lệ '+p.ratio+', phong cách điện ảnh chân thực, ánh sáng tự nhiên, chi tiết sắc nét.',
-    'Giữ khuôn mặt và kiểu tóc nhân vật giống hệt ảnh tham chiếu (trang phục tự chọn theo bối cảnh); thiết kế sản phẩm giống hệt ảnh tham chiếu. Không chèn chữ, không logo lạ, không watermark.'
+    'Giữ khuôn mặt và kiểu tóc nhân vật giống hệt ảnh tham chiếu.', PROMPT_LOCKS, 'Không watermark.'
   ].filter(Boolean).join(' ');
 }
 function buildVideoPrompt(p,s,idx){
   const parts=[ p.identity, p.fmtText||'', p.bgText||'', s.visual ];
+  parts.push('Đoạn video dài đúng 10 giây.');
+  if(s.camera) parts.push('Góc máy: '+s.camera+'.');
+  if(s.timeline) parts.push('Diễn biến theo thời gian: '+s.timeline+'.');
+  if(idx>0) parts.push('Đoạn này tiếp nối liền mạch đoạn trước: cùng bối cảnh, cùng trang phục, cùng ánh sáng, vị trí đồ đạc không đổi, hành động tiếp diễn tự nhiên từ cuối đoạn trước, không nhảy cảnh.');
   if(idx===0 && p.hook) parts.push('Nhịp mở đầu: '+p.hook+'.');
   const styleAll=[p.styleText, p.stylePara].filter(Boolean).join('. ');
   if(styleAll) parts.push('Phong cách hình ảnh: '+styleAll+'.');
   if(p.exprText) parts.push('Biểu cảm / thần thái xuyên suốt: '+p.exprText+'.');
   if(p.voiceDir) parts.push('Giọng đọc: '+p.voiceDir+'.');
   if(s.dialogue && s.dialogue.trim()) parts.push('Nhân vật nói đúng lời thoại sau, khẩu hình khớp lời, diễn tự nhiên: "'+s.dialogue.trim()+'"');
-  parts.push('Giữ nguyên khuôn mặt và kiểu tóc như ảnh tham chiếu trong suốt đoạn, trang phục tự chọn cho hợp bối cảnh; thiết kế sản phẩm giữ nguyên như ảnh tham chiếu. Chuyển động mượt mà, chân thực. Không chèn chữ, không phụ đề, không watermark.');
+  parts.push('Giữ nguyên khuôn mặt và kiểu tóc như ảnh tham chiếu trong suốt đoạn. Chuyển động mượt mà, chân thực. '+PROMPT_LOCKS+' Không phụ đề, không watermark.');
   return parts.filter(Boolean).join(' ');
 }
 
@@ -662,6 +663,14 @@ const pollers={};
 let wakeLock=null;
 async function requestWake(){ try{ if(navigator.wakeLock && !wakeLock){ wakeLock=await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release',()=>wakeLock=null); } }catch(e){} }
 function findProjSeg(projId,segId){ const proj=S.projects.find(x=>x.id===projId); if(!proj) return {}; const seg=proj.segments.find(x=>x.id===segId); return {proj,seg}; }
+function prevSeg(proj,seg){ const i=proj.segments.indexOf(seg); return i>0? proj.segments[i-1] : null; }
+function mediaName(u){ const m=String(u||'').split('/v1/media/'); return m.length>1? decodeURIComponent(m[1].split(/[?#]/)[0]) : ''; }
+async function fetchEndFrame(proj,seg){
+  try{ const f=mediaName(seg.vid.url); if(!f) return;
+    const d=await api('/v1/frame',{method:'POST', body:JSON.stringify({file:f, at:'end'})});
+    if(d && d.url){ seg.endFrame=d.url; save(); }
+  }catch(e){}
+}
 function renderProductionZone(){ const p=activeProject(); if(p && window.__renderProduction) window.__renderProduction(p); }
 
 async function startImageTask(proj,seg){
@@ -670,9 +679,11 @@ async function startImageTask(proj,seg){
   if(cm!=='none' && !proj.refsProd.length){ toast('Thiếu ảnh sản phẩm (chặng 1)'); return; }
   seg.kf.status='queued'; seg.kf.error=''; seg.kf.approved=false; save(); renderProductionZone();
   try{
+    const imgs= seg.hasProduct===false ? [...proj.refsChar] : [...proj.refsChar, ...proj.refsProd];
+    const pvI=prevSeg(proj,seg); if(pvI && pvI.endFrame){ try{ imgs.push(await urlToDataURI(pvI.endFrame)); }catch(e){} }
     const data=await api('/v1/images/tasks',{method:'POST', body:JSON.stringify({
-      prompt:buildImagePrompt(proj,seg), model:'muse-image', aspect_ratio:proj.ratio,
-      response_format:'url', images: seg.hasProduct===false ? [...proj.refsChar] : [...proj.refsChar, ...proj.refsProd] })});
+      prompt:(seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg), model:'muse-image', aspect_ratio:proj.ratio,
+      response_format:'url', images: imgs })});
     seg.kf.taskId=data.id||data.task_id; seg.kf.status='processing'; save(); renderProductionZone(); pollTask('image',proj.id,seg.id);
   }catch(e){ seg.kf.status='failed'; seg.kf.error=e.message; save(); renderProductionZone(); }
 }
@@ -682,9 +693,11 @@ async function startVideoTask(proj,seg){
   try{
     const kfData=await urlToDataURI(seg.kf.url);
     const idx=proj.segments.indexOf(seg);
+    const vimgs= seg.hasProduct===false ? [kfData] : [kfData, ...proj.refsProd.slice(0,2)];
+    const pvV=proj.segments[idx-1]; if(pvV && pvV.endFrame){ try{ vimgs.push(await urlToDataURI(pvV.endFrame)); }catch(e){} }
     const data=await api('/v1/videos',{method:'POST', body:JSON.stringify({
-      prompt:buildVideoPrompt(proj,seg,idx), model:'muse-video', aspect_ratio:proj.ratio,
-      images: seg.hasProduct===false ? [kfData] : [kfData, ...proj.refsProd.slice(0,2)] })});
+      prompt:(seg.promptVid&&seg.promptVid.trim())||buildVideoPrompt(proj,seg,idx), model:'muse-video', aspect_ratio:proj.ratio, duration:10,
+      images: vimgs })});
     seg.vid.taskId=data.id||data.task_id; seg.vid.status='processing'; seg.vid.progress=data.progress||10;
     save(); renderProductionZone(); pollTask('video',proj.id,seg.id);
   }catch(e){ seg.vid.status='failed'; seg.vid.error=e.message; save(); renderProductionZone(); handleVideoFailure(proj,seg); }
@@ -707,6 +720,7 @@ function pollTask(kind,projId,segId){
         slot.url=(t.data&&t.data[0]&&t.data[0].url)||(t.result&&t.result.url)||t.url||(t.video&&t.video.url)||slot.url;
         slot.error=''; delete pollers[key]; save(); renderProductionZone();
         toast((kind==='image'?'Keyframe':'Video')+' xong: '+seg.title);
+        if(kind==='video') fetchEndFrame(proj,seg);
       } else if(t.status==='failed'){
         slot.status='failed'; slot.error=t.error||'Task thất bại trên bridge'; delete pollers[key]; save(); renderProductionZone();
         if(kind==='video') handleVideoFailure(proj,seg);
@@ -728,10 +742,6 @@ function updateTaskDom(seg,kind){
 }
 
 /* ---------------- Production stages 3-5 ---------------- */
-const QC_ITEMS=['Sản phẩm giống hệt ảnh ref, không biến dạng','Tên hãng đúng từng chữ, không chữ méo/loạn',
-  'Có cảnh dùng thử / demo thật','Hook đủ mạnh trong 2 giây đầu (đoạn 1)','Màu da đều, tự nhiên giữa các cảnh',
-  'Khuôn mặt & kiểu tóc giống hệt ảnh ref','Trang phục hợp bối cảnh & sản phẩm','Khẩu hình khớp lời thoại (nếu có thoại)',
-  'Không đạo cụ thừa, không vật thể xuất hiện/biến mất lạ','Chất lượng nét, đúng tỉ lệ khung hình'];
 function stageClass(ratio){ return ratio==='16:9'?'stagebox wide':(ratio==='1:1'?'stagebox sq':'stagebox'); }
 window.__renderProduction=function(p){
   const zone=document.getElementById('productionZone'); if(!zone) return;
@@ -744,8 +754,12 @@ window.__renderProduction=function(p){
         <button class="btn small" onclick="App.genKeyframe('${s.id}')" ${['queued','processing'].includes(s.kf.status)?'disabled':''}>${s.kf.url?'Gen lại keyframe':'Gen keyframe'}</button>
         <button class="btn small ok" onclick="App.approveKeyframe('${s.id}')" ${s.kf.status==='done'&&!s.kf.approved?'':'disabled'}>✓ Duyệt</button>
         ${s.kf.url?`<button class="btn small" onclick="App.preview('${esc(resolveUrl(s.kf.url))}','image','keyframe')">Xem lớn</button>`:''}
-      </div></div></div>`).join('');
-  const vidCards=p.segments.map(s=>`
+      </div>
+      <details class="promptbox"><summary>Prompt ảnh (xem / sửa trước khi gen)</summary>
+        <textarea style="min-height:90px" onchange="App.setSegPrompt('${s.id}','kf',this.value)">${esc(s.promptKf||buildImagePrompt(p,s))}</textarea>
+        <div class="btnrow"><button class="btn small" onclick="App.resetSegPrompt('${s.id}','kf')">↺ Về prompt gốc</button></div></details>
+      </div></div>`).join('');
+  const vidCards=p.segments.map((s,si)=>`
     <div class="seg"><div class="seg-head"><b>${esc(s.title)}</b><span style="flex:1"></span>
       ${s.vid.status==='done'?'<span class="badge done">CÓ CLIP</span>':''}</div><div class="seg-body">
       <div class="${stageClass(p.ratio)}">${s.vid.url?`<video src="${esc(resolveUrl(s.vid.url))}" controls playsinline preload="metadata"></video>`
@@ -755,34 +769,31 @@ window.__renderProduction=function(p){
       <div class="btnrow">
         <button class="btn small primary" onclick="App.genVideo('${s.id}')" ${s.kf.approved&&!['queued','processing'].includes(s.vid.status)?'':'disabled'}>${s.vid.url?'Gen lại video':'Gen video'}</button>
         ${s.vid.url?`<button class="btn small" onclick="App.downloadSeg('${s.id}')">⬇ Tải clip</button>`:''}
-      </div></div></div>`).join('');
-  const qcCards=p.segments.map((s,si)=>`
-    <div class="seg"><div class="seg-head"><b>QC — ${esc(s.title)}</b><span style="flex:1"></span>
-      ${qcPass(s)?'<span class="badge done">ĐẠT</span>':'<span class="badge">Chưa đạt</span>'}</div><div class="seg-body">
-      ${QC_ITEMS.map((q,qi)=>`<label class="qcitem"><input type="checkbox" ${s.qc['c'+(qi+1)]?'checked':''} onchange="App.qcToggle('${s.id}',${qi+1},this.checked)"><span>${q}</span></label>`).join('')}
-      <div class="btnrow"><button class="btn small" onclick="App.genVideo('${s.id}')" ${s.kf.approved?'':'disabled'}>Gen lại đoạn này</button></div>
-    </div></div>`).join('');
+      </div>
+      <details class="promptbox"><summary>Prompt video (xem / sửa trước khi gen)</summary>
+        <textarea style="min-height:90px" onchange="App.setSegPrompt('${s.id}','vid',this.value)">${esc(s.promptVid||buildVideoPrompt(p,s,si))}</textarea>
+        <div class="btnrow"><button class="btn small" onclick="App.resetSegPrompt('${s.id}','vid')">↺ Về prompt gốc</button></div></details>
+      </div></div>`).join('');
   zone.innerHTML=`
-  <div class="steptitle" id="sec3">3 · Keyframe — cổng duyệt 1</div>
+  <div class="steptitle" id="sec3">3 · Keyframe — duyệt bằng mắt</div>
   <div class="card"><div class="btnrow" style="margin-top:0">
-    <button class="btn primary" onclick="App.produceAllScenes()">${producingAll? '■ Đang sản xuất tất cả cảnh — bấm để dừng' : '⚡ Sản xuất tất cả cảnh (keyframe → tự duyệt → video)'}</button></div></div>
+    <button class="btn primary" onclick="App.produceAllKeyframes()">${producingAll? '■ Đang tạo keyframe — bấm để dừng' : '⚡ Tạo tất cả keyframe'}</button></div></div>
   <div class="seglist">${kfCards}</div>
-  <div class="steptitle" id="sec4">4 · Sản xuất video — hàng đợi tự động</div>
+  <div class="steptitle" id="sec4">4 · Render video</div>
   <div class="card"><div class="btnrow" style="margin-top:0">
     <button class="btn primary" onclick="App.queueAll()">▶ Chạy hàng đợi: gen video mọi đoạn đã duyệt keyframe</button></div>
     <p class="muted">Hàng đợi tự theo dõi tiến độ, đoạn lỗi tự gen lại tối đa 3 lần. Giữ màn hình sáng khi đang chạy.</p></div>
   <div class="seglist">${vidCards}</div>
-  <div class="steptitle" id="sec5">5 · QC &amp; Xuất bản</div>
-  <div class="seglist">${qcCards}</div>
-  <div class="card"><h3>Gói sản xuất</h3>
+  <div class="steptitle" id="sec5">5 · Xuất &amp; nối</div>
+  <div class="card"><h3>Ghép phim ngay trong app</h3>
+    ${asmHTML(p)}
+  </div>
+  <div class="card"><h3>Tải &amp; gói dự phòng</h3>
     <div class="btnrow" style="margin-top:0">
       <button class="btn" onclick="App.downloadAll()">⬇ Tải tất cả clip</button>
       <button class="btn" onclick="App.scriptPack()">⬇ Tải gói kịch bản (.txt)</button>
     </div>
-    <p class="muted">${p.segments.every(s=>s.vid.status==='done'&&qcPass(s)) ? '🎉 Dự án đạt chuẩn xuất bản: đủ clip + QC đạt mọi đoạn.' : 'Dự án hoàn thiện khi mọi đoạn có clip và đạt đủ 10 mục QC.'}</p></div>
-  <div class="card"><h3>Ghép phim (ffmpeg) <span class="sub">— xuất gói, t ghép trả video hoàn chỉnh</span></h3>
-    ${asmHTML(p)}
-  </div>
+    <p class="muted">${p.segments.every(s=>s.vid.status==='done') ? '🎉 Đủ clip — bấm GHÉP ở trên để nối thành video hoàn chỉnh.' : 'Dự án hoàn thiện khi mọi đoạn đều có clip.'}</p></div>
   <div class="card"><h3>Caption đăng bài</h3>
     <div class="btnrow" style="margin-top:0"><button class="btn" onclick="App.genCaption()">✨ Viết caption + hashtag</button>
     ${p.caption?'<button class="btn" onclick="App.copyCaption()">Copy caption</button>':''}</div>
@@ -797,7 +808,7 @@ function kfStatusText(s){
   return 'Chưa gen. Keyframe được tạo từ ảnh ref nhân vật + sản phẩm.';
 }
 function vidStatusText(s){
-  if(s.vid.status==='done') return 'Đã có clip. Xem lại ở trên, QC ở chặng 5.';
+  if(s.vid.status==='done') return 'Đã có clip.';
   if(s.vid.status==='failed') return '<span class="err">Lỗi: '+esc(s.vid.error||'không rõ')+'</span>';
   if(s.vid.status==='queued') return esc(s.vid.error||'Đang chờ trong hàng đợi...');
   if(s.vid.status==='processing') return 'Đang gen video... '+(s.vid.progress||0)+'%';
@@ -818,24 +829,20 @@ async function waitSegDone(seg, kind){
   }
   return false;
 }
-async function produceAllScenes(){
+async function produceAllKeyframes(){
   const p=activeProject(); if(!p) return;
   if(producingAll){ batchStop=true; return; }
   batchStop=false; producingAll=true; renderProductionZone();
   try{
     for(const seg of p.segments){
       if(batchStop) break;
-      if(seg.kf.status!=='done'){ await startImageTask(p, seg); }
-      if(!(await waitSegDone(seg,'kf'))) continue;
-      if(!seg.kf.approved){ seg.kf.approved=true; save(); renderProductionZone(); }
-      if(seg.vid.status!=='done'){ await startVideoTask(p, seg); await waitSegDone(seg,'vid'); }
+      if(seg.kf.status!=='done'){ await startImageTask(p, seg); await waitSegDone(seg,'kf'); }
     }
-  } finally { producingAll=false; save(); renderProductionZone(); toast('Sản xuất tất cả cảnh đã kết thúc'); }
+  } finally { producingAll=false; save(); renderProductionZone(); toast('Đã tạo xong keyframe — duyệt từng đoạn bằng mắt, rồi xuống chặng 4 chạy hàng đợi render'); }
 }
 async function queueAll(){ const p=activeProject(); if(!p) return; let n=0;
   for(const s of p.segments){ if(s.kf.approved && !['done','queued','processing'].includes(s.vid.status)){ s.vid.retries=0; startVideoTask(p,s); n++; await new Promise(r=>setTimeout(r,1200)); } }
   toast(n? ('Đã đẩy '+n+' đoạn vào hàng đợi') : 'Chưa có đoạn nào sẵn sàng (cần duyệt keyframe trước)'); }
-function qcToggle(segId,n,on){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(!s) return; s.qc['c'+n]=on; save(); }
 function downloadSeg(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(s&&s.vid.url) downloadUrl(s.vid.url, 'doan-'+(p.segments.indexOf(s)+1)+'.mp4'); }
 async function downloadAll(){ const p=activeProject(); if(!p) return;
   for(let i=0;i<p.segments.length;i++){ const s=p.segments[i]; if(s.vid.url){ await downloadUrl(s.vid.url,'doan-'+(i+1)+'.mp4'); await new Promise(r=>setTimeout(r,600)); } } }
@@ -845,7 +852,16 @@ function scriptPack(){ const p=activeProject(); if(!p) return;
   const blob=new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'}); const a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download='goi-kich-ban.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); }
 window.App = window.App || {};
-Object.assign(window.App,{ genKeyframe, approveKeyframe, genVideo, queueAll, qcToggle, downloadSeg, downloadAll, scriptPack });
+Object.assign(window.App,{ genKeyframe, approveKeyframe, genVideo, queueAll, downloadSeg, downloadAll, scriptPack });
+function setSegPrompt(segId,kind,v){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(!s) return; if(kind==='kf') s.promptKf=v; else s.promptVid=v; save(); }
+function resetSegPrompt(segId,kind){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(!s) return; if(kind==='kf') s.promptKf=''; else s.promptVid=''; save(); renderProductionZone(); }
+function resetInputs(){
+  if(!confirm('Làm mới app? Dữ liệu đang nhập ở Điều khiển (danh sách sản phẩm, thiết lập riêng của từng dạng) sẽ xoá sạch. Dự án đã tạo, thư viện nhân vật và cài đặt tài khoản vẫn giữ nguyên.')) return;
+  S.batch=[newBatchProduct()];
+  S.settings.fmtStore={};
+  save(); location.reload();
+}
+Object.assign(window.App,{ setSegPrompt, resetSegPrompt, resetInputs });
 Object.assign(window.App,{ newProject, openProject, closeProject, deleteProject, exportProject, importJSON, setP, setSeg, addRefs, delRef, addSegment, removeSegment });
 
 /* ---------------- Preview modal ---------------- */
@@ -883,7 +899,7 @@ async function ping(silent){
   }catch(e){ dot.className='dot off'; txt.textContent='Xưởng offline'; if(!silent) logTo('#cfgLog','Lỗi kết nối: '+e.message,'e'); return false; }
 }
 $('#cfgSave').addEventListener('click',()=>{
-  localStorage.setItem(LS_URL, $('#cfgUrl').value.trim()); localStorage.setItem(LS_KEY, $('#cfgKey').value.trim());
+  localStorage.setItem(LS_URL, $('#cfgUrl').value.trim()); localStorage.setItem(LS_KEY, '');
   logTo('#cfgLog','Đã lưu cấu hình.'); ping(); });
 $('#cfgTest').addEventListener('click',async()=>{ logTo('#cfgLog','Đang kiểm tra...'); await ping(); });
 function toCookieDict(text){
@@ -893,7 +909,8 @@ function toCookieDict(text){
   const o={}; text.split(';').forEach(part=>{ const i=part.indexOf('='); if(i>0) o[part.slice(0,i).trim()]=part.slice(i+1).trim(); }); return o;
 }
 $('#accImport').addEventListener('click',async()=>{
-  const label=$('#accLabel').value.trim()||'Nick Muse'; let cookies;
+  let label=$('#accLabel').value.trim(); let cookies;
+  if(!label){ try{ const d=await api('/admin/accounts'); label='Acc '+(((d&&d.accounts)||[]).length+1); }catch(e){ label='Acc mới'; } }
   try{ cookies=toCookieDict($('#accCookie').value); }catch(e){ logTo('#accLog','JSON cookie không hợp lệ: '+e.message,'e'); return; }
   if(!cookies.hatch_sess){ logTo('#accLog','Thiếu cookie hatch_sess — bản xuất này không dùng được (phải gồm cookie httpOnly).','e'); return; }
   logTo('#accLog','Đang đẩy '+Object.keys(cookies).length+' cookie lên bridge...');
@@ -945,7 +962,7 @@ const TEMPLATES={ review:'Review sản phẩm', unbox:'Mở hộp / unbox', comp
 const STYLES={ 'chan-thuc':'Chân thực đời thường, ánh sáng tự nhiên như quay bằng điện thoại xịn',
   'dien-anh':'Điện ảnh, tương phản đẹp, màu phim', 'studio':'Sáng sạch kiểu studio, nền gọn, sáng đều',
   'am-cung':'Ấm cúng tại nhà, tông ấm, gần gũi' };
-const DEFAULT_IDENTITY='Nhân vật: một cô gái Việt Nam trẻ, gương mặt và kiểu tóc giống hệt ảnh tham chiếu trong mọi khung hình, không thay đổi đường nét khuôn mặt. Trang phục: tự chọn cho phù hợp với bối cảnh và sản phẩm của từng cảnh, không bắt buộc giống ảnh tham chiếu. Sản phẩm giống hệt ảnh tham chiếu, không thay đổi thiết kế, màu sắc, logo.';
+const DEFAULT_IDENTITY='Nhân vật: dùng đúng người trong ảnh tham chiếu đính kèm — cùng một người trong mọi khung hình, không đổi khuôn mặt và kiểu tóc, không mô tả lại ngoại hình. Trang phục: tự chọn cho phù hợp với bối cảnh và sản phẩm (không bắt buộc giống ảnh tham chiếu) và giữ nguyên bộ trang phục đó trong mọi cảnh của cùng một video. Sản phẩm: dùng đúng sản phẩm trong ảnh tham chiếu đính kèm, giữ nguyên thiết kế và màu sắc; không in thêm chữ hay logo lên sản phẩm.';
 const POV_IDENTITY='Góc quay POV ngôi thứ nhất: chỉ thấy đôi tay người dùng thao tác trực tiếp với sản phẩm, không lộ mặt. Tay sạch, móng gọn, thao tác rõ ràng, cận cảnh sản phẩm.';
 const FACELESS_IDENTITY='Video faceless: không xuất hiện người dẫn chuyện hay nhân vật chính diện, chỉ có cảnh vật, không gian và hình minh hoạ theo câu chuyện.';
 const LANGS={ vi:'Tiếng Việt', en:'English (tiếng Anh)', fil:'Filipino', es:'Español (Tây Ban Nha)',
@@ -962,7 +979,8 @@ function voiceDirText(st){
   const langTxt = st.language==='vi' ? ('Lời thoại bằng tiếng Việt, giọng '+REGIONS[st.region]+'.')
     : ('Lời thoại bằng '+(LANGS[st.language]||'tiếng Việt')+'.');
   return v.dir+'. '+langTxt+' Tốc độ: '+(SPEEDS[st.speechSpeed]||SPEEDS.vua)+'. '
-    +(SPEAKMODES[st.speakMode]||'')+(st.noPrice?' Tuyệt đối không nhắc giá tiền trong lời thoại.':'');
+    +(SPEAKMODES[st.speakMode]||'')+(st.noPrice?' Tuyệt đối không nhắc giá tiền trong lời thoại.':'')
+    +((st.format==='review'||st.format==='pov')?' Nhịp nói bắt buộc: nhanh, dồn dập, năng động, linh hoạt như review bán hàng — không nói chậm, không ngắt quãng dài.':'');
 }
 
 /* ---------------- Dạng video (FORMATS) ---------------- */
@@ -1008,12 +1026,12 @@ function fmtPromptText(st){
 }
 function bgAutoText(prodName, points, st){
   const f=(st&&st.format)||'review';
-  const base={ review:'không gian sống hiện đại, sạch đẹp, ánh sáng tự nhiên, làm nổi bật sản phẩm',
-    pov:'bề mặt làm việc gọn gàng, sáng sủa, nền trung tính làm nổi sản phẩm',
-    family:'không gian gia đình ấm cúng, đời thường', drama:'bối cảnh đúng với cốt truyện, tông màu điện ảnh',
-    farm:'vườn quê / trang trại Việt Nam, cây xanh, nắng tự nhiên', travel:'khung cảnh đúng địa điểm trong lịch trình, góc rộng, đẹp',
-    pet:'không gian trong nhà ấm cúng, sàn sạch, ánh sáng mềm', story:'bối cảnh minh hoạ đúng với diễn biến câu chuyện' }[f]||'không gian phù hợp với sản phẩm';
-  return 'Bối cảnh tự sinh: '+base+(prodName?(' — xoay quanh sản phẩm "'+prodName+'"'):'')+(points?('. Điểm nhấn: '+String(points).split('\n')[0].slice(0,80)):'')+'.';
+  const base={ review:'một phòng khách cố định: sofa vải màu be, bàn gỗ thấp, cửa sổ lớn rèm trắng ở bên trái, chậu cây xanh ở góc phải, tường trắng, ánh sáng ban ngày mềm',
+    pov:'một mặt bàn làm việc cố định: bàn gỗ sáng màu, nền tường trắng trơn, ánh sáng ban ngày đều, không đồ vật thừa',
+    family:'một phòng khách gia đình cố định: sofa vải xám, bàn trà gỗ, kệ tivi đối diện, ánh sáng ấm', drama:'một không gian cố định đúng với cốt truyện, tông màu điện ảnh, giữ nguyên bài trí xuyên suốt',
+    farm:'một khu vườn quê Việt Nam cố định: luống rau xanh, hàng rào tre, nắng sáng tự nhiên', travel:'khung cảnh đúng địa điểm trong lịch trình, góc rộng, đẹp',
+    pet:'một phòng khách cố định: sàn gỗ sáng, thảm tròn màu kem, cửa sổ rèm trắng, ánh sáng mềm', story:'một không gian minh hoạ cố định, đúng với diễn biến câu chuyện, giữ nhất quán xuyên suốt' }[f]||'một không gian cố định, phù hợp với sản phẩm';
+  return 'Bối cảnh (MỘT địa điểm duy nhất cho toàn bộ video — mọi cảnh quay ở đúng nơi này, không đổi phòng, không đổi cách bài trí): '+base+(prodName?(' — xoay quanh sản phẩm "'+prodName+'"'):'')+(points?('. Điểm nhấn: '+String(points).split('\n')[0].slice(0,80)):'')+'.';
 }
 function renderFormats(){ const z=$('#fmtList'); if(!z) return;
   z.innerHTML=Object.entries(FORMATS).map(([id,f])=>`<button class="fmtitem ${S.settings.format===id?'sel':''}" onclick="App.setFormat('${id}')"><span class="fic">${f.icon}</span>${esc(f.name)}${S.settings.format===id?'<span class="fchk">✓</span>':''}</button>`).join(''); }
@@ -1225,6 +1243,8 @@ function renderOptions(){
       <span class="secchip">${st.scenes} cảnh · ${st.ratio}</span></div>
     <label class="fl">Số cảnh / video</label>
     <div class="segbtn">${[2,3,4,5].map(n=>`<button class="${st.scenes===n?'active':''}" onclick="App.setOptNum('scenes',${n})">${n} cảnh</button>`).join('')}</div>
+    <label class="fl">Thời lượng mỗi cảnh</label>
+    <div class="segbtn"><button class="active">10 giây / cảnh (cố định)</button></div>
     <label class="fl">Tỷ lệ khung hình</label>
     <div class="segbtn">
       <button class="${st.ratio==='9:16'?'active':''}" onclick="App.setOpt('ratio','9:16')">9:16</button>
@@ -1296,9 +1316,7 @@ function renderBatch(){
     <div class="sechead"><span class="secnum">2</span><span class="sectitle">Sản phẩm</span><span class="secchip">${t.products} SP · ${t.videos} video</span></div>${needsProd?'':`<div class="switchrow"><span style="flex:1; font-weight:700">Thêm sản phẩm vào dạng này</span><span class="switch"><input type="checkbox" checked onchange="App.setFmtBool('useProducts',this.checked)"><i></i></span></div>`}
     ${S.batch.map((b,i)=>`<div class="prodrow">
       <div style="display:flex; gap:8px; margin-bottom:8px">
-        <input type="url" id="link-${b.id}" placeholder="Dán link TikTok Shop / Shopee để tự lấy thông tin..." style="flex:1">
-        <button class="btn small" onclick="App.fetchBatchLink('${b.id}')">🔗 Lấy tin</button>
-        <button class="btn small" onclick="App.analyzeBatch('${b.id}')">🔍 Phân tích</button>
+        <button class="btn small" onclick="App.analyzeBatch('${b.id}')">🔍 Phân tích SP từ ảnh</button>
       </div>
       <div class="phead"><span class="pnum">${i+1}</span>
         <input type="text" placeholder="Tên sản phẩm" value="${esc(b.name)}" oninput="App.setBatch('${b.id}','name',this.value)" style="flex:1">
@@ -1350,9 +1368,11 @@ async function genScriptAI(prod, st){
     prod.note? 'Lưu ý bắt buộc: '+prod.note : '',
     'Mẫu kịch bản: '+TEMPLATES[st.template]+'. Số cảnh: '+st.scenes+' (mỗi cảnh ~10 giây).',
     fmtPromptText(st)? ('Ý đồ của dạng video: '+fmtPromptText(st)) : '',
-    'Cảnh 1 phải là hook demo trực diện: sản phẩm đang hoạt động, kết quả thấy ngay trong 2 giây đầu.',
-    st.dialogue===false ? 'KHÔNG có lời thoại: trường dialogue của mọi cảnh để trống "".' : ('Lời thoại '+(LANGS[st.language]||'tiếng Việt')+', tối đa 26 từ mỗi cảnh, '+(st.noPrice?'TUYỆT ĐỐI không nhắc giá tiền':'có thể nhắc ưu đãi')+'.'),
-    'Trả về JSON: [{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại"}] đủ '+st.scenes+' cảnh.'
+    'Cấu trúc bắt buộc: cảnh 1 là HOOK — demo trực diện (sản phẩm đang hoạt động, kết quả thấy ngay trong 2 giây đầu) hoặc câu hỏi đúng nỗi đau của người xem; các cảnh giữa XEN KẼ người nói và CẬN CẢNH demo tay/sản phẩm (ít nhất một cảnh cận cảnh demo thật); cảnh cuối là kết quả + kêu gọi bấm giỏ hàng ở góc trái bên dưới.',
+    'Mỗi cảnh phải có camera (góc máy + cỡ cảnh + chuyển động máy, VD: "Cận cảnh ngang tầm mắt, máy tĩnh" / "Trung cảnh, máy lia chậm theo tay") và timeline (diễn biến theo mốc giây trong đúng 10 giây của cảnh, VD: "0–2s: giơ sản phẩm vào khung hình; 2–6s: thao tác demo; 6–10s: cho thấy kết quả, gật đầu hài lòng").',
+    'Mọi cảnh quay ở CÙNG MỘT bối cảnh duy nhất và nhân vật mặc CÙNG một bộ trang phục; trường visual không đổi địa điểm, không mô tả chữ hay logo in trên sản phẩm/điện thoại.',
+    st.dialogue===false ? 'KHÔNG có lời thoại: trường dialogue của mọi cảnh để trống "".' : ('Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh vừa đủ nói hết trong 10 giây với nhịp NHANH, dồn dập, năng động kiểu review bán hàng (khoảng 30–40 từ), câu ngắn gọn, đúng trọng tâm điểm bán, không lan man, không mở đầu chậm, '+(st.noPrice?'TUYỆT ĐỐI không nhắc giá tiền':'có thể nhắc ưu đãi')+'.'),
+    'Trả về JSON: [{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại","camera":"góc máy","timeline":"0–2s: ...; 2–6s: ...; 6–10s: ..."}] đủ '+st.scenes+' cảnh.'
   ].filter(Boolean).join('\n');
   const ask=async(extra)=>{ const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
     model:'muse-spark', stream:false,
@@ -1362,7 +1382,7 @@ async function genScriptAI(prod, st){
   let arr=await ask('');
   if(!Array.isArray(arr)||!arr.length) arr=await ask('\nLƯU Ý: lần trả trước bị lỗi cú pháp JSON. CHỈ trả mảng JSON hợp lệ, khóa và chuỗi bọc trong dấu ngoặc kép ".');
   if(!Array.isArray(arr)||!arr.length) throw new Error('AI không trả JSON hợp lệ');
-  return arr.slice(0, st.scenes).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',28) }));
+  return arr.slice(0, st.scenes).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',40), camera:String(o.camera||''), timeline:String(o.timeline||'') }));
 }
 function genScriptFallback(prod, st){
   const name=prod.name||'sản phẩm này'; const firstPoint=(prod.desc||'').split('\n')[0].slice(0,110);
@@ -1373,7 +1393,11 @@ function genScriptFallback(prod, st){
     { visual:'So sánh nhanh sản phẩm '+name+' với cách làm thông thường, khác biệt rõ rệt', dialogue:capWords('Từ ngày có '+name+', mọi thứ nhanh gọn hơn hẳn',28) },
     { visual:'Tổng kết: sản phẩm '+name+' trên tay, nền bối cảnh đẹp, gật đầu hài lòng', dialogue:capWords('Chốt lại là rất đáng mua, mọi người tham khảo ở giỏ hàng nhé!',28) }
   ];
-  const outArr=base.slice(0, st.scenes); if(st.dialogue===false) outArr.forEach(s=>s.dialogue=''); return outArr;
+  const outArr=base.slice(0, st.scenes);
+  const camDef=['Cận cảnh ngang tầm mắt, máy tĩnh','Cận cảnh tay và sản phẩm, máy lia chậm theo thao tác','Trung cảnh ngang tầm mắt, máy tĩnh','Trung cảnh, máy đẩy nhẹ vào sản phẩm','Cận cảnh sản phẩm, máy tĩnh'];
+  const tlDef=['0–2s: sản phẩm vào khung hình, thu hút ngay; 2–6s: demo thao tác chính; 6–10s: cho thấy kết quả rõ ràng','0–3s: quay chi tiết sản phẩm; 3–7s: thao tác sử dụng cận cảnh; 7–10s: kết quả sau khi dùng','0–3s: tổng thể kết quả; 3–7s: nhân vật trải nghiệm và phản ứng hài lòng; 7–10s: kêu gọi hành động, chỉ tay về góc giỏ hàng','0–3s: đặt hai cách làm cạnh nhau; 3–7s: so sánh trực tiếp; 7–10s: khác biệt rõ rệt','0–3s: sản phẩm trên tay, tổng kết nhanh; 3–7s: nhắc lại điểm mạnh nhất; 7–10s: gật đầu chốt, kêu gọi xem giỏ hàng'];
+  outArr.forEach((s,i)=>{ s.camera=camDef[i]||camDef[0]; s.timeline=tlDef[i]||tlDef[0]; });
+  if(st.dialogue===false) outArr.forEach(s=>s.dialogue=''); return outArr;
 }
 
 /* ---------------- Batch engine ---------------- */
@@ -1410,7 +1434,7 @@ async function batchStartKF(proj,seg){
     const imgs= seg.hasProduct===false ? [...proj.refsChar] : [...proj.refsChar, ...proj.refsProd];
     if(S.settings.bgImage) imgs.push(S.settings.bgImage);
     const data=await api('/v1/images/tasks',{method:'POST', body:JSON.stringify({
-      prompt:buildImagePrompt(proj,seg), model:'muse-image', aspect_ratio:proj.ratio,
+      prompt:(seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg), model:'muse-image', aspect_ratio:proj.ratio,
       response_format:'url', images:imgs })});
     seg.kf.taskId=data.id||data.task_id; seg.kf.status='processing'; save(); pollTask('image',proj.id,seg.id);
   }catch(e){ seg.kf.status='failed'; seg.kf.error=e.message; save(); }
@@ -1434,17 +1458,9 @@ async function produceJob(job){
   job.step='Đang tạo keyframe'; renderMonitor();
   for(const seg of proj.segments){ await batchStartKF(proj,seg); await sleep(700); }
   await waitSettled(proj,'kf'); if(batchStop){ job.status='stopped'; return; }
-  proj.segments.forEach(s=>{ if(s.kf.status==='done') s.kf.approved=true; }); save();
-  job.step='Đang tạo video'; renderMonitor();
-  for(const seg of proj.segments){
-    if(seg.kf.approved){ seg.vid.retries=0; startVideoTask(proj,seg); }
-    else { seg.vid.status='failed'; seg.vid.error='Keyframe lỗi'; }
-    await sleep(700);
-  }
-  await waitSettled(proj,'vid'); if(batchStop){ job.status='stopped'; return; }
-  const allDone=proj.segments.every(s=>s.vid.status==='done');
-  job.status= allDone? 'done':'failed';
-  job.step= allDone? 'Hoàn thành — mở dự án để QC & tải clip' : 'Có cảnh lỗi — mở dự án để gen lại';
+  save();
+  job.status='done';
+  job.step='Keyframe xong — mở dự án, duyệt keyframe bằng mắt rồi render video';
   save(); renderMonitor();
 }
 async function runBatch(){
@@ -1464,10 +1480,11 @@ async function runBatch(){
   toast('Đợt sản xuất đã kết thúc');
 }
 async function scriptIntoProject(proj, prod, st){
-  let scenes=null;
+  let scenes=null, usedAI=true;
   try{ scenes=await genScriptAI(prod, st); }catch(e){ scenes=null; }
-  if(!scenes) scenes=genScriptFallback(prod, st);
-  scenes.forEach((sc,i)=>{ if(proj.segments[i]){ proj.segments[i].visual=sc.visual||''; proj.segments[i].dialogue=sc.dialogue||''; } });
+  if(!scenes){ scenes=genScriptFallback(prod, st); usedAI=false; }
+  scenes.forEach((sc,i)=>{ if(proj.segments[i]){ const sg=proj.segments[i]; sg.visual=sc.visual||''; sg.dialogue=sc.dialogue||''; sg.camera=sc.camera||''; sg.timeline=sc.timeline||''; } });
+  return usedAI;
 }
 function ideaSubject(st){ const fm=curFmt(); switch(st.format){
   case 'drama': return (fm.plot||'Drama mới').split('\n')[0].slice(0,50) || 'Drama mới';
@@ -1487,13 +1504,13 @@ async function createScripts(){
   const useProds = prods.length>0 && (needsProd || !!curFmt().useProducts);
   if(needsProd && !prods.length){ toast('Thêm ít nhất 1 sản phẩm trước'); return; }
   scriptRunning=true; renderBatch();
-  let made=0; let firstId=null;
+  let made=0; let firstId=null; let fallbackUsed=false;
   try{
     if(useProds){
       for(const prod of prods) for(let v=1; v<=st.versions; v++){
         const proj=createAutoProject(prod, st, v);
         if(!firstId) firstId=proj.id;
-        await scriptIntoProject(proj, prod, st);
+        if(!(await scriptIntoProject(proj, prod, st))) fallbackUsed=true;
         made++;
       }
     } else {
@@ -1502,10 +1519,11 @@ async function createScripts(){
       const proj=createAutoProject(pseudo, st, 1);
       if(!firstId) firstId=proj.id;
       proj.name=((FORMATS[st.format]||{}).name||st.format)+' — '+subj;
-      await scriptIntoProject(proj, pseudo, st);
+      if(!(await scriptIntoProject(proj, pseudo, st))) fallbackUsed=true;
       made=1;
     }
   } finally { scriptRunning=false; save(); renderBatch(); renderProjects(); }
+  if(fallbackUsed) toast('AI lỗi ở vài dự án nên đã dùng kịch bản mẫu — mở dự án kiểm tra lại nhé', 4500);
   if(made){ toast('Đã tạo '+made+' dự án có kịch bản — mở dự án để sản xuất'); gotoView('projects'); if(firstId) openProject(firstId); }
 }
 Object.assign(window.App,{ createScripts });
@@ -1574,7 +1592,7 @@ function openJob(projId){
   ['control','projects','library','settings'].forEach(v=>$('#view-'+v).classList.toggle('hidden', v!=='projects'));
   openProject(projId);
 }
-Object.assign(window.App,{ runBatch, stopAll, openJob, produceAllScenes });
+Object.assign(window.App,{ runBatch, stopAll, openJob, produceAllKeyframes });
 setInterval(()=>{ if(S.jobs.some(j=>['queued','running'].includes(j.status))) renderMonitor(); }, 3000);
 /* Đồng bộ dạng video với chế độ bên trong khi mở app */
 if(!S.settings.fmtSynced){ const __F=FORMATS[S.settings.format]||FORMATS.review; Object.assign(S.settings, __F.patch); S.settings.fmtSynced=true; save(); }
@@ -1588,8 +1606,11 @@ async function genScriptStructured(ctx, st, count){
   const usr=[ 'Chủ đề / ý tưởng: '+ctx,
     'Mẫu kịch bản: '+TEMPLATES[st.template]+'. Số cảnh: '+count+' (mỗi cảnh ~10 giây).',
     'Cảnh 1: hook demo trực diện, kết quả thấy ngay trong 2 giây đầu.'+((st.hookStyle&&st.hookStyle!=='ai')? ' Kiểu mở đầu: '+st.hookStyle : ''),
-    'Lời thoại '+(LANGS[st.language]||'tiếng Việt')+', tối đa 26 từ mỗi cảnh'+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'.',
-    'Trả về JSON: {"style":"một đoạn mô tả phong cách/giọng điệu chung của video, 2-3 câu","scenes":[{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại"}]} đủ '+count+' cảnh.'
+    'Cấu trúc: các cảnh giữa XEN KẼ người nói và CẬN CẢNH demo (ít nhất một cảnh cận cảnh demo thật); cảnh cuối là kết quả + kêu gọi bấm giỏ hàng góc trái bên dưới.',
+    'Mỗi cảnh có camera (góc máy + cỡ cảnh + chuyển động máy) và timeline (diễn biến theo mốc giây trong đúng 10 giây: "0–2s: ...; 2–6s: ...; 6–10s: ...").',
+    'Mọi cảnh ở CÙNG MỘT bối cảnh duy nhất, nhân vật mặc CÙNG một bộ trang phục; visual không đổi địa điểm, không mô tả chữ/logo in trên sản phẩm hay điện thoại.',
+    'Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh vừa đủ nói trong 10 giây với nhịp NHANH, dồn dập, năng động (khoảng 30–40 từ), câu ngắn, đúng trọng tâm'+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'.',
+    'Trả về JSON: {"style":"một đoạn mô tả phong cách/giọng điệu chung của video, 2-3 câu","scenes":[{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại","camera":"góc máy","timeline":"0–2s: ...; 2–6s: ...; 6–10s: ..."}]} đủ '+count+' cảnh.'
   ].join('\n');
   const ask=async(extra)=>{ const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
     model:'muse-spark', stream:false, messages:[{role:'system',content:sys},{role:'user',content:usr+extra}] })});
@@ -1598,7 +1619,7 @@ async function genScriptStructured(ctx, st, count){
   let obj=await ask('');
   if(!obj||!Array.isArray(obj.scenes)||!obj.scenes.length) obj=await ask('\nLƯU Ý: lần trả trước bị lỗi cú pháp JSON. CHỈ trả một JSON object hợp lệ, khóa và chuỗi bọc trong dấu ngoặc kép ".');
   if(!obj||!Array.isArray(obj.scenes)||!obj.scenes.length) throw new Error('AI không trả JSON hợp lệ');
-  return { style:String(obj.style||''), scenes:obj.scenes.slice(0,count).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',28) })) };
+  return { style:String(obj.style||''), scenes:obj.scenes.slice(0,count).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',40), camera:String(o.camera||''), timeline:String(o.timeline||'') })) };
 }
 async function aiScript(){
   const p=activeProject(); if(!p) return; const st=S.settings;
@@ -1608,12 +1629,12 @@ async function aiScript(){
   toast('AI đang lập kịch bản...');
   try{
     const r=await genScriptStructured(ctx, st, p.segments.length);
-    r.scenes.forEach((sc,i)=>{ if(p.segments[i]){ p.segments[i].visual=sc.visual; p.segments[i].dialogue=sc.dialogue; } });
+    r.scenes.forEach((sc,i)=>{ if(p.segments[i]){ const sg=p.segments[i]; sg.visual=sc.visual; sg.dialogue=sc.dialogue; sg.camera=sc.camera||''; sg.timeline=sc.timeline||''; } });
     if(r.style) p.stylePara=r.style;
     save(); renderWorkspace(); toast('Đã lập kịch bản xong');
   }catch(e){
     const fb=genScriptFallback({ name:p.product||ctx, desc:p.points||'' }, st);
-    fb.forEach((sc,i)=>{ if(p.segments[i]){ p.segments[i].visual=sc.visual||''; p.segments[i].dialogue=sc.dialogue||''; } });
+    fb.forEach((sc,i)=>{ if(p.segments[i]){ const sg=p.segments[i]; sg.visual=sc.visual||''; sg.dialogue=sc.dialogue||''; sg.camera=sc.camera||''; sg.timeline=sc.timeline||''; } });
     save(); renderWorkspace(); toast('AI trả dữ liệu lỗi — đã dùng kịch bản mẫu, m chỉnh tay được');
   }
 }
@@ -1684,11 +1705,45 @@ function exportPackage(){
   downloadAll();
   toast('Đã xuất gói ghép — gửi t: các clip + goi-ghep.json (+ logo/nhạc nếu có)', 4200);
 }
+let asmBusy=false;
+function asmResultHTML(p){ const r=p.asmResult; if(!r) return '';
+  if(r.status==='processing') return `<p class="muted">⏳ Đang ghép trên xưởng... ${r.progress||0}%</p>`;
+  if(r.status==='failed') return `<p class="muted">❌ Ghép lỗi: ${esc(r.error||'không rõ')} — thử lại, hoặc dùng gói ghép dự phòng bên dưới.</p>`;
+  if(r.status==='done'&&r.url) return `<video src="${esc(resolveUrl(r.url))}" controls playsinline style="width:100%; border-radius:12px; margin-top:6px"></video>
+  <div class="btnrow"><a class="btn primary" href="${esc(resolveUrl(r.url))}" download="video-ghep.mp4">⬇️ Tải video hoàn chỉnh</a></div>`;
+  return ''; }
+async function assembleNow(){
+  const p=activeProject(); if(!p||asmBusy) return;
+  const done=p.segments.filter(s=>s.vid&&s.vid.status==='done'&&s.vid.url);
+  if(!done.length){ toast('Chưa có đoạn video nào hoàn thành để ghép'); return; }
+  const fname=u=>{ const m=String(u||'').split('/v1/media/'); if(m.length<2) return ''; try{ return decodeURIComponent(m[1].split(/[?#]/)[0]); }catch(e){ return ''; } };
+  const a=ensureAsm(p); const hc=parseFloat(a.headCut)||0;
+  const clips=done.map(s=>{ const c={file:fname(s.vid.url)}; if(hc>0) c.start=hc; return c; }).filter(c=>c.file);
+  if(!clips.length){ toast('Không đọc được tên file clip trên xưởng'); return; }
+  if(done.length<p.segments.length) toast('Mới có '+done.length+'/'+p.segments.length+' đoạn xong — ghép các đoạn đã xong trước');
+  asmBusy=true; p.asmResult={status:'processing', progress:0}; save(); renderProductionZone();
+  try{
+    const data=await api('/v1/assemble',{method:'POST', body:JSON.stringify({ clips, trim_silence: a.trimSilence!==false, speed: parseFloat(a.speed)||1 })});
+    const tid=data.id||data.task_id; if(!tid) throw new Error('Xưởng không trả mã ghép');
+    const t0=Date.now();
+    while(Date.now()-t0 < 12*60*1000){
+      await new Promise(r=>setTimeout(r,4000));
+      const t=await api('/v1/assemble/'+tid);
+      if(t.status==='completed'){ const url=(t.result&&t.result.url)||t.url||''; p.asmResult={status:'done', url, at:Date.now()}; save(); renderProductionZone(); toast('Đã ghép xong video 🎬'); asmBusy=false; return; }
+      if(t.status==='failed'){ throw new Error(t.error||'ffmpeg lỗi'); }
+      p.asmResult={status:'processing', progress:t.progress||0}; save(); renderProductionZone();
+    }
+    throw new Error('Ghép quá lâu — thử lại sau');
+  }catch(e){ p.asmResult={status:'failed', error:e.message}; save(); renderProductionZone(); toast('Ghép lỗi: '+e.message); }
+  asmBusy=false;
+}
 function asmHTML(p){
   const a=ensureAsm(p);
   return `
   <label class="fl">Tự cắt khoảng lặng đầu/cuối mỗi cảnh</label>
   <div class="segbtn"><button class="${!a.trimSilence?'active':''}" onclick="App.setAsmBoolRender('trimSilence',false)">Tắt</button><button class="${a.trimSilence?'active':''}" onclick="App.setAsmBoolRender('trimSilence',true)">Bật</button></div>
+  <label class="fl">Cắt cố định đầu mỗi đoạn (bỏ đoạn chờ trước khi nhân vật nói)</label>
+  <div class="segbtn">${['0','1','1.5','2'].map(v=>`<button class="${String(a.headCut||'0')===v?'active':''}" onclick="App.setAsmRender('headCut','${v}')">${v==='0'?'Không cắt':v+' giây'}</button>`).join('')}</div>
   <label class="fl">Phụ đề chạy theo lời thoại</label>
   <div class="segbtn"><button class="${!a.subOn?'active':''}" onclick="App.setAsmBoolRender('subOn',false)">Tắt</button><button class="${a.subOn?'active':''}" onclick="App.setAsmBoolRender('subOn',true)">Bật</button></div>
   ${a.subOn?`<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
@@ -1713,22 +1768,16 @@ function asmHTML(p){
     <button class="btn small" onclick="App.genCover()">Tạo ảnh bìa</button></div>
   ${a.coverStatus?`<p class="muted">${esc(a.coverStatus)}</p>`:''}
   ${a.coverUrl?`<img src="${esc(resolveUrl(a.coverUrl))}" style="width:130px; border-radius:10px; margin-top:8px">`:''}
-  <div class="btnrow"><button class="btn primary" onclick="App.exportPackage()">📦 Xuất gói ghép + tải clip</button></div>
+  <div class="btnrow"><button class="btn primary" onclick="App.assembleNow()">🎬 GHÉP VIDEO NGAY TRONG APP</button></div>
+  ${asmResultHTML(p)}
+  <p class="muted">Ghép ngay: xưởng tự nối các đoạn theo đúng thứ tự cảnh + cắt khoảng lặng + tốc độ đã chọn → xem và tải video hoàn chỉnh ngay tại đây. Phụ đề/logo/nhạc/ảnh bìa: dùng gói ghép dự phòng bên dưới.</p>
+  <div class="btnrow"><button class="btn" onclick="App.exportPackage()">📦 Xuất gói ghép + tải clip (dự phòng)</button></div>
   <p class="muted">Gửi cho t: các clip đã tải + file goi-ghep.json (+ logo/nhạc nếu có) → t ghép bằng ffmpeg: cắt khoảng lặng, cháy phụ đề theo lời thoại, bìa, logo, nhạc nền, cảnh kết → trả video hoàn chỉnh.</p>`;
 }
 Object.assign(window.App,{ setSegBool, aiScript, setAsm, setAsmBool, setAsmRender, setAsmBoolRender,
-  addLogo, delLogo, setMusic, genCover, genCaption, copyCaption, exportPackage });
+  addLogo, delLogo, setMusic, genCover, genCaption, copyCaption, exportPackage, assembleNow });
 
 /* ---------------- V5: Lấy thông tin SP từ link (qua Worker) ---------------- */
-async function fetchProductInfo(link){
-  const {url}=cfg(); if(!url) throw new Error('Chưa cấu hình Worker (tab Cài đặt)');
-  const res=await fetch(url+'/fetch-product?url='+encodeURIComponent(link));
-  if(res.status===404) throw new Error('Worker chưa có tính năng này — dán đoạn mã v5 vào Worker trước');
-  const d=await res.json(); if(!d.ok) throw new Error(d.error||'Không lấy được');
-  if(/security check|are you human|captcha|verify you are/i.test(d.title||'')) d.title='';
-  if(!d.title && !d.price && !(d.images&&d.images.length)) throw new Error('Sàn chặn lấy tin tự động (tường bot) — nhập tay giúp');
-  return d;
-}
 function shrinkDataURI(d){
   return new Promise(ok=>{ const img=new Image();
     img.onload=()=>{ const max=1024; const w=img.naturalWidth, h=img.naturalHeight;
@@ -1738,37 +1787,10 @@ function shrinkDataURI(d){
     img.onerror=()=>ok(d); img.src=d; });
 }
 function fmtPrice(p){ const n=parseInt(String(p||'').replace(/\D/g,''),10); return isNaN(n)? String(p||'') : n.toLocaleString('vi-VN'); }
-async function fetchBatchLink(id){
-  const b=S.batch.find(x=>x.id===id); const el=document.getElementById('link-'+id);
-  const link=(el&&el.value||'').trim(); if(!b||!link){ toast('Dán link vào ô trước đã'); return; }
-  toast('Đang lấy thông tin sản phẩm...');
-  try{
-    const d=await fetchProductInfo(link);
-    const imgs=[]; for(const im of (d.images||[])) imgs.push(await shrinkDataURI(im));
-    if(d.title) b.name=d.title; if(d.price) b.price=fmtPrice(d.price); if(d.desc) b.desc=d.desc;
-    if(imgs.length) b.images=b.images.concat(imgs).slice(0,8);
-    save(); renderBatch();
-    toast((d.title||imgs.length)? ('Đã điền: '+(d.title?'tên ✓ ':'')+(d.price?'giá ✓ ':'')+(imgs.length? imgs.length+' ảnh ✓':'')) : 'Trang này chặn lấy tự động — nhập tay giúp t');
-  }catch(e){ toast('Lấy tin lỗi: '+e.message); }
-}
-async function fetchProjLink(){
-  const p=activeProject(); const el=document.getElementById('projLink');
-  const link=(el&&el.value||'').trim(); if(!p||!link){ toast('Dán link vào ô trước đã'); return; }
-  toast('Đang lấy thông tin sản phẩm...');
-  try{
-    const d=await fetchProductInfo(link);
-    const imgs=[]; for(const im of (d.images||[])) imgs.push(await shrinkDataURI(im));
-    if(d.title) p.product=d.title; if(d.desc) p.points=d.desc;
-    if(imgs.length) p.refsProd=p.refsProd.concat(imgs).slice(0,8);
-    save(); renderWorkspace();
-    toast((d.title||imgs.length)? ('Đã điền thông tin SP + '+imgs.length+' ảnh tham chiếu') : 'Trang này chặn lấy tự động — nhập tay giúp t');
-  }catch(e){ toast('Lấy tin lỗi: '+e.message); }
-}
-Object.assign(window.App,{ fetchBatchLink, fetchProjLink });
 
 /* ---------------- Init ---------------- */
 (function init(){
-  $('#cfgUrl').value=localStorage.getItem(LS_URL)||''; $('#cfgKey').value=localStorage.getItem(LS_KEY)||'';
+  $('#cfgUrl').value=localStorage.getItem(LS_URL)||DEFAULT_WORKER;
   renderProjects(); if(S.activeId) renderWorkspace();
   // Resume polling for tasks that were running when the app was closed
   S.projects.forEach(p=>p.segments.forEach(s=>{
