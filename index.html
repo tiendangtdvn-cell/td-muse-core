@@ -514,7 +514,7 @@ function renderProjects(){
         ${thumb?`<img class="thumb" src="${esc(thumb.startsWith('data:')?thumb:resolveUrl(thumb))}">`:'<div class="thumb"></div>'}
         <div class="meta"><div class="name">${esc(p.name)}</div>
         <div class="muted">${esc(p.brand||'')} ${esc(p.product||'')} · ${p.segments.length} đoạn</div></div>
-        <span class="badge ${cls}">${label}</span></div>`; }).join('');
+        <div style="text-align:right"><span class="badge ${cls}">${label}</span><div style="margin-top:5px;color:#27b45e;font-weight:600">Mở xưởng ›</div></div></div>`; }).join('');
 }
 function openProject(id){ S.activeId=id; save(); renderProjects(); renderWorkspace(); window.scrollTo({top:0}); }
 function closeProject(){ S.activeId=null; save(); renderProjects(); }
@@ -846,6 +846,7 @@ function scriptPack(){ const p=activeProject(); if(!p) return;
   a.href=URL.createObjectURL(blob); a.download='goi-kich-ban.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); }
 window.App = window.App || {};
 Object.assign(window.App,{ genKeyframe, approveKeyframe, genVideo, queueAll, qcToggle, downloadSeg, downloadAll, scriptPack });
+Object.assign(window.App,{ newProject, openProject, closeProject, deleteProject, exportProject, importJSON, setP, setSeg, addRefs, delRef, addSegment, removeSegment });
 
 /* ---------------- Preview modal ---------------- */
 let modalUrl='';
@@ -1024,28 +1025,28 @@ function setFormat(id){ const F=FORMATS[id]; if(!F) return;
 
 /* ---------------- Phân tích sản phẩm từ ảnh ---------------- */
 async function analyzeImages(images){
-  const imgs=(images||[]).slice(0,3); if(!imgs.length) throw new Error('Chưa có ảnh sản phẩm để phân tích');
-  const content=[{ type:'text', text:'Đọc các ảnh sản phẩm này và trả về DUY NHẤT một JSON, không giải thích thêm: {"name":"tên sản phẩm ngắn gọn","points":"3-5 điểm bán hàng, mỗi điểm một dòng, chỉ dựa trên những gì thấy trong ảnh: hình dáng, chất liệu, công năng, chữ trên bao bì"}. Không bịa thông số không thấy trong ảnh.' }];
+  const imgs=(images||[]).slice(0,5); if(!imgs.length) throw new Error('Chưa có ảnh sản phẩm để phân tích');
+  const content=[{ type:'text', text:'Bạn nhận được các ảnh của MỘT sản phẩm cần bán, gồm 2 loại: ẢNH CHỤP SẢN PHẨM (nhìn thấy hình dáng sản phẩm) và ẢNH CHỮ (ảnh chụp màn hình thông số kỹ thuật, mô tả sản phẩm, hoặc chữ trên bao bì). CÁCH ĐỌC: (1) Tên sản phẩm: xác định từ ẢNH CHỤP — hình dáng sản phẩm, kèm hãng/model nếu thấy chữ in trên sản phẩm hoặc bao bì; tên ngắn gọn. (2) Điểm bán hàng: GỘP CẢ HAI NGUỒN — đặc điểm nhìn thấy trong ảnh chụp (hình dáng, chất liệu, công năng) VÀ thông số/mô tả đọc được từ ẢNH CHỮ: chép lại CHÍNH XÁC các con số và thông số như trong ảnh (không làm tròn, không bịa thêm, không suy đoán). Mỗi điểm một dòng, các dòng thông số để ở cuối. (3) Chỉ khi ẢNH CHỮ rõ ràng nói về một sản phẩm KHÁC HẲN với ảnh chụp (khác loại sản phẩm) thì mới bỏ qua ảnh chữ đó và đặt "mixed":true; nếu tất cả cùng một sản phẩm thì "mixed":false. Trả về DUY NHẤT một JSON, không giải thích thêm: {"name":"tên sản phẩm","points":"các điểm bán hàng và thông số, mỗi ý một dòng","mixed":false}' }];
   imgs.forEach(u=>content.push({ type:'image_url', image_url:{ url:u } }));
   const data=await api('/v1/chat/completions',{ method:'POST', body:JSON.stringify({ model:'muse-spark', stream:false, messages:[{ role:'user', content }] }) });
   const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
   const m=text.match(/\{[\s\S]*\}/); if(!m) throw new Error('AI không đọc được ảnh này');
   const j=JSON.parse(m[0]);
-  return { name:String(j.name||'').slice(0,120), points:String(j.points||'').slice(0,600) };
+  return { name:String(j.name||'').slice(0,120), points:String(j.points||'').slice(0,600), mixed: !!j.mixed };
 }
 async function analyzeBatch(id){ const b=S.batch.find(x=>x.id===id); if(!b) return;
   try{ toast('Đang phân tích ảnh sản phẩm...');
     const r=await analyzeImages(b.images);
-    if(r.name && !b.name.trim()) b.name=r.name;
+    if(r.name) b.name=r.name;
     if(r.points) b.desc=r.points;
-    save(); renderBatch(); toast('Đã điền từ phân tích — kiểm tra lại tên & điểm bán hàng');
+    save(); renderBatch(); toast(r.mixed? '⚠️ Ảnh gồm nhiều sản phẩm khác nhau — đã lấy theo ảnh đầu tiên, kiểm tra lại nhé' : 'Đã điền từ phân tích — kiểm tra lại tên & điểm bán hàng');
   }catch(e){ toast('Phân tích lỗi: '+e.message); } }
 async function analyzeProject(){ const p=activeProject(); if(!p) return;
   try{ toast('Đang phân tích ảnh sản phẩm...');
     const r=await analyzeImages(p.refsProd);
-    if(r.name && !p.product.trim()) p.product=r.name;
+    if(r.name) p.product=r.name;
     if(r.points) p.points=r.points;
-    save(); renderWorkspace(); toast('Đã điền từ phân tích — kiểm tra lại trước khi sản xuất');
+    save(); renderWorkspace(); toast(r.mixed? '⚠️ Ảnh gồm nhiều sản phẩm khác nhau — đã lấy theo ảnh đầu tiên, kiểm tra lại nhé' : 'Đã điền từ phân tích — kiểm tra lại trước khi sản xuất');
   }catch(e){ toast('Phân tích lỗi: '+e.message); } }
 Object.assign(window.App,{ openFormats, closeFormats, setFormat, setFmt, setFmtBool, analyzeBatch, analyzeProject });
 
@@ -1462,11 +1463,12 @@ async function createScripts(){
   const useProds = prods.length>0 && (needsProd || !!curFmt().useProducts);
   if(needsProd && !prods.length){ toast('Thêm ít nhất 1 sản phẩm trước'); return; }
   scriptRunning=true; renderBatch();
-  let made=0;
+  let made=0; let firstId=null;
   try{
     if(useProds){
       for(const prod of prods) for(let v=1; v<=st.versions; v++){
         const proj=createAutoProject(prod, st, v);
+        if(!firstId) firstId=proj.id;
         await scriptIntoProject(proj, prod, st);
         made++;
       }
@@ -1474,12 +1476,13 @@ async function createScripts(){
       const subj=ideaSubject(st);
       const pseudo={ name:subj, desc:fmtPromptText(st), note:'', images:[] };
       const proj=createAutoProject(pseudo, st, 1);
+      if(!firstId) firstId=proj.id;
       proj.name=((FORMATS[st.format]||{}).name||st.format)+' — '+subj;
       await scriptIntoProject(proj, pseudo, st);
       made=1;
     }
   } finally { scriptRunning=false; save(); renderBatch(); renderProjects(); }
-  if(made){ toast('Đã tạo '+made+' dự án có kịch bản'); gotoView('projects'); }
+  if(made){ toast('Đã tạo '+made+' dự án có kịch bản — mở dự án để sản xuất'); gotoView('projects'); if(firstId) openProject(firstId); }
 }
 Object.assign(window.App,{ createScripts });
 
