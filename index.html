@@ -287,7 +287,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V7.3</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V7.4</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
@@ -586,18 +586,14 @@ function renderWorkspace(){
 
   <div class="steptitle" id="sec2">2 · Kịch bản — ${p.segments.length} đoạn</div>
   <div class="card">
-    <label class="fl">Ý tưởng video (AI bung thành kịch bản)</label>
-    <textarea oninput="App.setP('idea',this.value)" placeholder="VD: tạo video giới thiệu hộp quà noel, set gồm 01 hũ nến thơm, hộp quà sang, thiệp viết tay...">${esc(p.idea||'')}</textarea>
     <p class="muted">Kịch bản do AI tạo ngay ở tab Điều khiển khi bấm TẠO KỊCH BẢN. Tại đây m xem và chỉnh tay từng đoạn.</p>
-    <label class="fl">Phong cách chung của video (áp cho mọi cảnh — AI tự viết khi lập kịch bản)</label>
-    <textarea oninput="App.setP('stylePara',this.value)" placeholder="VD: Giọng điệu nhanh, dồn dập, hào hứng nhưng ấm áp và chân thành...">${esc(p.stylePara||'')}</textarea>
     ${p.segments.map((s,i)=>`
       <h3 style="margin-top:${i?16:0}px">${esc(s.title)}</h3>
       <label class="fl">Mô tả hình ảnh / hành động của đoạn</label>
       <textarea oninput="App.setSeg('${s.id}','visual',this.value)" placeholder="VD: Cô gái cầm máy thổi lá, lá khô bay tung trên sân gạch, máy quay cận cảnh...">${esc(s.visual)}</textarea>
       <label class="fl">Lời thoại (nếu có — sẽ đưa vào prompt gen video)</label>
-      <textarea style="min-height:44px" oninput="App.setSeg('${s.id}','dialogue',this.value)" placeholder="Vừa đủ nói trong 10 giây với nhịp nhanh (~30–40 từ)">${esc(s.dialogue)}</textarea>
-      <div class="muted">Độ dài lời thoại: <span id="wc-${s.id}">${wordCount(s.dialogue)}</span> từ — vừa 10 giây nói nhanh là ~30–40 từ</div>
+      <textarea style="min-height:44px" oninput="App.setSeg('${s.id}','dialogue',this.value)" placeholder="Thoại review chuyên nghiệp, ~38–45 từ cho 10 giây">${esc(s.dialogue)}</textarea>
+      <div class="muted">Độ dài lời thoại: <span id="wc-${s.id}">${wordCount(s.dialogue)}</span> từ — chuẩn review là ~38–45 từ mỗi đoạn</div>
       <label class="fl">Góc máy</label>
       <textarea style="min-height:36px" oninput="App.setSeg('${s.id}','camera',this.value)" placeholder="VD: Cận cảnh ngang tầm mắt, máy tĩnh / Trung cảnh, máy lia chậm theo tay">${esc(s.camera||'')}</textarea>
       <label class="fl">Timeline trong đoạn (theo mốc giây)</label>
@@ -648,6 +644,8 @@ function buildVideoPrompt(p,s,idx){
   if(s.camera) parts.push('Góc máy: '+s.camera+'.');
   if(s.timeline) parts.push('Diễn biến theo thời gian: '+s.timeline+'.');
   if(idx>0) parts.push('Đoạn này tiếp nối liền mạch đoạn trước: cùng bối cảnh, cùng trang phục, cùng ánh sáng, vị trí đồ đạc không đổi, hành động tiếp diễn tự nhiên từ cuối đoạn trước, không nhảy cảnh.');
+  parts.push('Trong đoạn, máy cắt liên tục nhiều cỡ cảnh (toàn – trung – cận) đúng theo timeline, chuyển cảnh khớp nội dung đang nói và thao tác đang làm, giữ nhịp nhanh, không để một góc máy đứng yên quá lâu.');
+  if(s.dialogue && s.dialogue.trim()) parts.push('Lời thoại chạy liền mạch qua mọi cú cắt, tuyệt đối không ngắt quãng: khi nhân vật không nằm trong khung hình, giọng vẫn tiếp tục như voiceover ngoài hình; khi nhân vật trở lại khung hình, khẩu hình khớp đúng câu đang nói.');
   if(idx===0 && p.hook) parts.push('Nhịp mở đầu: '+p.hook+'.');
   const styleAll=[p.styleText, p.stylePara].filter(Boolean).join('. ');
   if(styleAll) parts.push('Phong cách hình ảnh: '+styleAll+'.');
@@ -1020,7 +1018,7 @@ function fmtPromptText(st){
     case 'travel': return fm.places? ('Địa điểm & lịch trình theo thứ tự: '+String(fm.places).replace(/\n/g,' → ')+'.') : '';
     case 'pet': return fm.petTrait? ('Tính cách thú cưng: '+fm.petTrait+', lời thoại và biểu cảm đúng tính cách này.') : '';
     case 'story': return 'Thể loại câu chuyện: '+(genre[fm.genre]||'tâm sự')+'. Hình minh hoạ: '+(illust[fm.illust]||'phong cách điện ảnh')+', không xuất hiện người dẫn chuyện.';
-    case 'review': return fm.hookFirst? ('Ưu tiên mở đầu: '+(hookFirst[fm.hookFirst]||'')+'.') : '';
+    case 'review': return 'Mở đầu bắt buộc: nhân vật nhìn thẳng camera nói câu hook trong 3–4 giây đầu; sau đó toàn bộ thời lượng tập trung vào sản phẩm: công năng, lợi ích, tiện lợi, hiệu quả, chất liệu.';
     default: return '';
   }
 }
@@ -1193,13 +1191,14 @@ function renderOptions(){
 
   <div id="batchSlot"></div>
 
+  ${st.format==='review'?'':`
   <div class="card">
     <div class="sechead"><span class="secnum">3</span><span class="sectitle">Thiết lập · ${esc(F.name)}</span></div>
     ${fmtFields[st.format]||fmtFields.review}
-  </div>
+  </div>`}
 
   <div class="card">
-    <div class="sechead"><span class="secnum">4</span><span class="sectitle">Kịch bản & giọng</span>
+    <div class="sechead"><span class="secnum">${st.format==='review'?3:4}</span><span class="sectitle">Kịch bản & giọng</span>
       <span class="secchip">${st.dialogue?'Có thoại':'Không thoại'}</span></div>
     <label class="fl">Mẫu kịch bản</label>
     <div class="choicegrid">
@@ -1239,7 +1238,7 @@ function renderOptions(){
   </div>
 
   <div class="card">
-    <div class="sechead"><span class="secnum">5</span><span class="sectitle">Hình ảnh & số lượng</span>
+    <div class="sechead"><span class="secnum">${st.format==='review'?4:5}</span><span class="sectitle">Hình ảnh & số lượng</span>
       <span class="secchip">${st.scenes} cảnh · ${st.ratio}</span></div>
     <label class="fl">Số cảnh / video</label>
     <div class="segbtn">${[2,3,4,5].map(n=>`<button class="${st.scenes===n?'active':''}" onclick="App.setOptNum('scenes',${n})">${n} cảnh</button>`).join('')}</div>
@@ -1262,7 +1261,7 @@ function renderOptions(){
   </div>
 
   <div class="card">
-    <div class="sechead"><span class="secnum">6</span><span class="sectitle">Mẫu cài đặt</span>
+    <div class="sechead"><span class="secnum">${st.format==='review'?5:6}</span><span class="sectitle">Mẫu cài đặt</span>
       <span class="secchip">${st.presets.length} mẫu</span></div>
     <div style="display:flex; gap:8px">
       <select id="presetSel" style="flex:1">${st.presets.length? st.presets.map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join('') : '<option value="">Chưa có mẫu cài đặt</option>'}</select>
@@ -1368,10 +1367,10 @@ async function genScriptAI(prod, st){
     prod.note? 'Lưu ý bắt buộc: '+prod.note : '',
     'Mẫu kịch bản: '+TEMPLATES[st.template]+'. Số cảnh: '+st.scenes+' (mỗi cảnh ~10 giây).',
     fmtPromptText(st)? ('Ý đồ của dạng video: '+fmtPromptText(st)) : '',
-    'Cấu trúc bắt buộc: cảnh 1 là HOOK — demo trực diện (sản phẩm đang hoạt động, kết quả thấy ngay trong 2 giây đầu) hoặc câu hỏi đúng nỗi đau của người xem; các cảnh giữa XEN KẼ người nói và CẬN CẢNH demo tay/sản phẩm (ít nhất một cảnh cận cảnh demo thật); cảnh cuối là kết quả + kêu gọi bấm giỏ hàng ở góc trái bên dưới.',
-    'Mỗi cảnh phải có camera (góc máy + cỡ cảnh + chuyển động máy, VD: "Cận cảnh ngang tầm mắt, máy tĩnh" / "Trung cảnh, máy lia chậm theo tay") và timeline (diễn biến theo mốc giây trong đúng 10 giây của cảnh, VD: "0–2s: giơ sản phẩm vào khung hình; 2–6s: thao tác demo; 6–10s: cho thấy kết quả, gật đầu hài lòng").',
+    'Cấu trúc bắt buộc: cảnh 1 mở bằng nhân vật nhìn thẳng camera nói câu HOOK trong 3–4 giây đầu, sau đó tập trung vào sản phẩm; các cảnh giữa XEN KẼ người nói và CẬN CẢNH demo tay/sản phẩm (ít nhất một cảnh cận cảnh demo thật); cảnh cuối là kết quả + kêu gọi bấm giỏ hàng ở góc trái bên dưới. Toàn bộ nội dung xoay quanh sản phẩm: công năng, lợi ích, tiện lợi, hiệu quả, chất liệu.',
+    'Mỗi cảnh phải có camera (chuỗi cỡ cảnh luân chuyển trong cảnh, VD: "Trung cảnh → Cận cảnh → Toàn cảnh") và timeline (diễn biến theo mốc giây trong đúng 10 giây, mỗi mốc ghi rõ CỠ CẢNH + hành động + nội dung thoại lúc đó). Quy tắc khớp hình–tiếng: thoại nói tới đâu, camera cho thấy đúng thứ đó — nói về chất liệu thì cận vào chất liệu, nói về hiệu quả thì cận kết quả, nói về tiện lợi thì toàn/trung cảnh thao tác. Cắt máy liên tục giữa các cỡ cảnh để giữ nhịp, không để một cỡ cảnh đứng yên quá 4 giây.',
     'Mọi cảnh quay ở CÙNG MỘT bối cảnh duy nhất và nhân vật mặc CÙNG một bộ trang phục; trường visual không đổi địa điểm, không mô tả chữ hay logo in trên sản phẩm/điện thoại.',
-    st.dialogue===false ? 'KHÔNG có lời thoại: trường dialogue của mọi cảnh để trống "".' : ('Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh vừa đủ nói hết trong 10 giây với nhịp NHANH, dồn dập, năng động kiểu review bán hàng (khoảng 30–40 từ), câu ngắn gọn, đúng trọng tâm điểm bán, không lan man, không mở đầu chậm, '+(st.noPrice?'TUYỆT ĐỐI không nhắc giá tiền':'có thể nhắc ưu đãi')+'.'),
+    st.dialogue===false ? 'KHÔNG có lời thoại: trường dialogue của mọi cảnh để trống "".' : ('Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh vừa đủ nói hết trong 10 giây với nhịp NHANH, dồn dập, năng động kiểu review bán hàng (khoảng 38–45 từ), văn phong review chuyên nghiệp: gãy gọn, giàu thông tin về sản phẩm, đúng trọng tâm điểm bán, không lan man, không mở đầu chậm, '+(st.noPrice?'TUYỆT ĐỐI không nhắc giá tiền':'có thể nhắc ưu đãi')+'.'),
     'Trả về JSON: [{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại","camera":"góc máy","timeline":"0–2s: ...; 2–6s: ...; 6–10s: ..."}] đủ '+st.scenes+' cảnh.'
   ].filter(Boolean).join('\n');
   const ask=async(extra)=>{ const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
@@ -1382,20 +1381,20 @@ async function genScriptAI(prod, st){
   let arr=await ask('');
   if(!Array.isArray(arr)||!arr.length) arr=await ask('\nLƯU Ý: lần trả trước bị lỗi cú pháp JSON. CHỈ trả mảng JSON hợp lệ, khóa và chuỗi bọc trong dấu ngoặc kép ".');
   if(!Array.isArray(arr)||!arr.length) throw new Error('AI không trả JSON hợp lệ');
-  return arr.slice(0, st.scenes).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',40), camera:String(o.camera||''), timeline:String(o.timeline||'') }));
+  return arr.slice(0, st.scenes).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',45), camera:String(o.camera||''), timeline:String(o.timeline||'') }));
 }
 function genScriptFallback(prod, st){
   const name=prod.name||'sản phẩm này'; const firstPoint=(prod.desc||'').split('\n')[0].slice(0,110);
   const base=[
-    { visual:'Cận cảnh sản phẩm '+name+' đang được sử dụng thật, kết quả thấy ngay, khung hình bắt mắt thu hút', dialogue:capWords('Xem này, '+name+' đang hot là có lý do đó!',28) },
-    { visual:'Quay chi tiết sản phẩm '+name+' từ nhiều góc, thao tác sử dụng rõ ràng, cận cảnh chất liệu', dialogue:capWords(firstPoint || (name+' dùng cực kỳ tiện, chất lượng hơn hẳn mong đợi'),28) },
-    { visual:'Kết quả sau khi dùng '+name+', tổng thể gọn gàng đẹp mắt, người dùng hài lòng', dialogue:capWords(st.noPrice?'Ai cần thì bấm vào giỏ hàng xem ngay nhé, đang có ưu đãi đó!':'Mức giá này mà chất lượng vậy là quá hời, bấm giỏ hàng ngay nhé!',28) },
-    { visual:'So sánh nhanh sản phẩm '+name+' với cách làm thông thường, khác biệt rõ rệt', dialogue:capWords('Từ ngày có '+name+', mọi thứ nhanh gọn hơn hẳn',28) },
-    { visual:'Tổng kết: sản phẩm '+name+' trên tay, nền bối cảnh đẹp, gật đầu hài lòng', dialogue:capWords('Chốt lại là rất đáng mua, mọi người tham khảo ở giỏ hàng nhé!',28) }
+    { visual:'Cận cảnh sản phẩm '+name+' đang được sử dụng thật, kết quả thấy ngay, khung hình bắt mắt thu hút', dialogue:capWords('Xem này cả nhà ơi, '+name+' đang hot là có lý do đó, dùng thử một lần là thấy khác hẳn liền. Thiết kế gọn gàng, cầm chắc tay, thao tác lại cực kỳ đơn giản, ai cũng dùng được ngay từ lần đầu luôn nha!',45) },
+    { visual:'Quay chi tiết sản phẩm '+name+' từ nhiều góc, thao tác sử dụng rõ ràng, cận cảnh chất liệu', dialogue:capWords(firstPoint ? ('Điểm mình ưng nhất ở em này là '+firstPoint+', chất liệu làm chắc chắn, cầm vào là thấy xịn hẳn, từng chi tiết đều được làm kỹ, dùng hằng ngày thoải mái mà không lo hỏng vặt đâu nha cả nhà') : (name+' dùng cực kỳ tiện, chất liệu chắc chắn, cầm chắc tay, chất lượng hơn hẳn mong đợi, dùng hằng ngày thoải mái mà không lo hỏng vặt đâu nha cả nhà'),45) },
+    { visual:'Kết quả sau khi dùng '+name+', tổng thể gọn gàng đẹp mắt, người dùng hài lòng', dialogue:capWords(st.noPrice?'Ai đang cần thì bấm ngay vào giỏ hàng ở góc trái bên dưới để xem thêm nha, đang có ưu đãi nên rất đáng chốt luôn đó. Mình dùng rồi mới dám giới thiệu, đảm bảo nhận hàng về là ưng, không thất vọng đâu cả nhà ơi!':'Mức giá này mà chất lượng được vậy là quá hời luôn đó cả nhà, bấm ngay vào giỏ hàng ở góc trái bên dưới để chốt nha. Mình dùng rồi mới dám giới thiệu, đảm bảo nhận hàng về là ưng ý liền!',45) },
+    { visual:'So sánh nhanh sản phẩm '+name+' với cách làm thông thường, khác biệt rõ rệt', dialogue:capWords('Từ ngày có '+name+', mọi thứ nhanh gọn hơn hẳn, đỡ tốn thời gian mà hiệu quả lại rõ rệt. Trước đây làm thủ công vừa mệt vừa lâu, giờ chỉ cần vài thao tác đơn giản là xong, tiện lợi hơn rất nhiều luôn đó cả nhà!',45) },
+    { visual:'Tổng kết: sản phẩm '+name+' trên tay, nền bối cảnh đẹp, gật đầu hài lòng', dialogue:capWords('Chốt lại là '+name+' rất đáng mua nha cả nhà, chất lượng so với tầm giá thì quá ổn luôn. Ai còn phân vân thì cứ bấm vào giỏ hàng xem thêm đánh giá của mọi người, đảm bảo xem xong là muốn chốt đơn ngay đó!',45) }
   ];
   const outArr=base.slice(0, st.scenes);
-  const camDef=['Cận cảnh ngang tầm mắt, máy tĩnh','Cận cảnh tay và sản phẩm, máy lia chậm theo thao tác','Trung cảnh ngang tầm mắt, máy tĩnh','Trung cảnh, máy đẩy nhẹ vào sản phẩm','Cận cảnh sản phẩm, máy tĩnh'];
-  const tlDef=['0–2s: sản phẩm vào khung hình, thu hút ngay; 2–6s: demo thao tác chính; 6–10s: cho thấy kết quả rõ ràng','0–3s: quay chi tiết sản phẩm; 3–7s: thao tác sử dụng cận cảnh; 7–10s: kết quả sau khi dùng','0–3s: tổng thể kết quả; 3–7s: nhân vật trải nghiệm và phản ứng hài lòng; 7–10s: kêu gọi hành động, chỉ tay về góc giỏ hàng','0–3s: đặt hai cách làm cạnh nhau; 3–7s: so sánh trực tiếp; 7–10s: khác biệt rõ rệt','0–3s: sản phẩm trên tay, tổng kết nhanh; 3–7s: nhắc lại điểm mạnh nhất; 7–10s: gật đầu chốt, kêu gọi xem giỏ hàng'];
+  const camDef=['Trung cảnh → Cận cảnh sản phẩm → Trung cảnh','Cận cảnh tay → Cận cảnh chi tiết → Trung cảnh','Toàn cảnh → Trung cảnh → Cận cảnh kết quả','Trung cảnh → Cận cảnh so sánh → Toàn cảnh','Cận cảnh sản phẩm → Trung cảnh → Toàn cảnh'];
+  const tlDef=['0–3s (trung cảnh): nhân vật nhìn camera nói câu hook, giơ sản phẩm vào khung hình; 3–6s (cận cảnh): sản phẩm đang hoạt động, kết quả thấy ngay; 6–10s (trung cảnh): nhân vật gật đầu khẳng định','0–3s (cận cảnh): quay chi tiết và chất liệu sản phẩm, khớp lời đang nói; 3–7s (cận cảnh tay): thao tác sử dụng rõ ràng; 7–10s (trung cảnh): kết quả sau khi dùng','0–3s (toàn cảnh): tổng thể bối cảnh và kết quả; 3–7s (trung cảnh): nhân vật trải nghiệm, phản ứng hài lòng; 7–10s (cận cảnh): sản phẩm nổi bật, kêu gọi bấm giỏ hàng','0–3s (trung cảnh): đặt hai cách làm cạnh nhau; 3–7s (cận cảnh): so sánh trực tiếp từng chi tiết; 7–10s (toàn cảnh): khác biệt rõ rệt','0–3s (cận cảnh): sản phẩm trên tay, tổng kết điểm mạnh; 3–7s (trung cảnh): nhắc lại lợi ích lớn nhất; 7–10s (toàn cảnh): gật đầu chốt, kêu gọi xem giỏ hàng'];
   outArr.forEach((s,i)=>{ s.camera=camDef[i]||camDef[0]; s.timeline=tlDef[i]||tlDef[0]; });
   if(st.dialogue===false) outArr.forEach(s=>s.dialogue=''); return outArr;
 }
@@ -1606,10 +1605,10 @@ async function genScriptStructured(ctx, st, count){
   const usr=[ 'Chủ đề / ý tưởng: '+ctx,
     'Mẫu kịch bản: '+TEMPLATES[st.template]+'. Số cảnh: '+count+' (mỗi cảnh ~10 giây).',
     'Cảnh 1: hook demo trực diện, kết quả thấy ngay trong 2 giây đầu.'+((st.hookStyle&&st.hookStyle!=='ai')? ' Kiểu mở đầu: '+st.hookStyle : ''),
-    'Cấu trúc: các cảnh giữa XEN KẼ người nói và CẬN CẢNH demo (ít nhất một cảnh cận cảnh demo thật); cảnh cuối là kết quả + kêu gọi bấm giỏ hàng góc trái bên dưới.',
-    'Mỗi cảnh có camera (góc máy + cỡ cảnh + chuyển động máy) và timeline (diễn biến theo mốc giây trong đúng 10 giây: "0–2s: ...; 2–6s: ...; 6–10s: ...").',
+    'Cấu trúc: cảnh 1 mở bằng nhân vật nhìn thẳng camera nói câu hook trong 3–4 giây đầu, sau đó tập trung vào sản phẩm; các cảnh giữa XEN KẼ người nói và CẬN CẢNH demo (ít nhất một cảnh cận cảnh demo thật); cảnh cuối là kết quả + kêu gọi bấm giỏ hàng góc trái bên dưới.',
+    'Mỗi cảnh có camera (chuỗi cỡ cảnh luân chuyển: toàn – trung – cận) và timeline (mỗi mốc giây ghi rõ cỡ cảnh + hành động + nội dung thoại; thoại nói tới đâu camera cho thấy đúng thứ đó; cắt máy liên tục, không để một cỡ cảnh đứng yên quá 4 giây).',
     'Mọi cảnh ở CÙNG MỘT bối cảnh duy nhất, nhân vật mặc CÙNG một bộ trang phục; visual không đổi địa điểm, không mô tả chữ/logo in trên sản phẩm hay điện thoại.',
-    'Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh vừa đủ nói trong 10 giây với nhịp NHANH, dồn dập, năng động (khoảng 30–40 từ), câu ngắn, đúng trọng tâm'+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'.',
+    'Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh vừa đủ nói trong 10 giây với nhịp NHANH, dồn dập, năng động (khoảng 38–45 từ), văn phong review chuyên nghiệp: gãy gọn, giàu thông tin về sản phẩm, đúng trọng tâm'+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'.',
     'Trả về JSON: {"style":"một đoạn mô tả phong cách/giọng điệu chung của video, 2-3 câu","scenes":[{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại","camera":"góc máy","timeline":"0–2s: ...; 2–6s: ...; 6–10s: ..."}]} đủ '+count+' cảnh.'
   ].join('\n');
   const ask=async(extra)=>{ const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
@@ -1619,7 +1618,7 @@ async function genScriptStructured(ctx, st, count){
   let obj=await ask('');
   if(!obj||!Array.isArray(obj.scenes)||!obj.scenes.length) obj=await ask('\nLƯU Ý: lần trả trước bị lỗi cú pháp JSON. CHỈ trả một JSON object hợp lệ, khóa và chuỗi bọc trong dấu ngoặc kép ".');
   if(!obj||!Array.isArray(obj.scenes)||!obj.scenes.length) throw new Error('AI không trả JSON hợp lệ');
-  return { style:String(obj.style||''), scenes:obj.scenes.slice(0,count).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',40), camera:String(o.camera||''), timeline:String(o.timeline||'') })) };
+  return { style:String(obj.style||''), scenes:obj.scenes.slice(0,count).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',45), camera:String(o.camera||''), timeline:String(o.timeline||'') })) };
 }
 async function aiScript(){
   const p=activeProject(); if(!p) return; const st=S.settings;
