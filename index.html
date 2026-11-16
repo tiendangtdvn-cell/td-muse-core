@@ -287,7 +287,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.0</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.1</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
@@ -595,6 +595,8 @@ function renderWorkspace(){
   <div class="steptitle" id="sec2">2 · Kịch bản — ${p.segments.length} đoạn</div>
   <div class="card">
     <p class="muted">Kịch bản do AI tạo ngay ở tab Điều khiển khi bấm TẠO KỊCH BẢN. Tại đây m xem và chỉnh tay từng đoạn.</p>
+    ${p.scriptMode==='fallback'?`<div class="btnrow"><span class="muted">⚠ Dự án này đang dùng kịch bản MẪU — lúc tạo, AI chưa trả lời (thường do xưởng mới khởi động, AI còn lạnh).</span><button class="btn small primary" onclick="App.rescript()">↻ Soạn lại bằng AI</button></div>`:''}
+    ${p.scriptMode==='ai'?`<div class="btnrow"><span class="muted">Kịch bản này do AI viết theo kiểu cũ (chưa có continuity).</span><button class="btn small" onclick="App.rescript()">↻ Soạn lại theo schema mới</button></div>`:''}
     ${p.segments.map((s,i)=>`
       <h3 style="margin-top:${i?16:0}px">${esc(s.title)}</h3>
       <label class="fl">Mô tả hình ảnh / hành động của đoạn</label>
@@ -863,7 +865,7 @@ function scriptPack(){ const p=activeProject(); if(!p) return;
   const blob=new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'}); const a=document.createElement('a');
   a.href=URL.createObjectURL(blob); a.download='goi-kich-ban.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); }
 window.App = window.App || {};
-Object.assign(window.App,{ genKeyframe, approveKeyframe, genVideo, queueAll, downloadSeg, downloadAll, scriptPack });
+Object.assign(window.App,{ genKeyframe, approveKeyframe, genVideo, queueAll, downloadSeg, downloadAll, scriptPack, rescript });
 function setSegPrompt(segId,kind,v){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(!s) return; if(kind==='kf') s.promptKf=v; else s.promptVid=v; save(); }
 function resetSegPrompt(segId,kind){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(!s) return; if(kind==='kf') s.promptKf=''; else s.promptVid=''; save(); renderProductionZone(); }
 function resetInputs(){
@@ -1592,7 +1594,7 @@ async function runBatch(){
 async function scriptIntoProject(proj, prod, st){
   let v2=null; try{ v2=await genScriptV2(prod, st); }catch(e){ v2=null; }
   if(v2){
-    proj.schema='v2';
+    proj.schema='v2'; proj.scriptMode='v2';
     proj.script2={ profile:v2.profile, voice:voiceProfile(st) };
     v2.scenes.forEach((sc,i)=>{ const sg=proj.segments[i]; if(!sg) return;
       sg.scene2=sc; sg.dialogue=sc.dialogue||'';
@@ -1605,8 +1607,20 @@ async function scriptIntoProject(proj, prod, st){
   let scenes=null, usedAI=true;
   try{ scenes=await genScriptAI(prod, st); }catch(e){ scenes=null; }
   if(!scenes){ scenes=genScriptFallback(prod, st); usedAI=false; }
+  proj.scriptMode = usedAI? 'ai' : 'fallback';
   scenes.forEach((sc,i)=>{ if(proj.segments[i]){ const sg=proj.segments[i]; sg.visual=sc.visual||''; sg.dialogue=sc.dialogue||''; sg.camera=sc.camera||''; sg.timeline=sc.timeline||''; } });
   return usedAI;
+}
+async function rescript(){
+  const p=activeProject(); if(!p) return;
+  const busy=p.segments.some(s=>['done','queued','processing'].includes(s.kf.status)||['done','queued','processing'].includes(s.vid.status));
+  if(busy && !confirm('Dự án đã có keyframe/video. Soạn lại kịch bản sẽ làm nội dung lệch với hình đã tạo. Vẫn soạn lại?')) return;
+  toast('Đang soạn lại kịch bản bằng AI… (có thể mất 1–2 phút)');
+  const st=Object.assign({}, S.settings, { scenes:p.segments.length });
+  const prod={ name:p.product||p.name, desc:p.points||'', note:p.idea||'', images:p.refsProd||[] };
+  await scriptIntoProject(p, prod, st);
+  save(); renderWorkspace();
+  toast(p.scriptMode==='v2'? 'Đã soạn lại — kịch bản chuẩn continuity (schema mới)' : (p.scriptMode==='ai'? 'Đã soạn lại bằng AI (đường cũ)' : 'AI vẫn chưa trả lời — app giữ kịch bản mẫu, thử lại sau ít phút'));
 }
 function ideaSubject(st){ const fm=curFmt(); switch(st.format){
   case 'drama': return (fm.plot||'Drama mới').split('\n')[0].slice(0,50) || 'Drama mới';
