@@ -1,515 +1,1305 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>TD Muse Studio 9:16</title>
-  <style>
-    :root {
-      --bg: #09090b;
-      --card: #141418;
-      --card-border: #27272a;
-      --primary: #8b5cf6;
-      --primary-hover: #7c3aed;
-      --accent: #10b981;
-      --danger: #ef4444;
-      --warning: #f59e0b;
-      --text: #fafafa;
-      --muted: #a1a1aa;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body {
-      background-color: #000;
-      color: var(--text);
-      display: flex;
-      justify-content: center;
-      min-height: 100vh;
-    }
-    /* Khung chuẩn 9:16 Mobile First */
-    .app-shell {
-      width: 100%;
-      max-width: 430px;
-      min-height: 100vh;
-      background-color: var(--bg);
-      border-left: 1px solid var(--card-border);
-      border-right: 1px solid var(--card-border);
-      display: flex;
-      flex-direction: column;
-      padding: 16px;
-      padding-bottom: 40px;
-    }
-    header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-bottom: 14px;
-      border-bottom: 1px solid var(--card-border);
-      margin-bottom: 14px;
-    }
-    .brand { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; display: flex; align-items: center; gap: 8px; }
-    .brand span { background: linear-gradient(135deg, #a78bfa, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .status-pill {
-      font-size: 11px;
-      padding: 4px 10px;
-      border-radius: 99px;
-      background: #18181b;
-      border: 1px solid var(--card-border);
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-    }
-    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warning); }
-    .dot.online { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
-    .dot.offline { background: var(--danger); }
-
-    /* Tabs */
-    .tabs {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-      background: var(--card);
-      padding: 4px;
-      border-radius: 12px;
-      border: 1px solid var(--card-border);
-      margin-bottom: 16px;
-    }
-    .tab-btn {
-      background: transparent;
-      border: none;
-      color: var(--muted);
-      padding: 10px;
-      font-size: 13px;
-      font-weight: 600;
-      border-radius: 9px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .tab-btn.active {
-      background: #27272a;
-      color: var(--text);
-    }
-
-    .panel { display: none; flex-direction: column; gap: 14px; }
-    .panel.active { display: flex; }
-
-    .card {
-      background: var(--card);
-      border: 1px solid var(--card-border);
-      border-radius: 14px;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
-    input, textarea, select {
-      width: 100%;
-      background: #09090b;
-      border: 1px solid var(--card-border);
-      color: var(--text);
-      padding: 12px;
-      border-radius: 10px;
-      font-size: 14px;
-      outline: none;
-    }
-    input:focus, textarea:focus, select:focus { border-color: var(--primary); }
-    textarea { resize: vertical; min-height: 100px; line-height: 1.4; }
-
-    .btn {
-      width: 100%;
-      padding: 13px;
-      border-radius: 12px;
-      border: none;
-      font-size: 14px;
-      font-weight: 700;
-      cursor: pointer;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 8px;
-      transition: opacity 0.2s;
-    }
-    .btn:active { opacity: 0.8; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-primary { background: var(--primary); color: #fff; }
-    .btn-accent { background: var(--accent); color: #052e16; }
-    .btn-outline { background: transparent; border: 1px solid var(--card-border); color: var(--text); }
-
-    /* Khung Preview Video 9:16 */
-    .video-stage {
-      width: 100%;
-      aspect-ratio: 9 / 16;
-      background: #050507;
-      border: 1px dashed var(--card-border);
-      border-radius: 14px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      overflow: hidden;
-      position: relative;
-    }
-    .video-stage video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .placeholder-text {
-      text-align: center;
-      color: var(--muted);
-      font-size: 13px;
-      padding: 20px;
-      line-height: 1.5;
-    }
-    .log-box {
-      font-family: ui-monospace, SFMono-Regular, monospace;
-      font-size: 12px;
-      background: #050507;
-      border: 1px solid var(--card-border);
-      padding: 10px;
-      border-radius: 10px;
-      color: #a7f3d0;
-      max-height: 140px;
-      overflow-y: auto;
-      white-space: pre-wrap;
-      word-break: break-all;
-    }
-    .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .hint { font-size: 11px; color: var(--muted); line-height: 1.4; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>TD Muse Studio v5 — Xưởng Sản Xuất Video</title>
+<style>
+  :root{
+    --bg:#0e1013; --panel:#171a20; --panel2:#1e222b; --line:#2a2f3a;
+    --txt:#eef1f6; --dim:#9aa3b2; --acc:#6c8cff; --acc2:#8a6cff;
+    --ok:#2ecc71; --warn:#ffb020; --bad:#ff5a5a; --radius:14px;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;}
+  button{font-family:inherit}
+  /* ---------- Header ---------- */
+  header{position:sticky; top:0; z-index:30; display:flex; align-items:center; gap:10px;
+    padding:10px 14px; background:rgba(14,16,19,.92); backdrop-filter:blur(8px); border-bottom:1px solid var(--line)}
+  header .logo{font-weight:800; font-size:17px; letter-spacing:.2px}
+  header .logo span{color:var(--acc)}
+  .pill{margin-left:auto; display:flex; align-items:center; gap:7px; font-size:12px; color:var(--dim);
+    border:1px solid var(--line); padding:5px 10px; border-radius:999px; background:var(--panel)}
+  .dot{width:9px; height:9px; border-radius:50%; background:#666}
+  .dot.on{background:var(--ok); box-shadow:0 0 8px var(--ok)}
+  .dot.off{background:var(--bad)}
+  /* ---------- Layout ---------- */
+  #app{display:block; padding-bottom:86px}
+  main{padding:14px; max-width:1180px; margin:0 auto}
+  nav#tabs{position:fixed; left:0; right:0; bottom:0; z-index:30; display:flex;
+    background:rgba(18,20,25,.97); border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom)}
+  nav#tabs button{flex:1; background:none; border:none; color:var(--dim); padding:10px 4px 12px;
+    font-size:12px; display:flex; flex-direction:column; align-items:center; gap:3px; cursor:pointer}
+  nav#tabs button .ic{font-size:20px}
+  nav#tabs button.active{color:var(--acc)}
+  /* Landscape / wide: side rail + two-pane workspace */
+  @media (min-width:860px){
+    #app{display:grid; grid-template-columns:208px 1fr; padding-bottom:0; min-height:100vh}
+    nav#tabs{position:sticky; top:49px; height:calc(100vh - 49px); flex-direction:column; border-top:none;
+      border-right:1px solid var(--line); padding:14px 10px; gap:6px}
+    nav#tabs button{flex:none; flex-direction:row; justify-content:flex-start; gap:10px; padding:12px; border-radius:10px; font-size:14px}
+    nav#tabs button.active{background:var(--panel2)}
+    main{padding:20px; width:100%}
+    .ws-grid{display:grid; grid-template-columns:minmax(320px,430px) 1fr; gap:18px; align-items:start}
+    .ws-grid .stickycol{position:sticky; top:70px}
+  }
+  /* ---------- Cards & forms ---------- */
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px; margin-bottom:14px}
+  .card h3{margin:0 0 10px; font-size:15px}
+  .card h3 .sub{color:var(--dim); font-weight:400; font-size:12px}
+  label.fl{display:block; font-size:12px; color:var(--dim); margin:10px 0 5px}
+  input[type=text],input[type=url],textarea,select{width:100%; background:var(--panel2); color:var(--txt);
+    border:1px solid var(--line); border-radius:10px; padding:11px; font-size:14px; outline:none}
+  textarea{resize:vertical; min-height:64px; line-height:1.45}
+  input:focus,textarea:focus,select:focus{border-color:var(--acc)}
+  .btn{display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:44px;
+    padding:10px 16px; border-radius:11px; border:1px solid var(--line); background:var(--panel2);
+    color:var(--txt); font-size:14px; font-weight:600; cursor:pointer}
+  .btn:active{transform:scale(.98)}
+  .btn.primary{background:linear-gradient(135deg,var(--acc),var(--acc2)); border:none; color:#fff}
+  .btn.ok{background:var(--ok); border:none; color:#06280f}
+  .btn.danger{background:none; border-color:var(--bad); color:var(--bad)}
+  .btn.small{min-height:38px; padding:7px 12px; font-size:13px}
+  .btn[disabled]{opacity:.45; pointer-events:none}
+  .btnrow{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  .muted{color:var(--dim); font-size:12.5px; line-height:1.5}
+  .log{background:#0a0c0f; border:1px solid var(--line); border-radius:10px; padding:10px;
+    font-size:12px; line-height:1.55; max-height:180px; overflow:auto; white-space:pre-wrap; word-break:break-word}
+  .log .e{color:var(--bad)} .log .g{color:var(--ok)}
+  /* ---------- Projects ---------- */
+  .proj{display:flex; gap:12px; align-items:center; cursor:pointer}
+  .proj .thumb{width:54px; height:72px; border-radius:9px; object-fit:cover; background:var(--panel2); flex:none}
+  .proj .meta{flex:1; min-width:0}
+  .proj .name{font-weight:700; font-size:15px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  .badge{display:inline-block; font-size:11px; padding:2px 8px; border-radius:999px; border:1px solid var(--line); color:var(--dim)}
+  .badge.run{color:var(--warn); border-color:var(--warn)}
+  .badge.done{color:var(--ok); border-color:var(--ok)}
+  /* ---------- Stepper ---------- */
+  .steps{display:flex; gap:6px; overflow-x:auto; padding:2px 0 10px; scrollbar-width:none}
+  .steps::-webkit-scrollbar{display:none}
+  .step{flex:none; font-size:12.5px; padding:7px 12px; border-radius:999px; border:1px solid var(--line);
+    color:var(--dim); background:var(--panel); cursor:pointer; white-space:nowrap}
+  .step.cur{color:#fff; background:linear-gradient(135deg,var(--acc),var(--acc2)); border:none; font-weight:700}
+  .step.done{color:var(--ok); border-color:var(--ok)}
+  /* ---------- Refs ---------- */
+  .refs{display:flex; gap:8px; flex-wrap:wrap}
+  .refbox{position:relative; width:74px; height:92px; border-radius:10px; overflow:hidden; background:var(--panel2); border:1px solid var(--line)}
+  .refbox img{width:100%; height:100%; object-fit:cover}
+  .refbox button{position:absolute; top:3px; right:3px; width:22px; height:22px; border-radius:50%; border:none;
+    background:rgba(0,0,0,.65); color:#fff; font-size:13px; line-height:1; cursor:pointer}
+  .addref{width:74px; height:92px; border-radius:10px; border:1.5px dashed var(--line); background:none;
+    color:var(--dim); font-size:22px; cursor:pointer}
+  /* ---------- Segments ---------- */
+  .seg{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); margin-bottom:14px; overflow:hidden}
+  .seg-head{display:flex; align-items:center; gap:8px; padding:11px 13px; background:var(--panel2); border-bottom:1px solid var(--line)}
+  .seg-head b{font-size:14px}
+  .seg-body{padding:13px}
+  .stagebox{position:relative; width:100%; max-width:300px; margin:0 auto 10px; aspect-ratio:9/16;
+    background:#000; border-radius:12px; overflow:hidden; border:1px solid var(--line)}
+  .stagebox.wide{aspect-ratio:16/9} .stagebox.sq{aspect-ratio:1/1}
+  .stagebox img,.stagebox video{width:100%; height:100%; object-fit:cover; display:block}
+  .stagebox .empty{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    color:var(--dim); font-size:13px; text-align:center; padding:14px}
+  .prog{height:8px; background:var(--panel2); border-radius:99px; overflow:hidden; margin:8px 0}
+  .prog i{display:block; height:100%; background:linear-gradient(90deg,var(--acc),var(--acc2)); transition:width .4s}
+  .statusline{font-size:12.5px; color:var(--dim)}
+  .statusline .err{color:var(--bad)}
+  .qcitem{display:flex; gap:9px; align-items:flex-start; padding:7px 0; border-bottom:1px dashed var(--line); font-size:13.5px}
+  .qcitem:last-child{border-bottom:none}
+  .qcitem input{width:20px; height:20px; margin-top:1px; accent-color:var(--ok); flex:none}
+  /* ---------- Library ---------- */
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(108px,1fr)); gap:10px}
+  .gitem{border:1px solid var(--line); border-radius:11px; overflow:hidden; background:var(--panel2); cursor:pointer}
+  .gitem .ph{aspect-ratio:9/12; background:#000; display:flex; align-items:center; justify-content:center; overflow:hidden}
+  .gitem img,.gitem video{width:100%; height:100%; object-fit:cover}
+  .gitem .cap{font-size:10.5px; color:var(--dim); padding:5px 7px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+  /* ---------- Modal ---------- */
+  #modal{position:fixed; inset:0; z-index:50; background:rgba(0,0,0,.88); display:none;
+    align-items:center; justify-content:center; flex-direction:column; gap:12px; padding:18px}
+  #modal.open{display:flex}
+  #modal img,#modal video{max-width:min(92vw,430px); max-height:74vh; border-radius:12px}
+  @media (min-width:860px){ .seglist{display:grid; grid-template-columns:1fr 1fr; gap:14px} .seglist .seg{margin-bottom:0} }
+  .seglist{display:block}
+  .steptitle{font-size:16px; font-weight:800; margin:18px 0 10px}
+  .steptitle:first-child{margin-top:0}
+  input[type=file].hiddenfile{display:none}
+  .thumbrow{display:flex; gap:10px; align-items:center}
+  /* ---------- Control / batch (v3) ---------- */
+  @media (min-width:860px){ .ctl-grid{display:grid; grid-template-columns:348px 1fr; gap:18px; align-items:start}
+    .ctl-grid #optionsZone{position:sticky; top:70px} }
+  .segbtn{display:flex; gap:8px}
+  .segbtn button{flex:1; min-height:44px; border-radius:11px; border:1px solid var(--line); background:var(--panel2);
+    color:var(--dim); font-size:13.5px; font-weight:600; cursor:pointer; padding:8px}
+  .segbtn button.active{background:linear-gradient(135deg,#e8b93c,#c9932b); color:#231a02; border:none}
+  .optgroup{font-size:11px; letter-spacing:1.2px; color:var(--dim); margin:16px 0 6px; font-weight:700}
+  .optgroup:first-child{margin-top:0}
+  .checkrow{display:flex; gap:9px; align-items:center; font-size:14px; padding:9px 0 2px}
+  .checkrow input{width:20px; height:20px; accent-color:var(--warn)}
+  .goldbtn{width:100%; min-height:56px; border:none; border-radius:13px; cursor:pointer;
+    background:linear-gradient(135deg,#f0c44e,#d9a62e); color:#231a02; font-size:16.5px; font-weight:800; letter-spacing:.3px}
+  .goldbtn:active{transform:scale(.99)} .goldbtn[disabled]{opacity:.5}
+  .prodrow{border:1px solid var(--line); border-radius:var(--radius); background:var(--panel); padding:12px; margin-bottom:12px}
+  .prodrow .phead{display:flex; align-items:center; gap:9px; margin-bottom:8px}
+  .pnum{width:26px; height:26px; border-radius:50%; background:linear-gradient(135deg,#e8b93c,#c9932b);
+    color:#231a02; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; flex:none}
+  .price{color:#f0c44e; font-weight:700; white-space:nowrap}
+  .jobrow{border:1px solid var(--line); border-radius:12px; padding:11px 12px; margin-bottom:10px; background:var(--panel2)}
+  .jobrow .jhead{display:flex; align-items:center; gap:8px}
+  .jbadge{font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; background:#3a3f4d; color:#cfd6e4}
+  .jbadge.run{background:#5a4510; color:#ffd968} .jbadge.done{background:#14532d; color:#7be495}
+  .jbadge.fail{background:#5a1d1d; color:#ff9a9a} .jbadge.stop{background:#333; color:#aaa}
+  .sceneline{font-size:12px; color:var(--dim); margin-top:5px; line-height:1.5}
+  .sceneline b{color:var(--txt); font-weight:600}
+  .hidden{display:none !important}
+  .toast{position:fixed; left:50%; bottom:96px; transform:translateX(-50%); z-index:60; background:var(--panel2);
+    border:1px solid var(--line); color:var(--txt); padding:10px 16px; border-radius:999px; font-size:13.5px;
+    opacity:0; pointer-events:none; transition:opacity .25s; max-width:88vw; text-align:center}
+  .toast.show{opacity:1}
+  @media (min-width:860px){ .toast{bottom:26px} }
+</style>
 </head>
 <body>
-  <div class="app-shell">
-    <header>
-      <div class="brand">🎬 <span>TD MUSE STUDIO</span></div>
-      <div class="status-pill" onclick="pingServer()" title="Bấm để đánh thức server Render">
-        <div id="statusDot" class="dot"></div>
-        <span id="statusText">Chạm để kết nối</span>
-      </div>
-    </header>
-
-    <div class="tabs">
-      <button class="tab-btn active" onclick="switchTab('studio', this)">🎥 Xưởng Tạo Video</button>
-      <button class="tab-btn" onclick="switchTab('settings', this)">⚙️ Nạp Cookie & Key</button>
-    </div>
-
-    <!-- TAB 1: XƯỞNG TẠO VIDEO -->
-    <div id="panel-studio" class="panel active">
-      <div class="card">
-        <div class="row-2">
-          <div>
-            <label>Model xử lý</label>
-            <select id="modelSelect">
-              <option value="muse-video">muse-video (Mặc định)</option>
-            </select>
-          </div>
-          <div>
-            <label>Khung hình</label>
-            <select id="ratioSelect">
-              <option value="9:16">9:16 (TikTok / Reels)</option>
-              <option value="16:9">16:9 (Ngang)</option>
-              <option value="1:1">1:1 (Vuông)</option>
-            </select>
-          </div>
-        </div>
-
+<header>
+  <div class="logo">TD MUSE <span>STUDIO v5</span></div>
+  <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div>
+</header>
+<div id="app">
+  <nav id="tabs">
+    <button data-view="control" class="active"><span class="ic">🎛️</span>Điều khiển</button>
+    <button data-view="projects"><span class="ic">🎬</span>Xưởng</button>
+    <button data-view="library"><span class="ic">🗂️</span>Thư viện</button>
+    <button data-view="settings"><span class="ic">⚙️</span>Cài đặt</button>
+  </nav>
+  <main>
+    <!-- ================= CONTROL / BATCH ================= -->
+    <section id="view-control">
+      <div class="ctl-grid">
+        <div id="optionsZone"></div>
         <div>
-          <label>Kịch bản / Prompt cảnh quay</label>
-          <textarea id="promptInput" placeholder="Ví dụ: Cận cảnh bàn tay cầm máy thổi bụi mini thổi bay lớp bụi trên bàn phím cơ, ánh sáng studio sắc nét, chuyển động mượt 9:16..."></textarea>
-        </div>
-
-        <button id="generateBtn" class="btn btn-primary" onclick="generateVideo()">
-          ⚡ Bắt Đầu Xuất Video
-        </button>
-      </div>
-
-      <div id="studioLog" class="log-box" style="display:none;"></div>
-
-      <div class="video-stage" id="videoStage">
-        <div class="placeholder-text">
-          Khung xem trước chuẩn 9:16<br/>
-          Video render xong sẽ tự động phát tại đây
+          <div id="batchZone"></div>
+          <div id="monitorZone"></div>
         </div>
       </div>
+    </section>
+    <!-- ================= PROJECTS ================= -->
+    <section id="view-projects" class="hidden">
+      <div id="projectList"></div>
+      <div id="workspace" class="hidden"></div>
+    </section>
+    <!-- ================= LIBRARY ================= -->
+    <section id="view-library" class="hidden">
+      <div class="card">
+        <h3>Thư viện media trên bridge <span class="sub">— mọi ảnh/clip đã gen, mới nhất trước</span></h3>
+        <div class="btnrow" style="margin:0 0 10px"><button class="btn small" id="libRefresh">↻ Tải lại</button></div>
+        <div class="grid" id="libGrid"></div>
+        <p class="muted" id="libEmpty">Chưa tải thư viện.</p>
+      </div>
+    </section>
+    <!-- ================= SETTINGS ================= -->
+    <section id="view-settings" class="hidden">
+      <div class="card">
+        <h3>Kết nối xưởng</h3>
+        <label class="fl">Địa chỉ Worker (cầu nối tới bridge)</label>
+        <input type="url" id="cfgUrl" placeholder="https://...workers.dev">
+        <label class="fl">API key của bridge</label>
+        <input type="text" id="cfgKey" placeholder="Key bridge (để trống nếu Worker đã bơm key)">
+        <div class="btnrow">
+          <button class="btn primary" id="cfgSave">Lưu cấu hình</button>
+          <button class="btn" id="cfgTest">Kiểm tra kết nối</button>
+        </div>
+        <div class="log" id="cfgLog" style="margin-top:10px">Sẵn sàng.</div>
+      </div>
+      <div class="card">
+        <h3>Nạp tài khoản Muse (cookie)</h3>
+        <p class="muted">Dán JSON từ Cookie-Editor của nick Muse Mỹ. Hệ thống tự bóc tách và đẩy lên bridge qua /admin/accounts. Chỉ nạp lại khi phiên hết hạn hoặc đổi tài khoản.</p>
+        <label class="fl">Tên nhãn tài khoản</label>
+        <input type="text" id="accLabel" placeholder="VD: Nick Mỹ chính">
+        <label class="fl">Cookie JSON</label>
+        <textarea id="accCookie" placeholder='Dán JSON cookie vào đây...'></textarea>
+        <div class="btnrow"><button class="btn primary" id="accImport">Nạp lên bridge</button></div>
+        <div class="log" id="accLog" style="margin-top:10px">Chưa nạp.</div>
+      </div>
+      <div class="card">
+        <h3>Về bản v2</h3>
+        <p class="muted">Dây chuyền: Dự án → Nguyên liệu → Kịch bản → Keyframe (duyệt) → Sản xuất (hàng đợi) → QC &amp; Xuất.
+        Mọi video đều đi từ keyframe đã duyệt kèm ảnh tham chiếu để giữ mặt nhân vật và sản phẩm đồng nhất.
+        Dữ liệu dự án lưu ngay trên máy này (trình duyệt) — hãy xuất JSON dự phòng cho dự án quan trọng.</p>
+      </div>
+    </section>
+  </main>
+</div>
+<div id="modal"><div id="modalBody"></div>
+  <div class="btnrow" style="justify-content:center">
+    <button class="btn" id="modalDownload">⬇ Tải xuống</button>
+    <button class="btn danger" id="modalClose">Đóng</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+"use strict";
+/* ============================================================
+   TD MUSE STUDIO v2 — Xưởng sản xuất video (giai đoạn 1)
+   Bridge API (muse2api):
+     POST /v1/images/tasks {prompt, images[], aspect_ratio} -> 202 {id}
+     GET  /v1/images/tasks/{id} -> task (completed: data[0].url / result.url)
+     POST /v1/videos {prompt, images[], aspect_ratio} -> {id, status}
+     GET  /v1/videos/{id} -> task (completed: url / video.url / result.url)
+     GET  /admin/media -> {media:[{name,url,bytes,mtime,kind}]}
+     GET  /v1/models, GET /admin/status, POST /admin/accounts
+   ============================================================ */
+const LS_URL='td_muse_url', LS_KEY='td_muse_key', LS_STATE='td_studio_v2_state';
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const uid=()=> 'p'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function toast(msg,ms=2600){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),ms); }
+function logTo(el,msg,cls){ const b=$(el); if(!b) return; const d=document.createElement('div'); if(cls) d.className=cls; d.textContent=msg; b.appendChild(d); b.scrollTop=b.scrollHeight; }
 
-      <a id="downloadBtn" class="btn btn-accent" style="display:none; text-decoration:none;" target="_blank" download="muse_video.mp4">
-        ⬇️ Tải Video Về Máy
-      </a>
+/* ---------------- State ---------------- */
+let S = loadState();
+const DEFAULT_SETTINGS={ charMode:'pov', bgImage:'', charRefs:[], template:'review', language:'vi',
+  region:'bac', voice:'nu-bac-chuan', scenes:3, ratio:'9:16', versions:1, noPrice:true,
+  style:'chan-thuc', presets:[], speechSpeed:'vua', hookStyle:'ai', speakMode:'tnhien',
+  expression:'tnhien', animalTalk:false, retry:3, charLib:[], activeChar:'', char2:'', useChar2:false };
+const ASM_DEFAULTS={ trimSilence:true, subOn:true, subSize:'vua', subPos:'duoi', subStyle:'tiktok',
+  subColor:'trang', coverTitle:'', ctaEnd:false, logo:'', speed:'1', musicName:'' };
+function loadState(){
+  let s={ projects:[], activeId:null };
+  try{ const raw=localStorage.getItem(LS_STATE); if(raw){ const p=JSON.parse(raw); if(p && Array.isArray(p.projects)) s=p; } }catch(e){}
+  s.settings=Object.assign({}, DEFAULT_SETTINGS, s.settings||{});
+  if(!Array.isArray(s.batch)) s.batch=[];
+  if(!Array.isArray(s.jobs)) s.jobs=[];
+  return s;
+}
+let saveTimer=null;
+function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(()=>{ try{ localStorage.setItem(LS_STATE, JSON.stringify(S)); }catch(e){ toast('Bộ nhớ trình duyệt đầy — hãy xuất JSON dự phòng!'); } },250); }
+function cfg(){ return { url:(localStorage.getItem(LS_URL)||'').replace(/\/+$/,''), key:localStorage.getItem(LS_KEY)||'' }; }
+function activeProject(){ return S.projects.find(p=>p.id===S.activeId) || null; }
+
+/* ---------------- API ---------------- */
+async function api(path, opts={}){
+  const {url,key}=cfg();
+  if(!url) throw new Error('Chưa cấu hình địa chỉ Worker (vào tab Cài đặt).');
+  const headers=Object.assign({}, opts.headers||{});
+  if(!opts.form){ headers['Content-Type']='application/json'; }
+  if(key) headers['Authorization']='Bearer '+key;
+  const res=await fetch(url+path, Object.assign({}, opts, {headers}));
+  const text=await res.text();
+  let data=null; try{ data=text?JSON.parse(text):null; }catch(e){}
+  if(!res.ok){ const m=(data&&(data.detail||data.error||data.message))||text||('HTTP '+res.status); throw new Error(typeof m==='string'?m:JSON.stringify(m)); }
+  return data;
+}
+function resolveUrl(u){
+  if(!u) return '';
+  if(/^https?:\/\//i.test(u) || u.startsWith('data:') || u.startsWith('blob:')) return u;
+  const {url}=cfg(); return url + (u.startsWith('/')?u:'/'+u);
+}
+async function urlToDataURI(u){
+  const res=await fetch(resolveUrl(u)); if(!res.ok) throw new Error('Không tải được media: '+res.status);
+  const blob=await res.blob();
+  return await new Promise((ok,no)=>{ const r=new FileReader(); r.onload=()=>ok(r.result); r.onerror=no; r.readAsDataURL(blob); });
+}
+function downscaleImage(file){
+  return new Promise((ok,no)=>{
+    const img=new Image(); const objUrl=URL.createObjectURL(file);
+    img.onload=()=>{ URL.revokeObjectURL(objUrl);
+      const max=1024; let w=img.naturalWidth, h=img.naturalHeight;
+      const k=Math.min(1, max/Math.max(w,h)); w=Math.round(w*k); h=Math.round(h*k);
+      const c=document.createElement('canvas'); c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h); ok(c.toDataURL('image/jpeg',0.85)); };
+    img.onerror=no; img.src=objUrl;
+  });
+}
+async function downloadUrl(u, filename){
+  try{
+    const res=await fetch(resolveUrl(u)); const blob=await res.blob();
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename||'media';
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+  }catch(e){ window.open(resolveUrl(u),'_blank'); }
+}
+
+/* ---------------- Navigation ---------------- */
+$$('#tabs button').forEach(b=>b.addEventListener('click',()=>{
+  $$('#tabs button').forEach(x=>x.classList.toggle('active',x===b));
+  ['control','projects','library','settings'].forEach(v=>$('#view-'+v).classList.toggle('hidden', v!==b.dataset.view));
+  if(b.dataset.view==='library') loadLibrary();
+  window.scrollTo({top:0});
+}));
+
+/* ---------------- Projects ---------------- */
+const HOOKS=[
+  'Demo trực diện: sản phẩm đang hoạt động với kết quả thấy ngay trong 2 giây đầu',
+  'Trước / Sau: mở đầu bằng kết quả sau khi dùng, rồi quay lại sản phẩm',
+  'Mở hộp bất ngờ: khui sản phẩm ngay khung hình đầu, giữ tò mò tới cuối',
+  'Câu hỏi gây tò mò: mở đầu bằng một câu hỏi đúng nỗi đau của người xem',
+  'Sai lầm thường gặp: mở đầu bằng lỗi sai phổ biến, sản phẩm là cách sửa'
+];
+const SEG_TITLES=['Đoạn 1 — Hook + Demo','Đoạn 2 — Chi tiết nổi bật','Đoạn 3 — Kết quả + Kêu gọi'];
+function newSegment(i){
+  return { id:uid(), title:SEG_TITLES[i]||('Đoạn '+(i+1)), visual:'', dialogue:'', hasProduct:true, mute:false,
+    kf:{status:'idle',taskId:null,url:'',approved:false,error:''},
+    vid:{status:'idle',taskId:null,url:'',progress:0,error:'',retries:0},
+    qc:{c1:false,c2:false,c3:false,c4:false,c5:false,c6:false,c7:false,c8:false,c9:false,c10:false} };
+}
+function newProject(){
+  const p={ id:uid(), name:'Video sản phẩm mới', brand:'', product:'', points:'', hook:HOOKS[0],
+    ratio:'9:16', identity:'Nhân vật: một cô gái Việt Nam trẻ, gương mặt, kiểu tóc và trang phục giống hệt ảnh tham chiếu trong mọi khung hình. Sản phẩm giống hệt ảnh tham chiếu, không thay đổi thiết kế, màu sắc, logo.',
+    refsChar:[], refsProd:[], segments:[newSegment(0),newSegment(1),newSegment(2)], createdAt:Date.now(),
+    idea:'', stylePara:'', caption:'', retryLimit:S.settings.retry, exprText:EXPRESSIONS[S.settings.expression]||'', assembly:Object.assign({}, ASM_DEFAULTS) };
+  S.projects.unshift(p); S.activeId=p.id; save(); renderProjects(); renderWorkspace(); toast('Đã tạo dự án mới');
+}
+function projStatus(p){
+  const vids=p.segments.map(s=>s.vid.status);
+  if(vids.every(v=>v==='done') && p.segments.every(s=>qcPass(s))) return ['done','Hoàn thiện'];
+  if(vids.some(v=>['queued','processing'].includes(v)) || p.segments.some(s=>['queued','processing'].includes(s.kf.status))) return ['run','Đang sản xuất'];
+  if(vids.some(v=>v==='done')) return ['','Đang làm dở'];
+  return ['','Nháp'];
+}
+function qcPass(s){ return Object.values(s.qc).every(Boolean); }
+function renderProjects(){
+  const el=$('#projectList'); const ws=$('#workspace');
+  if(S.activeId){ el.classList.add('hidden'); ws.classList.remove('hidden'); return; }
+  ws.classList.add('hidden'); el.classList.remove('hidden');
+  el.innerHTML = `<div class="card"><h3>Dự án video <span class="sub">— mỗi dự án là 1 video sản phẩm</span></h3>
+    <div class="btnrow" style="margin-top:0">
+      <button class="btn primary" onclick="App.newProject()">＋ Dự án mới</button>
+      <button class="btn" onclick="document.getElementById('importFile').click()">Nhập JSON</button>
+      <input type="file" id="importFile" accept="application/json" class="hiddenfile" onchange="App.importJSON(this)">
+    </div></div>` +
+    (S.projects.length? '' : '<div class="card"><p class="muted">Chưa có dự án nào. Bấm “Dự án mới” để bắt đầu dây chuyền.</p></div>') +
+    S.projects.map(p=>{ const [cls,label]=projStatus(p); const thumb=p.refsProd[0]||p.segments.find(s=>s.kf.url)?.kf.url||'';
+      return `<div class="card proj" onclick="App.openProject('${p.id}')">
+        ${thumb?`<img class="thumb" src="${esc(thumb.startsWith('data:')?thumb:resolveUrl(thumb))}">`:'<div class="thumb"></div>'}
+        <div class="meta"><div class="name">${esc(p.name)}</div>
+        <div class="muted">${esc(p.brand||'')} ${esc(p.product||'')} · ${p.segments.length} đoạn</div></div>
+        <span class="badge ${cls}">${label}</span></div>`; }).join('');
+}
+function openProject(id){ S.activeId=id; save(); renderProjects(); renderWorkspace(); window.scrollTo({top:0}); }
+function closeProject(){ S.activeId=null; save(); renderProjects(); }
+function deleteProject(id){ const p=S.projects.find(x=>x.id===id); if(!p) return;
+  if(!confirm('Xoá dự án "'+p.name+'"? Ảnh/clip trên bridge vẫn còn trong Thư viện.')) return;
+  S.projects=S.projects.filter(x=>x.id!==id); if(S.activeId===id) S.activeId=null; save(); renderProjects(); renderWorkspace(); }
+function exportProject(id){ const p=S.projects.find(x=>x.id===id); if(!p) return;
+  const blob=new Blob([JSON.stringify(p,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='du-an-'+p.id+'.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); }
+function importJSON(input){ const f=input.files[0]; if(!f) return; const r=new FileReader();
+  r.onload=()=>{ try{ const p=JSON.parse(r.result); if(!p || !Array.isArray(p.segments)) throw new Error('Sai định dạng');
+      p.id=uid(); S.projects.unshift(p); save(); renderProjects(); toast('Đã nhập dự án'); }catch(e){ toast('File JSON không hợp lệ'); } input.value=''; };
+  r.readAsText(f); }
+
+/* ---------------- Workspace: stages 1-2 ---------------- */
+function stageDone(p,stage){
+  if(stage===1) return p.refsChar.length>0 && p.refsProd.length>0 && p.brand.trim() && p.product.trim();
+  if(stage===2) return p.segments.every(s=>s.visual.trim());
+  if(stage===3) return p.segments.every(s=>s.kf.status==='done' && s.kf.approved);
+  if(stage===4) return p.segments.every(s=>s.vid.status==='done');
+  if(stage===5) return p.segments.every(s=>qcPass(s));
+  return false;
+}
+function renderWorkspace(){
+  const ws=$('#workspace'); const p=activeProject(); if(!p){ ws.classList.add('hidden'); return; }
+  ws.classList.remove('hidden');
+  const [cls,label]=projStatus(p);
+  const steps=['Nguyên liệu','Kịch bản','Keyframe','Sản xuất','QC & Xuất'];
+  ws.innerHTML=`
+  <div class="thumbrow" style="margin-bottom:10px">
+    <button class="btn small" onclick="App.closeProject()">← Tất cả dự án</button>
+    <span class="badge ${cls}">${label}</span>
+    <span style="flex:1"></span>
+    <button class="btn small" onclick="App.exportProject('${p.id}')">Xuất JSON</button>
+    <button class="btn small danger" onclick="App.deleteProject('${p.id}')">Xoá</button>
+  </div>
+  <div class="steps">${steps.map((t,i)=>`<span class="step ${stageDone(p,i+1)?'done':''}" onclick="document.getElementById('sec${i+1}').scrollIntoView({behavior:'smooth'})">${i+1}. ${t}</span>`).join('')}</div>
+
+  <div class="steptitle" id="sec1">1 · Nguyên liệu — khoá đồng nhất từ gốc</div>
+  <div class="ws-grid">
+    <div class="card">
+      <h3>Thông tin sản phẩm</h3>
+      <label class="fl">Link sản phẩm (tự lấy thông tin)</label>
+      <div style="display:flex; gap:8px">
+        <input type="url" id="projLink" placeholder="Dán link TikTok Shop / Shopee..." style="flex:1">
+        <button class="btn small" onclick="App.fetchProjLink()">🔗 Lấy tin</button>
+      </div>
+      <label class="fl">Tên dự án</label>
+      <input type="text" value="${esc(p.name)}" oninput="App.setP('name',this.value)">
+      <label class="fl">Tên hãng (khoá chính tả — dùng để QC từng chữ)</label>
+      <input type="text" value="${esc(p.brand)}" oninput="App.setP('brand',this.value)" placeholder="VD: HUKAN">
+      <label class="fl">Tên sản phẩm</label>
+      <input type="text" value="${esc(p.product)}" oninput="App.setP('product',this.value)" placeholder="VD: Máy thổi lá pin 21V">
+      <label class="fl">Điểm bán hàng chính</label>
+      <textarea oninput="App.setP('points',this.value)" placeholder="Mỗi dòng 1 điểm: lực thổi mạnh, pin 2 cục, nhẹ 1.2kg...">${esc(p.points)}</textarea>
+      <label class="fl">Tỉ lệ khung hình</label>
+      <select onchange="App.setP('ratio',this.value)">
+        ${['9:16','16:9','1:1'].map(r=>`<option ${p.ratio===r?'selected':''}>${r}</option>`).join('')}
+      </select>
+      <label class="fl">Công thức hook (áp cho đoạn 1)</label>
+      <select onchange="App.setP('hook',this.value)">${HOOKS.map(h=>`<option ${p.hook===h?'selected':''}>${esc(h)}</option>`).join('')}</select>
     </div>
-
-    <!-- TAB 2: NẠP COOKIE & CẤU HÌNH -->
-    <div id="panel-settings" class="panel">
-      <div class="card">
-        <label>1. Địa chỉ Server Render</label>
-        <input type="url" id="baseUrlInput" value="https://muse2api-6211.onrender.com" placeholder="https://muse2api-xxxx.onrender.com" />
-
-        <label>2. Mã khóa MUSE2API_KEY</label>
-        <input type="password" id="apiKeyInput" placeholder="Nhập mã MUSE2API_KEY sếp đã đặt..." />
-
-        <button class="btn btn-outline" onclick="saveConfig()">
-          💾 Lưu Cấu Hình & Kiểm Tra Xưởng
-        </button>
-      </div>
-
-      <div class="card">
-        <label>3. Bơm JSON Cookie vào bể tài khoản</label>
-        <input type="text" id="accountLabelInput" value="Nick Phu 1" placeholder="Tên gợi nhớ (VD: Nick Phu 1)" />
-        <textarea id="cookieJsonInput" placeholder="Dán toàn bộ đoạn mã JSON Cookie từ app Ghi chú vào đây (bắt đầu bằng dấu [ và kết thúc bằng ])..."></textarea>
-        <div class="hint">
-          * Hệ thống tự động bóc tách chuỗi Cookie từ JSON Cookie-Editor và đẩy thẳng vào cổng <b>/admin/accounts</b>.
-        </div>
-        <button id="importCookieBtn" class="btn btn-accent" onclick="pushCookieToServer()">
-          🚀 Nạp Cookie Vào Xưởng Ngay
-        </button>
-      </div>
-
-      <div id="settingsLog" class="log-box" style="display:none;"></div>
+    <div class="card">
+      <h3>Ảnh tham chiếu <span class="sub">— bắt buộc, thiếu là không sản xuất</span></h3>
+      <label class="fl">Nhân vật (mặt chính diện trước — ảnh này là neo mặt)</label>
+      <div class="refs">${p.refsChar.map((r,i)=>`<div class="refbox"><img src="${r}"><button onclick="App.delRef('char',${i})">×</button></div>`).join('')}
+        <button class="addref" onclick="document.getElementById('refCharFile').click()">＋</button>
+        <input type="file" id="refCharFile" accept="image/*" multiple class="hiddenfile" onchange="App.addRefs('char',this)"></div>
+      ${S.settings.charLib.length?`<div class="btnrow"><select id="libPick" style="flex:1">${S.settings.charLib.map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select><button class="btn small" onclick="App.applyLibChar()">Dùng nhân vật từ thư viện</button></div>`:''}
+      <label class="fl">Sản phẩm (nhiều góc càng tốt)</label>
+      <div class="refs">${p.refsProd.map((r,i)=>`<div class="refbox"><img src="${r}"><button onclick="App.delRef('prod',${i})">×</button></div>`).join('')}
+        <button class="addref" onclick="document.getElementById('refProdFile').click()">＋</button>
+        <input type="file" id="refProdFile" accept="image/*" multiple class="hiddenfile" onchange="App.addRefs('prod',this)"></div>
+      <label class="fl">Khối mô tả cố định (tự gắn vào MỌI prompt — giữ đồng nhất)</label>
+      <textarea style="min-height:96px" oninput="App.setP('identity',this.value)">${esc(p.identity)}</textarea>
+      <p class="muted">Luật xưởng: không gen từ chữ thuần. Mọi keyframe/video đều đính kèm ảnh ref ở đây.</p>
     </div>
   </div>
 
-  <script>
-    // Khởi tạo dữ liệu đã lưu trên iPhone
-    window.addEventListener('DOMContentLoaded', () => {
-      const savedUrl = localStorage.getItem('td_muse_url');
-      const savedKey = localStorage.getItem('td_muse_key');
-      if (savedUrl) document.getElementById('baseUrlInput').value = savedUrl;
-      if (savedKey) document.getElementById('apiKeyInput').value = savedKey;
-      if (savedUrl && savedKey) {
-        pingServer(true);
+  <div class="steptitle" id="sec2">2 · Kịch bản — ${p.segments.length} đoạn</div>
+  <div class="card">
+    <label class="fl">Ý tưởng video (AI bung thành kịch bản)</label>
+    <textarea oninput="App.setP('idea',this.value)" placeholder="VD: tạo video giới thiệu hộp quà noel, set gồm 01 hũ nến thơm, hộp quà sang, thiệp viết tay...">${esc(p.idea||'')}</textarea>
+    <div class="btnrow"><button class="btn primary small" onclick="App.aiScript()">✨ AI lập kịch bản từ ý tưởng / thông tin SP</button></div>
+    <label class="fl">Phong cách chung của video (áp cho mọi cảnh — AI tự viết khi lập kịch bản)</label>
+    <textarea oninput="App.setP('stylePara',this.value)" placeholder="VD: Giọng điệu nhanh, dồn dập, hào hứng nhưng ấm áp và chân thành...">${esc(p.stylePara||'')}</textarea>
+    ${p.segments.map((s,i)=>`
+      <h3 style="margin-top:${i?16:0}px">${esc(s.title)}</h3>
+      <label class="fl">Mô tả hình ảnh / hành động của đoạn</label>
+      <textarea oninput="App.setSeg('${s.id}','visual',this.value)" placeholder="VD: Cô gái cầm máy thổi lá, lá khô bay tung trên sân gạch, máy quay cận cảnh...">${esc(s.visual)}</textarea>
+      <label class="fl">Lời thoại (nếu có — sẽ đưa vào prompt gen video)</label>
+      <textarea style="min-height:44px" oninput="App.setSeg('${s.id}','dialogue',this.value)" placeholder="Tối đa ~28 từ cho 10 giây">${esc(s.dialogue)}</textarea>
+      <div class="muted">Độ dài lời thoại: <span id="wc-${s.id}">${wordCount(s.dialogue)}</span>/28 từ</div>
+      <div style="display:flex; gap:18px; flex-wrap:wrap">
+        <label class="checkrow"><input type="checkbox" ${s.hasProduct!==false?'checked':''} onchange="App.setSegBool('${s.id}','hasProduct',this.checked)"> Có sản phẩm trong cảnh</label>
+        <label class="checkrow"><input type="checkbox" ${s.mute?'checked':''} onchange="App.setSegBool('${s.id}','mute',this.checked)"> Tắt tiếng cảnh này khi ghép</label>
+      </div>
+    `).join('')}
+    <div class="btnrow">
+      ${p.segments.length<5?`<button class="btn small" onclick="App.addSegment()">＋ Thêm đoạn</button>`:''}
+      ${p.segments.length>2?`<button class="btn small danger" onclick="App.removeSegment()">− Bớt đoạn cuối</button>`:''}
+    </div>
+    <p class="muted">Đoạn 1 áp công thức hook đã chọn ở chặng 1. Viết mô tả càng cụ thể (hành động, bối cảnh, góc máy) video càng chuẩn.</p>
+  </div>
+  <div id="productionZone"></div>`;
+  if(window.__renderProduction) window.__renderProduction(p);
+}
+function wordCount(t){ const w=String(t||'').trim().split(/\s+/).filter(Boolean); return String(t||'').trim()? w.length:0; }
+function setP(k,v){ const p=activeProject(); if(!p) return; p[k]=v; save(); }
+function setSeg(id,k,v){ const p=activeProject(); if(!p) return; const s=p.segments.find(x=>x.id===id); if(!s) return; s[k]=v; save();
+  if(k==='dialogue'){ const el=document.getElementById('wc-'+id); if(el) el.textContent=wordCount(v); } }
+async function addRefs(kind,input){ const p=activeProject(); if(!p) return; const files=[...input.files].slice(0,6);
+  for(const f of files){ try{ const d=await downscaleImage(f); (kind==='char'?p.refsChar:p.refsProd).push(d); }catch(e){} }
+  input.value=''; save(); renderWorkspace(); toast('Đã thêm ảnh tham chiếu'); }
+function delRef(kind,i){ const p=activeProject(); if(!p) return; (kind==='char'?p.refsChar:p.refsProd).splice(i,1); save(); renderWorkspace(); }
+function addSegment(){ const p=activeProject(); if(!p||p.segments.length>=5) return; p.segments.push(newSegment(p.segments.length)); save(); renderWorkspace(); }
+function removeSegment(){ const p=activeProject(); if(!p||p.segments.length<=2) return; p.segments.pop(); save(); renderWorkspace(); }
+
+/* ---------------- Prompt builders (luật đồng nhất) ---------------- */
+function buildImagePrompt(p,s){
+  const styleAll=[p.styleText, p.stylePara].filter(Boolean).join('. ');
+  return [ p.identity,
+    'Sản phẩm: '+(p.brand+' '+p.product).trim()+'.',
+    s.visual,
+    p.exprText ? 'Biểu cảm / thần thái: '+p.exprText+'.' : '',
+    styleAll ? 'Phong cách hình ảnh: '+styleAll+'.' : '',
+    'Khung hình tỉ lệ '+p.ratio+', phong cách điện ảnh chân thực, ánh sáng tự nhiên, chi tiết sắc nét.',
+    'Giữ khuôn mặt nhân vật và thiết kế sản phẩm giống hệt các ảnh tham chiếu. Không chèn chữ, không logo lạ, không watermark.'
+  ].filter(Boolean).join(' ');
+}
+function buildVideoPrompt(p,s,idx){
+  const parts=[ p.identity, s.visual ];
+  if(idx===0 && p.hook) parts.push('Nhịp mở đầu: '+p.hook+'.');
+  const styleAll=[p.styleText, p.stylePara].filter(Boolean).join('. ');
+  if(styleAll) parts.push('Phong cách hình ảnh: '+styleAll+'.');
+  if(p.exprText) parts.push('Biểu cảm / thần thái xuyên suốt: '+p.exprText+'.');
+  if(p.voiceDir) parts.push('Giọng đọc: '+p.voiceDir+'.');
+  if(s.dialogue && s.dialogue.trim()) parts.push('Nhân vật nói đúng lời thoại sau, khẩu hình khớp lời, diễn tự nhiên: "'+s.dialogue.trim()+'"');
+  parts.push('Giữ nguyên khuôn mặt, trang phục và thiết kế sản phẩm như ảnh tham chiếu trong suốt đoạn. Chuyển động mượt mà, chân thực. Không chèn chữ, không phụ đề, không watermark.');
+  return parts.filter(Boolean).join(' ');
+}
+
+/* ---------------- Task engine ---------------- */
+const pollers={};
+let wakeLock=null;
+async function requestWake(){ try{ if(navigator.wakeLock && !wakeLock){ wakeLock=await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release',()=>wakeLock=null); } }catch(e){} }
+function findProjSeg(projId,segId){ const proj=S.projects.find(x=>x.id===projId); if(!proj) return {}; const seg=proj.segments.find(x=>x.id===segId); return {proj,seg}; }
+function renderProductionZone(){ const p=activeProject(); if(p && window.__renderProduction) window.__renderProduction(p); }
+
+async function startImageTask(proj,seg){
+  if(!proj.refsChar.length || !proj.refsProd.length){ toast('Thiếu ảnh tham chiếu nhân vật hoặc sản phẩm (chặng 1)'); return; }
+  seg.kf.status='queued'; seg.kf.error=''; seg.kf.approved=false; save(); renderProductionZone();
+  try{
+    const data=await api('/v1/images/tasks',{method:'POST', body:JSON.stringify({
+      prompt:buildImagePrompt(proj,seg), model:'muse-image', aspect_ratio:proj.ratio,
+      response_format:'url', images: seg.hasProduct===false ? [...proj.refsChar] : [...proj.refsChar, ...proj.refsProd] })});
+    seg.kf.taskId=data.id||data.task_id; seg.kf.status='processing'; save(); renderProductionZone(); pollTask('image',proj.id,seg.id);
+  }catch(e){ seg.kf.status='failed'; seg.kf.error=e.message; save(); renderProductionZone(); }
+}
+async function startVideoTask(proj,seg){
+  if(!(seg.kf.status==='done' && seg.kf.approved)){ toast('Đoạn này chưa có keyframe được duyệt'); return; }
+  seg.vid.status='queued'; seg.vid.error=''; seg.vid.progress=0; save(); renderProductionZone(); requestWake();
+  try{
+    const kfData=await urlToDataURI(seg.kf.url);
+    const idx=proj.segments.indexOf(seg);
+    const data=await api('/v1/videos',{method:'POST', body:JSON.stringify({
+      prompt:buildVideoPrompt(proj,seg,idx), model:'muse-video', aspect_ratio:proj.ratio,
+      images: seg.hasProduct===false ? [kfData] : [kfData, ...proj.refsProd.slice(0,2)] })});
+    seg.vid.taskId=data.id||data.task_id; seg.vid.status='processing'; seg.vid.progress=data.progress||10;
+    save(); renderProductionZone(); pollTask('video',proj.id,seg.id);
+  }catch(e){ seg.vid.status='failed'; seg.vid.error=e.message; save(); renderProductionZone(); handleVideoFailure(proj,seg); }
+}
+function handleVideoFailure(proj,seg){
+  const lim=(proj && typeof proj.retryLimit==='number') ? proj.retryLimit : 3;
+  if(seg.vid.retries<lim){ seg.vid.retries++; seg.vid.status='queued'; seg.vid.error='Tự gen lại lần '+seg.vid.retries+'/'+lim+'...'; save(); renderProductionZone();
+    setTimeout(()=>{ if(seg.vid.status==='queued') startVideoTask(proj,seg); }, 9000); }
+}
+function pollTask(kind,projId,segId){
+  const key=kind+':'+segId; if(pollers[key]) return; pollers[key]=true;
+  const tick=async()=>{
+    const {proj,seg}=findProjSeg(projId,segId); if(!proj||!seg){ delete pollers[key]; return; }
+    const slot= kind==='image'? seg.kf : seg.vid;
+    if(!slot.taskId){ delete pollers[key]; return; }
+    try{
+      const t=await api(kind==='image' ? '/v1/images/tasks/'+slot.taskId : '/v1/videos/'+slot.taskId);
+      if(t.status==='completed'){
+        slot.status='done'; slot.progress=100;
+        slot.url=(t.data&&t.data[0]&&t.data[0].url)||(t.result&&t.result.url)||t.url||(t.video&&t.video.url)||slot.url;
+        slot.error=''; delete pollers[key]; save(); renderProductionZone();
+        toast((kind==='image'?'Keyframe':'Video')+' xong: '+seg.title);
+      } else if(t.status==='failed'){
+        slot.status='failed'; slot.error=t.error||'Task thất bại trên bridge'; delete pollers[key]; save(); renderProductionZone();
+        if(kind==='video') handleVideoFailure(proj,seg);
+      } else {
+        slot.status=(t.status==='queued')?'queued':'processing';
+        if(kind==='video' && typeof t.progress==='number') slot.progress=t.progress;
+        save(); updateTaskDom(seg,kind); setTimeout(tick,6000);
       }
-    });
+    }catch(e){ setTimeout(tick,10000); }
+  };
+  tick();
+}
+function updateTaskDom(seg,kind){
+  const st=document.getElementById((kind==='image'?'kf':'vid')+'-status-'+seg.id);
+  if(st){ const slot=kind==='image'?seg.kf:seg.vid;
+    st.innerHTML = slot.status==='queued' ? 'Đang chờ bridge xử lý...' :
+      kind==='video' ? 'Đang gen video... '+(slot.progress||0)+'%' : 'Đang gen keyframe...'; }
+  if(kind==='video'){ const bar=document.getElementById('vid-prog-'+seg.id); if(bar) bar.style.width=(seg.vid.progress||0)+'%'; }
+}
 
-    function switchTab(tabName, el) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-      el.classList.add('active');
-      document.getElementById('panel-' + tabName).classList.add('active');
-    }
+/* ---------------- Production stages 3-5 ---------------- */
+const QC_ITEMS=['Sản phẩm giống hệt ảnh ref, không biến dạng','Tên hãng đúng từng chữ, không chữ méo/loạn',
+  'Có cảnh dùng thử / demo thật','Hook đủ mạnh trong 2 giây đầu (đoạn 1)','Màu da đều, tự nhiên giữa các cảnh',
+  'Khuôn mặt giống hệt ảnh ref','Trang phục & bối cảnh nhất quán','Khẩu hình khớp lời thoại (nếu có thoại)',
+  'Không đạo cụ thừa, không vật thể xuất hiện/biến mất lạ','Chất lượng nét, đúng tỉ lệ khung hình'];
+function stageClass(ratio){ return ratio==='16:9'?'stagebox wide':(ratio==='1:1'?'stagebox sq':'stagebox'); }
+window.__renderProduction=function(p){
+  const zone=document.getElementById('productionZone'); if(!zone) return;
+  const kfCards=p.segments.map(s=>`
+    <div class="seg"><div class="seg-head"><b>${esc(s.title)}</b><span style="flex:1"></span>
+      ${s.kf.approved?'<span class="badge done">ĐÃ DUYỆT</span>':''}</div><div class="seg-body">
+      <div class="${stageClass(p.ratio)}">${s.kf.url?`<img src="${esc(resolveUrl(s.kf.url))}">`:'<div class="empty">Chưa có keyframe</div>'}</div>
+      <div class="statusline" id="kf-status-${s.id}">${kfStatusText(s)}</div>
+      <div class="btnrow">
+        <button class="btn small" onclick="App.genKeyframe('${s.id}')" ${['queued','processing'].includes(s.kf.status)?'disabled':''}>${s.kf.url?'Gen lại keyframe':'Gen keyframe'}</button>
+        <button class="btn small ok" onclick="App.approveKeyframe('${s.id}')" ${s.kf.status==='done'&&!s.kf.approved?'':'disabled'}>✓ Duyệt</button>
+        ${s.kf.url?`<button class="btn small" onclick="App.preview('${esc(resolveUrl(s.kf.url))}','image','keyframe')">Xem lớn</button>`:''}
+      </div></div></div>`).join('');
+  const vidCards=p.segments.map(s=>`
+    <div class="seg"><div class="seg-head"><b>${esc(s.title)}</b><span style="flex:1"></span>
+      ${s.vid.status==='done'?'<span class="badge done">CÓ CLIP</span>':''}</div><div class="seg-body">
+      <div class="${stageClass(p.ratio)}">${s.vid.url?`<video src="${esc(resolveUrl(s.vid.url))}" controls playsinline preload="metadata"></video>`
+        : s.kf.url?`<img src="${esc(resolveUrl(s.kf.url))}">`:'<div class="empty">Chưa có clip</div>'}</div>
+      <div class="prog"><i id="vid-prog-${s.id}" style="width:${s.vid.progress||0}%"></i></div>
+      <div class="statusline" id="vid-status-${s.id}">${vidStatusText(s)}</div>
+      <div class="btnrow">
+        <button class="btn small primary" onclick="App.genVideo('${s.id}')" ${s.kf.approved&&!['queued','processing'].includes(s.vid.status)?'':'disabled'}>${s.vid.url?'Gen lại video':'Gen video'}</button>
+        ${s.vid.url?`<button class="btn small" onclick="App.downloadSeg('${s.id}')">⬇ Tải clip</button>`:''}
+      </div></div></div>`).join('');
+  const qcCards=p.segments.map((s,si)=>`
+    <div class="seg"><div class="seg-head"><b>QC — ${esc(s.title)}</b><span style="flex:1"></span>
+      ${qcPass(s)?'<span class="badge done">ĐẠT</span>':'<span class="badge">Chưa đạt</span>'}</div><div class="seg-body">
+      ${QC_ITEMS.map((q,qi)=>`<label class="qcitem"><input type="checkbox" ${s.qc['c'+(qi+1)]?'checked':''} onchange="App.qcToggle('${s.id}',${qi+1},this.checked)"><span>${q}</span></label>`).join('')}
+      <div class="btnrow"><button class="btn small" onclick="App.genVideo('${s.id}')" ${s.kf.approved?'':'disabled'}>Gen lại đoạn này</button></div>
+    </div></div>`).join('');
+  zone.innerHTML=`
+  <div class="steptitle" id="sec3">3 · Keyframe — cổng duyệt 1</div>
+  <div class="seglist">${kfCards}</div>
+  <div class="steptitle" id="sec4">4 · Sản xuất video — hàng đợi tự động</div>
+  <div class="card"><div class="btnrow" style="margin-top:0">
+    <button class="btn primary" onclick="App.queueAll()">▶ Chạy hàng đợi: gen video mọi đoạn đã duyệt keyframe</button></div>
+    <p class="muted">Hàng đợi tự theo dõi tiến độ, đoạn lỗi tự gen lại tối đa 3 lần. Giữ màn hình sáng khi đang chạy.</p></div>
+  <div class="seglist">${vidCards}</div>
+  <div class="steptitle" id="sec5">5 · QC &amp; Xuất bản</div>
+  <div class="seglist">${qcCards}</div>
+  <div class="card"><h3>Gói sản xuất</h3>
+    <div class="btnrow" style="margin-top:0">
+      <button class="btn" onclick="App.downloadAll()">⬇ Tải tất cả clip</button>
+      <button class="btn" onclick="App.scriptPack()">⬇ Tải gói kịch bản (.txt)</button>
+    </div>
+    <p class="muted">${p.segments.every(s=>s.vid.status==='done'&&qcPass(s)) ? '🎉 Dự án đạt chuẩn xuất bản: đủ clip + QC đạt mọi đoạn.' : 'Dự án hoàn thiện khi mọi đoạn có clip và đạt đủ 10 mục QC.'}</p></div>
+  <div class="card"><h3>Ghép phim (ffmpeg) <span class="sub">— xuất gói, t ghép trả video hoàn chỉnh</span></h3>
+    ${asmHTML(p)}
+  </div>
+  <div class="card"><h3>Caption đăng bài</h3>
+    <div class="btnrow" style="margin-top:0"><button class="btn" onclick="App.genCaption()">✨ Viết caption + hashtag</button>
+    ${p.caption?'<button class="btn" onclick="App.copyCaption()">Copy caption</button>':''}</div>
+    ${p.caption?`<textarea style="min-height:90px" oninput="App.setP('caption',this.value)">${esc(p.caption)}</textarea>`:'<p class="muted">Chưa có caption. AI viết sẵn caption đăng TikTok / Reels kèm 6–10 hashtag theo nội dung video.</p>'}
+  </div>`;
+};
+function kfStatusText(s){
+  if(s.kf.status==='done') return s.kf.approved?'Keyframe đã duyệt — sẵn sàng gen video.':'Keyframe đã có — kiểm tra rồi bấm Duyệt.';
+  if(s.kf.status==='failed') return '<span class="err">Lỗi: '+esc(s.kf.error||'không rõ')+'</span>';
+  if(s.kf.status==='queued') return 'Đang chờ bridge xử lý...';
+  if(s.kf.status==='processing') return 'Đang gen keyframe...';
+  return 'Chưa gen. Keyframe được tạo từ ảnh ref nhân vật + sản phẩm.';
+}
+function vidStatusText(s){
+  if(s.vid.status==='done') return 'Đã có clip. Xem lại ở trên, QC ở chặng 5.';
+  if(s.vid.status==='failed') return '<span class="err">Lỗi: '+esc(s.vid.error||'không rõ')+'</span>';
+  if(s.vid.status==='queued') return esc(s.vid.error||'Đang chờ trong hàng đợi...');
+  if(s.vid.status==='processing') return 'Đang gen video... '+(s.vid.progress||0)+'%';
+  return s.kf.approved ? 'Sẵn sàng gen.' : 'Cần keyframe được duyệt trước.';
+}
+function genKeyframe(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(s) startImageTask(p,s); }
+function approveKeyframe(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(!s) return; s.kf.approved=true; save(); renderProductionZone(); toast('Đã duyệt keyframe'); }
+function genVideo(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(s){ s.vid.retries=0; startVideoTask(p,s); } }
+async function queueAll(){ const p=activeProject(); if(!p) return; let n=0;
+  for(const s of p.segments){ if(s.kf.approved && !['done','queued','processing'].includes(s.vid.status)){ s.vid.retries=0; startVideoTask(p,s); n++; await new Promise(r=>setTimeout(r,1200)); } }
+  toast(n? ('Đã đẩy '+n+' đoạn vào hàng đợi') : 'Chưa có đoạn nào sẵn sàng (cần duyệt keyframe trước)'); }
+function qcToggle(segId,n,on){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(!s) return; s.qc['c'+n]=on; save(); }
+function downloadSeg(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(s&&s.vid.url) downloadUrl(s.vid.url, 'doan-'+(p.segments.indexOf(s)+1)+'.mp4'); }
+async function downloadAll(){ const p=activeProject(); if(!p) return;
+  for(let i=0;i<p.segments.length;i++){ const s=p.segments[i]; if(s.vid.url){ await downloadUrl(s.vid.url,'doan-'+(i+1)+'.mp4'); await new Promise(r=>setTimeout(r,600)); } } }
+function scriptPack(){ const p=activeProject(); if(!p) return;
+  const lines=['DỰ ÁN: '+p.name,'Hãng: '+p.brand+' | Sản phẩm: '+p.product,'Điểm bán hàng: '+p.points,'Hook: '+p.hook,'Tỉ lệ: '+p.ratio,'','KHỐI MÔ TẢ CỐ ĐỊNH:',p.identity,''];
+  p.segments.forEach((s,i)=>{ lines.push('--- '+(s.title||('Đoạn '+(i+1)))+' ---','Hình ảnh: '+s.visual,'Lời thoại: '+(s.dialogue||'(không)'),'Clip: '+(s.vid.url?resolveUrl(s.vid.url):'(chưa có)'),''); });
+  const blob=new Blob([lines.join('\n')],{type:'text/plain;charset=utf-8'}); const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download='goi-kich-ban.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),3000); }
+Object.assign(window.App,{ genKeyframe, approveKeyframe, genVideo, queueAll, qcToggle, downloadSeg, downloadAll, scriptPack });
 
-    function logMsg(boxId, msg, isError = false) {
-      const box = document.getElementById(boxId);
-      box.style.display = 'block';
-      box.style.color = isError ? '#fca5a5' : '#a7f3d0';
-      const time = new Date().toLocaleTimeString('vi-VN');
-      box.textContent = `[${time}] ${msg}`;
-    }
+/* ---------------- Preview modal ---------------- */
+let modalUrl='';
+function preview(url,kind,name){ modalUrl=url; const b=$('#modalBody');
+  b.innerHTML = kind==='video' ? `<video src="${esc(url)}" controls autoplay playsinline></video>` : `<img src="${esc(url)}">`;
+  $('#modal').classList.add('open'); }
+$('#modalClose').addEventListener('click',()=>{ $('#modal').classList.remove('open'); $('#modalBody').innerHTML=''; });
+$('#modalDownload').addEventListener('click',()=>{ if(modalUrl) downloadUrl(modalUrl,'media'); });
+Object.assign(window.App,{ preview });
 
-    function getCleanUrl() {
-      return document.getElementById('baseUrlInput').value.trim().replace(/\/+$/, '');
-    }
+/* ---------------- Library ---------------- */
+async function loadLibrary(){
+  const grid=$('#libGrid'), empty=$('#libEmpty'); if(!grid) return;
+  empty.textContent='Đang tải...';
+  try{
+    const data=await api('/admin/media'); const items=data.media||[];
+    $('#libEmpty').textContent = items.length? '' : 'Thư viện trống.';
+    grid.innerHTML=items.map(m=>{ const u=resolveUrl(m.url); const d=new Date((m.mtime||0)*1000);
+      return `<div class="gitem" onclick="App.preview('${esc(u)}','${m.kind}','${esc(m.name)}')">
+        <div class="ph">${m.kind==='video'?`<video src="${esc(u)}" preload="metadata" muted playsinline></video>`:`<img src="${esc(u)}" loading="lazy">`}</div>
+        <div class="cap">${esc(m.name)} · ${m.bytes?Math.max(1,Math.round(m.bytes/1024))+'KB':''} · ${d.toLocaleDateString('vi-VN')}</div></div>`; }).join('');
+  }catch(e){ empty.textContent='Không tải được thư viện: '+e.message; }
+}
+$('#libRefresh').addEventListener('click',loadLibrary);
 
-    function saveConfig() {
-      const url = getCleanUrl();
-      const key = document.getElementById('apiKeyInput').value.trim();
-      if (!url || !key) {
-        logMsg('settingsLog', 'Sếp chưa nhập đủ Link Render hoặc MUSE2API_KEY!', true);
-        return;
-      }
-      localStorage.setItem('td_muse_url', url);
-      localStorage.setItem('td_muse_key', key);
-      logMsg('settingsLog', 'Đã lưu cấu hình vào máy! Đang đánh thức server Render...');
-      pingServer(false);
-    }
+/* ---------------- Settings & connection ---------------- */
+async function ping(silent){
+  const dot=$('#statusDot'), txt=$('#statusText');
+  try{
+    const data=await api('/v1/models'); const n=(data.data||[]).length;
+    dot.className='dot on'; txt.textContent='Xưởng online'+(n?' · '+n+' model':'');
+    if(!silent) logTo('#cfgLog','Kết nối OK. Model: '+((data.data||[]).map(m=>m.id).join(', ')||'—'),'g');
+    return true;
+  }catch(e){ dot.className='dot off'; txt.textContent='Xưởng offline'; if(!silent) logTo('#cfgLog','Lỗi kết nối: '+e.message,'e'); return false; }
+}
+$('#cfgSave').addEventListener('click',()=>{
+  localStorage.setItem(LS_URL, $('#cfgUrl').value.trim()); localStorage.setItem(LS_KEY, $('#cfgKey').value.trim());
+  logTo('#cfgLog','Đã lưu cấu hình.'); ping(); });
+$('#cfgTest').addEventListener('click',async()=>{ logTo('#cfgLog','Đang kiểm tra...'); await ping(); });
+function toCookieDict(text){
+  text=(text||'').trim(); if(!text) return {};
+  if(text.startsWith('[')){ const o={}; JSON.parse(text).forEach(c=>{ if(c&&c.name) o[c.name]=c.value??''; }); return o; }
+  if(text.startsWith('{')){ const j=JSON.parse(text); if(j && typeof j==='object'){ if(j.cookies) return toCookieDict(JSON.stringify(j.cookies)); return j; } }
+  const o={}; text.split(';').forEach(part=>{ const i=part.indexOf('='); if(i>0) o[part.slice(0,i).trim()]=part.slice(i+1).trim(); }); return o;
+}
+$('#accImport').addEventListener('click',async()=>{
+  const label=$('#accLabel').value.trim()||'Nick Muse'; let cookies;
+  try{ cookies=toCookieDict($('#accCookie').value); }catch(e){ logTo('#accLog','JSON cookie không hợp lệ: '+e.message,'e'); return; }
+  if(!cookies.hatch_sess){ logTo('#accLog','Thiếu cookie hatch_sess — bản xuất này không dùng được (phải gồm cookie httpOnly).','e'); return; }
+  logTo('#accLog','Đang đẩy '+Object.keys(cookies).length+' cookie lên bridge...');
+  try{ await api('/admin/accounts',{method:'POST', body:JSON.stringify({label, cookies})});
+    logTo('#accLog','Nạp tài khoản thành công: '+label,'g'); $('#accCookie').value=''; ping(true);
+  }catch(e){ logTo('#accLog','Nạp thất bại: '+e.message,'e'); }
+});
 
-    // Đánh thức server Render (Free tier ngủ sau 15p) và lấy danh sách Model
-    async function pingServer(silent = false) {
-      const url = getCleanUrl();
-      const key = document.getElementById('apiKeyInput').value.trim();
-      const dot = document.getElementById('statusDot');
-      const txt = document.getElementById('statusText');
+/* ============================================================
+   V3 — BẢNG ĐIỀU KHIỂN: tuỳ chọn sản xuất + hàng loạt + giám sát
+   ============================================================ */
+const VOICES=[
+  {id:'nu-bac-chuan', label:'Nữ Hà Nội (Chuẩn)', dir:'giọng nữ miền Bắc, phát âm chuẩn Hà Nội, trẻ trung trong trẻo, tốc độ vừa phải, tông thân thiện đáng tin'},
+  {id:'nu-bac-sale', label:'Nữ Bắc năng lượng (bán hàng)', dir:'giọng nữ miền Bắc, sôi nổi, năng lượng cao, nhấn nhá rõ ràng, tốc độ hơi nhanh, tông hào hứng'},
+  {id:'nu-tre-genz', label:'Nữ trẻ Gen Z bắt trend', dir:'giọng nữ trẻ Gen Z, vui tươi nhanh nhẹn, hơi lém lỉnh, ngôn ngữ trẻ trung'},
+  {id:'nam-bac', label:'Nam Hà Nội trầm ấm', dir:'giọng nam miền Bắc, trầm ấm chắc chắn, tốc độ vừa, tông đáng tin cậy'},
+  {id:'nu-nam', label:'Nữ miền Nam ngọt ngào', dir:'giọng nữ miền Nam, ngọt ngào nhẹ nhàng, thân thiện, tốc độ vừa'},
+  {id:'nam-nam', label:'Nam miền Nam chất phác', dir:'giọng nam miền Nam, chất phác gần gũi, rõ ràng, tốc độ vừa'}
+];
+const REGIONS={ bac:'Miền Bắc (Hà Nội)', nam:'Miền Nam (Sài Gòn)', trung:'Miền Trung (Huế – Đà Nẵng)' };
+const TEMPLATES={ review:'Review sản phẩm', unbox:'Mở hộp / unbox', compare:'So sánh trước – sau', tips:'Mẹo & hướng dẫn dùng', story:'Kể chuyện trải nghiệm' };
+const STYLES={ 'chan-thuc':'Chân thực đời thường, ánh sáng tự nhiên như quay bằng điện thoại xịn',
+  'dien-anh':'Điện ảnh, tương phản đẹp, màu phim', 'studio':'Sáng sạch kiểu studio, nền gọn, sáng đều',
+  'am-cung':'Ấm cúng tại nhà, tông ấm, gần gũi' };
+const DEFAULT_IDENTITY='Nhân vật: một cô gái Việt Nam trẻ, gương mặt, kiểu tóc và trang phục giống hệt ảnh tham chiếu trong mọi khung hình. Sản phẩm giống hệt ảnh tham chiếu, không thay đổi thiết kế, màu sắc, logo.';
+const POV_IDENTITY='Góc quay POV ngôi thứ nhất: chỉ thấy đôi tay người dùng thao tác trực tiếp với sản phẩm, không lộ mặt. Tay sạch, móng gọn, thao tác rõ ràng, cận cảnh sản phẩm.';
+const LANGS={ vi:'Tiếng Việt', en:'English (tiếng Anh)', fil:'Filipino', es:'Español (Tây Ban Nha)',
+  fr:'Français (Pháp)', de:'Deutsch (Đức)', ru:'Русский (Nga)', ja:'日本語 (Nhật)', ko:'한국어 (Hàn)', zh:'中文 (Trung Quốc)' };
+const SPEEDS={ cham:'nói chậm rãi, rõ từng chữ', vua:'tốc độ nói vừa phải, tự nhiên', nhanh:'nói nhanh, dồn dập, bắt trend' };
+const SPEAKMODES={ tnhien:'Nhân vật trực tiếp nói lời thoại, khẩu hình khớp lời',
+  longtieng:'Lồng tiếng dẫn chuyện: nhân vật không cần khớp khẩu hình, giọng đọc vang ngoài hình như người dẫn chuyện',
+  nguyenvan:'Giữ nguyên văn lời thoại đã viết, không thêm bớt chữ nào' };
+const EXPRESSIONS={ tnhien:'tự nhiên, điềm đạm', vui:'vui tươi, năng lượng cao, cười tươi',
+  chuyengia:'chuyên gia, điềm tĩnh, đáng tin cậy', hai:'hài hước, biểu cảm phóng đại vui nhộn' };
+function voiceDirText(st){
+  const v=VOICES.find(x=>x.id===st.voice)||VOICES[0];
+  const langTxt = st.language==='vi' ? ('Lời thoại bằng tiếng Việt, giọng '+REGIONS[st.region]+'.')
+    : ('Lời thoại bằng '+(LANGS[st.language]||'tiếng Việt')+'.');
+  return v.dir+'. '+langTxt+' Tốc độ: '+(SPEEDS[st.speechSpeed]||SPEEDS.vua)+'. '
+    +(SPEAKMODES[st.speakMode]||'')+(st.noPrice?' Tuyệt đối không nhắc giá tiền trong lời thoại.':'');
+}
 
-      if (!url || !key) {
-        txt.textContent = 'Chưa nhập Key';
-        return;
-      }
+/* ---------------- Options panel ---------------- */
+function renderControl(){ renderOptions(); renderBatch(); renderMonitor(); }
+function selOpts(map,cur){ return Object.entries(map).map(([k,v])=>`<option value="${k}" ${cur===k?'selected':''}>${esc(v)}</option>`).join(''); }
+function renderOptions(){
+  const st=S.settings, z=$('#optionsZone'); if(!z) return;
+  z.innerHTML=`<div class="card">
+    <h3>Tuỳ chọn sản xuất <span class="sub">— áp cho cả đợt hàng loạt</span></h3>
+    <div class="optgroup">NHÂN VẬT</div>
+    <div class="segbtn">
+      <button class="${st.charMode==='review'?'active':''}" onclick="App.setOpt('charMode','review')">Có người review</button>
+      <button class="${st.charMode==='pov'?'active':''}" onclick="App.setOpt('charMode','pov')">POV (chỉ tay)</button>
+    </div>
+    ${st.charMode==='review'?`
+    <label class="fl">Ảnh nhân vật dùng chung (neo mặt cho mọi video)</label>
+    <div class="refs">${st.charRefs.map((r,i)=>`<div class="refbox"><img src="${r}"><button onclick="App.delCharRef(${i})">×</button></div>`).join('')}
+      <button class="addref" onclick="document.getElementById('setCharFile').click()">＋</button>
+      <input type="file" id="setCharFile" accept="image/*" multiple class="hiddenfile" onchange="App.addCharRefs(this)"></div>`:''}
+    <label class="fl">Ảnh bối cảnh (không bắt buộc)</label>
+    <div class="refs">${st.bgImage?`<div class="refbox"><img src="${st.bgImage}"><button onclick="App.delBg()">×</button></div>`
+      :`<button class="addref" onclick="document.getElementById('setBgFile').click()">＋</button>`}
+      <input type="file" id="setBgFile" accept="image/*" class="hiddenfile" onchange="App.addBg(this)"></div>
+    <div class="optgroup">THƯ VIỆN NHÂN VẬT</div>
+    ${st.charLib.map(c=>`<div class="thumbrow" style="margin-bottom:6px">
+      ${c.refs[0]?`<img src="${c.refs[0]}" style="width:38px; height:48px; object-fit:cover; border-radius:8px">`:'<div style="width:38px"></div>'}
+      <b style="flex:1">${esc(c.name)}</b>
+      <button class="btn small ${st.activeChar===c.id?'ok':''}" onclick="App.setActiveChar('${c.id}')">${st.activeChar===c.id?'Đang dùng':'Dùng'}</button>
+      <button class="btn small danger" onclick="App.delCharPack('${c.id}')">×</button></div>`).join('')}
+    <div style="display:flex; gap:8px; margin-top:6px">
+      <input type="text" id="charPackName" placeholder="Tên nhân vật mới..." style="flex:1">
+      <button class="btn small" onclick="document.getElementById('charPackFile').click()">＋ Ảnh</button>
+      <input type="file" id="charPackFile" accept="image/*" multiple class="hiddenfile" onchange="App.addCharPack(this)">
+    </div>
+    <label class="checkrow"><input type="checkbox" ${st.useChar2?'checked':''} onchange="App.setOptBool('useChar2',this.checked)"> Thêm nhân vật 2 (video 2 người)</label>
+    ${st.useChar2?`<label class="fl">Nhân vật 2 (từ thư viện)</label><select onchange="App.setOpt('char2',this.value)"><option value="">— Chọn nhân vật 2 —</option>${st.charLib.map(c=>`<option value="${c.id}" ${st.char2===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`:''}
+    <label class="checkrow"><input type="checkbox" ${st.animalTalk?'checked':''} onchange="App.setOptBool('animalTalk',this.checked)"> Nhân vật là động vật biết nói (nhép miệng như người)</label>
+    <div class="optgroup">KỊCH BẢN & GIỌNG</div>
+    <label class="fl">Mẫu kịch bản</label>
+    <select onchange="App.setOpt('template',this.value)">${selOpts(TEMPLATES,st.template)}</select>
+    <label class="fl">Ngôn ngữ lời thoại</label>
+    <select onchange="App.setOpt('language',this.value)">${selOpts(LANGS,st.language)}</select>
+    <label class="fl">Vùng miền</label>
+    <select onchange="App.setOpt('region',this.value)">${selOpts(REGIONS,st.region)}</select>
+    <label class="fl">Giọng</label>
+    <select onchange="App.setOpt('voice',this.value)">${VOICES.map(v=>`<option value="${v.id}" ${st.voice===v.id?'selected':''}>${esc(v.label)}</option>`).join('')}</select>
+    <label class="fl">Biểu cảm / thần thái</label>
+    <select onchange="App.setOpt('expression',this.value)">${selOpts(EXPRESSIONS,st.expression)}</select>
+    <label class="fl">Tốc độ nói</label>
+    <div class="segbtn">
+      <button class="${st.speechSpeed==='cham'?'active':''}" onclick="App.setOpt('speechSpeed','cham')">Chậm rãi</button>
+      <button class="${st.speechSpeed==='vua'?'active':''}" onclick="App.setOpt('speechSpeed','vua')">Vừa</button>
+      <button class="${st.speechSpeed==='nhanh'?'active':''}" onclick="App.setOpt('speechSpeed','nhanh')">Nhanh</button>
+    </div>
+    <label class="fl">Cách nói</label>
+    <div class="segbtn">
+      <button class="${st.speakMode==='tnhien'?'active':''}" onclick="App.setOpt('speakMode','tnhien')">Tự nhiên</button>
+      <button class="${st.speakMode==='longtieng'?'active':''}" onclick="App.setOpt('speakMode','longtieng')">Lồng tiếng</button>
+      <button class="${st.speakMode==='nguyenvan'?'active':''}" onclick="App.setOpt('speakMode','nguyenvan')">Nguyên văn</button>
+    </div>
+    <label class="fl">Kiểu mở đầu (hook cảnh 1)</label>
+    <select onchange="App.setOpt('hookStyle',this.value)"><option value="ai" ${st.hookStyle==='ai'?'selected':''}>Tự chọn (AI quyết định)</option>${HOOKS.map(h=>`<option ${st.hookStyle===h?'selected':''}>${esc(h)}</option>`).join('')}</select>
+    <div class="optgroup">HÌNH ẢNH & SỐ LƯỢNG</div>
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+      <div><label class="fl">Số cảnh / video</label>
+        <select onchange="App.setOptNum('scenes',this.value)">${[2,3,4,5].map(n=>`<option value="${n}" ${st.scenes===n?'selected':''}>${n} cảnh (~${n*10}s)</option>`).join('')}</select></div>
+      <div><label class="fl">Tỷ lệ</label>
+        <select onchange="App.setOpt('ratio',this.value)">${['9:16','16:9','1:1'].map(r=>`<option ${st.ratio===r?'selected':''}>${r}</option>`).join('')}</select></div>
+    </div>
+    <label class="fl">Số phiên bản mỗi sản phẩm</label>
+    <select onchange="App.setOptNum('versions',this.value)">${[1,2,3].map(n=>`<option value="${n}" ${st.versions===n?'selected':''}>${n} video</option>`).join('')}</select>
+    <label class="fl">Tự tạo lại khi Muse báo sai (mỗi cảnh)</label>
+    <select onchange="App.setOptNum('retry',this.value)">${[0,1,2,3].map(n=>`<option value="${n}" ${st.retry===n?'selected':''}>${n===0?'Không tự tạo lại':'Tự tạo lại '+n+' lần'}</option>`).join('')}</select>
+    <label class="fl">Phong cách hình ảnh</label>
+    <select onchange="App.setOpt('style',this.value)">${selOpts(STYLES,st.style)}</select>
+    <label class="checkrow"><input type="checkbox" ${st.noPrice?'checked':''} onchange="App.setOptBool('noPrice',this.checked)"> Không nhắc giá trong video (affiliate)</label>
+    <div class="optgroup">MẪU CÀI ĐẶT</div>
+    <div style="display:flex; gap:8px">
+      <select id="presetSel" style="flex:1">${st.presets.length? st.presets.map((p,i)=>`<option value="${i}">${esc(p.name)}</option>`).join('') : '<option value="">Chưa có mẫu cài đặt</option>'}</select>
+      <button class="btn small" onclick="App.applyPreset()">Áp dụng</button>
+    </div>
+    <div style="display:flex; gap:8px; margin-top:8px">
+      <input type="text" id="presetName" placeholder="Tên mẫu mới..." style="flex:1">
+      <button class="btn small" onclick="App.savePreset()">Lưu mẫu</button>
+      <button class="btn small danger" onclick="App.deletePreset()">Xoá</button>
+    </div>
+  </div>`;
+}
+function setOpt(k,v){ S.settings[k]=v; save(); renderOptions(); renderBatch(); }
+function setOptNum(k,v){ S.settings[k]=parseInt(v,10)||1; save(); renderOptions(); renderBatch(); }
+function setOptBool(k,v){ S.settings[k]=!!v; save(); renderOptions(); }
+async function addCharRefs(input){ const files=[...input.files].slice(0,6);
+  for(const f of files){ try{ S.settings.charRefs.push(await downscaleImage(f)); }catch(e){} }
+  input.value=''; save(); renderOptions(); }
+function delCharRef(i){ S.settings.charRefs.splice(i,1); save(); renderOptions(); }
+async function addBg(input){ const f=input.files[0]; if(f){ try{ S.settings.bgImage=await downscaleImage(f); }catch(e){} } input.value=''; save(); renderOptions(); }
+function delBg(){ S.settings.bgImage=''; save(); renderOptions(); }
+function presetSnapshot(){ const {charMode,template,language,region,voice,scenes,ratio,versions,noPrice,style}=S.settings;
+  return {charMode,template,language,region,voice,scenes,ratio,versions,noPrice,style}; }
+function savePreset(){ const name=($('#presetName').value||'').trim(); if(!name){ toast('Nhập tên mẫu trước'); return; }
+  S.settings.presets=S.settings.presets.filter(p=>p.name!==name); S.settings.presets.push({name, data:presetSnapshot()});
+  save(); renderOptions(); toast('Đã lưu mẫu "'+name+'"'); }
+function applyPreset(){ const i=parseInt($('#presetSel').value,10); const p=S.settings.presets[i]; if(!p) return;
+  Object.assign(S.settings, p.data); save(); renderControl(); toast('Đã áp dụng mẫu "'+p.name+'"'); }
+function deletePreset(){ const i=parseInt($('#presetSel').value,10); if(isNaN(i)||!S.settings.presets[i]) return;
+  S.settings.presets.splice(i,1); save(); renderOptions(); }
 
-      dot.className = 'dot';
-      txt.textContent = 'Đang gọi xưởng...';
-      if (!silent) logMsg('settingsLog', 'Đang kết nối tới Render (nếu server đang ngủ có thể mất 30-50 giây)...');
+/* ---------------- Batch products ---------------- */
+function newBatchProduct(){ return { id:uid(), name:'', price:'', note:'', desc:'', images:[] }; }
+function batchTotals(){ const n=S.batch.filter(b=>b.name.trim()).length; return { products:n, videos:n*S.settings.versions }; }
+function renderBatch(){
+  const z=$('#batchZone'); if(!z) return; const t=batchTotals();
+  z.innerHTML=`<div class="card">
+    <h3>Sản phẩm hàng loạt <span class="sub">— mỗi SP: tên, giá, ảnh, lưu ý riêng</span></h3>
+    ${S.batch.map((b,i)=>`<div class="prodrow">
+      <div style="display:flex; gap:8px; margin-bottom:8px">
+        <input type="url" id="link-${b.id}" placeholder="Dán link TikTok Shop / Shopee để tự lấy thông tin..." style="flex:1">
+        <button class="btn small" onclick="App.fetchBatchLink('${b.id}')">🔗 Lấy tin</button>
+      </div>
+      <div class="phead"><span class="pnum">${i+1}</span>
+        <input type="text" placeholder="Tên sản phẩm" value="${esc(b.name)}" oninput="App.setBatch('${b.id}','name',this.value)" style="flex:1">
+        <span class="price">₫<input type="text" placeholder="34.000" value="${esc(b.price)}" oninput="App.setBatch('${b.id}','price',this.value)" style="width:86px; display:inline-block"></span>
+        <button class="btn small danger" onclick="App.delBatch('${b.id}')">×</button></div>
+      <div class="refs" style="margin-bottom:8px">${b.images.map((r,j)=>`<div class="refbox"><img src="${r}"><button onclick="App.delBatchImg('${b.id}',${j})">×</button></div>`).join('')}
+        <button class="addref" onclick="document.getElementById('bf-${b.id}').click()">＋ Ảnh</button>
+        <input type="file" id="bf-${b.id}" accept="image/*" multiple class="hiddenfile" onchange="App.addBatchImgs('${b.id}',this)"></div>
+      <input type="text" placeholder="Lưu ý cho Muse (không bắt buộc). VD: chỉ quay màu hồng, nhấn mạnh freeship, đang giảm 50%" value="${esc(b.note)}" oninput="App.setBatch('${b.id}','note',this.value)">
+      <textarea style="min-height:40px; margin-top:8px" placeholder="Mô tả sản phẩm (điểm bán hàng, chất liệu, công dụng...)" oninput="App.setBatch('${b.id}','desc',this.value)">${esc(b.desc)}</textarea>
+    </div>`).join('')}
+    <div class="btnrow" style="margin-top:0"><button class="btn" onclick="App.addBatch()">＋ Thêm sản phẩm</button></div>
+    <div style="height:10px"></div>
+    <button class="goldbtn" id="runBatchBtn" onclick="App.runBatch()" ${batchRunning?'disabled':''}>${t.videos? ('TẠO '+t.videos+' VIDEO CHO '+t.products+' SẢN PHẨM') : 'THÊM SẢN PHẨM ĐỂ BẮT ĐẦU'}</button>
+    <p class="muted" style="margin-top:8px">Mỗi video: AI tự soạn kịch bản theo mẫu đã chọn → gen keyframe từ ảnh SP → gen video từng cảnh. Xong việc nào hiện ở mục theo dõi bên dưới; dự án chi tiết nằm ở tab Xưởng để QC.</p>
+  </div>`;
+}
+function setBatch(id,k,v){ const b=S.batch.find(x=>x.id===id); if(!b) return; b[k]=v; save();
+  if(k==='name'){ const btn=$('#runBatchBtn'); if(btn && !batchRunning){ const t=batchTotals(); btn.textContent= t.videos? ('TẠO '+t.videos+' VIDEO CHO '+t.products+' SẢN PHẨM') : 'THÊM SẢN PHẨM ĐỂ BẮT ĐẦU'; } } }
+function addBatch(){ S.batch.push(newBatchProduct()); save(); renderBatch(); }
+function delBatch(id){ S.batch=S.batch.filter(x=>x.id!==id); save(); renderBatch(); }
+async function addBatchImgs(id,input){ const b=S.batch.find(x=>x.id===id); if(!b) return;
+  for(const f of [...input.files].slice(0,8)){ try{ b.images.push(await downscaleImage(f)); }catch(e){} }
+  input.value=''; save(); renderBatch(); }
+function delBatchImg(id,j){ const b=S.batch.find(x=>x.id===id); if(b){ b.images.splice(j,1); save(); renderBatch(); } }
+async function addCharPack(input){ const nameEl=document.getElementById('charPackName');
+  const name=(nameEl&&nameEl.value||'').trim(); const files=[...input.files];
+  if(!name){ toast('Nhập tên nhân vật trước khi chọn ảnh'); input.value=''; return; }
+  const refs=[]; for(const f of files.slice(0,6)){ try{ refs.push(await downscaleImage(f)); }catch(e){} }
+  input.value=''; if(!refs.length){ toast('Chưa có ảnh nào dùng được'); return; }
+  const pack={id:uid(), name, refs}; S.settings.charLib.push(pack);
+  if(!S.settings.activeChar) S.settings.activeChar=pack.id;
+  save(); renderOptions(); toast('Đã lưu nhân vật "'+name+'" vào thư viện'); }
+function setActiveChar(id){ S.settings.activeChar=id; save(); renderOptions(); }
+function delCharPack(id){ S.settings.charLib=S.settings.charLib.filter(c=>c.id!==id);
+  if(S.settings.activeChar===id) S.settings.activeChar=''; if(S.settings.char2===id) S.settings.char2='';
+  save(); renderOptions(); }
+function applyLibChar(){ const p=activeProject(); const sel=document.getElementById('libPick'); if(!p||!sel) return;
+  const pack=S.settings.charLib.find(c=>c.id===sel.value); if(!pack) return;
+  p.refsChar=[...pack.refs]; save(); renderWorkspace(); toast('Đã áp dụng nhân vật "'+pack.name+'"'); }
+Object.assign(window.App,{ setOpt, setOptNum, setOptBool, addCharRefs, delCharRef, addBg, delBg,
+  savePreset, applyPreset, deletePreset, setBatch, addBatch, delBatch, addBatchImgs, delBatchImg,
+  addCharPack, setActiveChar, delCharPack, applyLibChar });
 
-      try {
-        const res = await fetch(`${url}/v1/models`, {
-          headers: { 'Authorization': `Bearer ${key}` }
-        });
+/* ---------------- Script generation (AI + fallback) ---------------- */
+function capWords(t,n){ const w=String(t||'').trim().split(/\s+/).filter(Boolean); return w.slice(0,n).join(' '); }
+async function genScriptAI(prod, st){
+  const sys='Bạn là biên kịch video review affiliate ngắn cho TikTok/Reels. Chỉ trả về DUY NHẤT một mảng JSON, không giải thích, không markdown.';
+  const usr=['Sản phẩm: '+prod.name,
+    prod.desc? 'Mô tả/điểm bán hàng: '+prod.desc : '',
+    prod.note? 'Lưu ý bắt buộc: '+prod.note : '',
+    'Mẫu kịch bản: '+TEMPLATES[st.template]+'. Số cảnh: '+st.scenes+' (mỗi cảnh ~10 giây).',
+    'Cảnh 1 phải là hook demo trực diện: sản phẩm đang hoạt động, kết quả thấy ngay trong 2 giây đầu.',
+    'Lời thoại '+(LANGS[st.language]||'tiếng Việt')+', tối đa 26 từ mỗi cảnh, '+(st.noPrice?'TUYỆT ĐỐI không nhắc giá tiền':'có thể nhắc ưu đãi')+'.',
+    'Trả về JSON: [{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại"}] đủ '+st.scenes+' cảnh.'
+  ].filter(Boolean).join('\n');
+  const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
+    model:'muse-spark', stream:false,
+    messages:[{role:'system',content:sys},{role:'user',content:usr}] })});
+  const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+  const m=text.match(/\[[\s\S]*\]/); if(!m) throw new Error('AI không trả JSON');
+  const arr=JSON.parse(m[0]); if(!Array.isArray(arr)||!arr.length) throw new Error('JSON rỗng');
+  return arr.slice(0, st.scenes).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',28) }));
+}
+function genScriptFallback(prod, st){
+  const name=prod.name||'sản phẩm này'; const firstPoint=(prod.desc||'').split('\n')[0].slice(0,110);
+  const base=[
+    { visual:'Cận cảnh sản phẩm '+name+' đang được sử dụng thật, kết quả thấy ngay, khung hình bắt mắt thu hút', dialogue:capWords('Xem này, '+name+' đang hot là có lý do đó!',28) },
+    { visual:'Quay chi tiết sản phẩm '+name+' từ nhiều góc, thao tác sử dụng rõ ràng, cận cảnh chất liệu', dialogue:capWords(firstPoint || (name+' dùng cực kỳ tiện, chất lượng hơn hẳn mong đợi'),28) },
+    { visual:'Kết quả sau khi dùng '+name+', tổng thể gọn gàng đẹp mắt, người dùng hài lòng', dialogue:capWords(st.noPrice?'Ai cần thì bấm vào giỏ hàng xem ngay nhé, đang có ưu đãi đó!':'Mức giá này mà chất lượng vậy là quá hời, bấm giỏ hàng ngay nhé!',28) },
+    { visual:'So sánh nhanh sản phẩm '+name+' với cách làm thông thường, khác biệt rõ rệt', dialogue:capWords('Từ ngày có '+name+', mọi thứ nhanh gọn hơn hẳn',28) },
+    { visual:'Tổng kết: sản phẩm '+name+' trên tay, nền bối cảnh đẹp, gật đầu hài lòng', dialogue:capWords('Chốt lại là rất đáng mua, mọi người tham khảo ở giỏ hàng nhé!',28) }
+  ];
+  return base.slice(0, st.scenes);
+}
 
-        if (res.status === 401) {
-          dot.className = 'dot offline';
-          txt.textContent = 'Sai API Key';
-          if (!silent) logMsg('settingsLog', 'Lỗi 401: Sai mã MUSE2API_KEY rồi sếp ơi, check lại trên Render nhé!', true);
-          return;
-        }
+/* ---------------- Batch engine ---------------- */
+let batchRunning=false, batchStop=false;
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function createAutoProject(prod, st, version){
+  const pack=st.charLib.find(c=>c.id===st.activeChar); const pack2=st.charLib.find(c=>c.id===st.char2);
+  let refsChar=[];
+  if(st.charMode==='review'){ refsChar = pack? [...pack.refs] : [...st.charRefs];
+    if(st.useChar2&&pack2) refsChar=refsChar.concat(pack2.refs); }
+  let identity = st.animalTalk
+    ? 'Nhân vật chính là một con vật biết nói như người, nhép miệng khớp lời thoại, biểu cảm sinh động như người. Sản phẩm giống hệt ảnh tham chiếu, không thay đổi thiết kế.'
+    : (st.charMode==='pov' ? POV_IDENTITY : DEFAULT_IDENTITY);
+  if(st.useChar2&&pack2&&st.charMode==='review') identity+=' Có nhân vật thứ hai xuất hiện cùng trong khung hình: giữ đúng diện mạo nhân vật 2 theo các ảnh tham chiếu của nhân vật 2.';
+  const tone={ review:'Giọng điệu: nhanh, rõ ràng, đáng tin; nhấn vào trải nghiệm thật và kết quả thấy ngay.',
+    unbox:'Giọng điệu: tò mò, hồi hộp tăng dần theo từng lớp mở hộp, kết ở cảm giác đáng tiền.',
+    compare:'Giọng điệu: tương phản mạnh trước–sau, kết quả là điểm nhấn.',
+    tips:'Giọng điệu: hướng dẫn rõ ràng, từng bước dễ làm theo.',
+    story:'Giọng điệu: kể chuyện gần gũi, có cảm xúc, kết ấm áp.' }[st.template]||'';
+  const p={ id:uid(), name:prod.name+(st.versions>1? ' — bản '+version : ''), brand:'', product:prod.name,
+    points:prod.desc||'', hook:(st.hookStyle&&st.hookStyle!=='ai')? st.hookStyle : HOOKS[0], ratio:st.ratio,
+    identity, refsChar, refsProd:[...prod.images],
+    voiceDir: voiceDirText(st), styleText:(STYLES[st.style]||'')+'. '+tone,
+    exprText: EXPRESSIONS[st.expression]||'', retryLimit: st.retry,
+    idea: prod.note||'', stylePara:'', caption:'', assembly:Object.assign({}, ASM_DEFAULTS),
+    segments:[], createdAt:Date.now(), auto:true };
+  for(let i=0;i<st.scenes;i++) p.segments.push(newSegment(i));
+  S.projects.unshift(p); return p;
+}
+async function batchStartKF(proj,seg){
+  seg.kf.status='queued'; seg.kf.error=''; seg.kf.approved=false; save();
+  try{
+    const imgs= seg.hasProduct===false ? [...proj.refsChar] : [...proj.refsChar, ...proj.refsProd];
+    if(S.settings.bgImage) imgs.push(S.settings.bgImage);
+    const data=await api('/v1/images/tasks',{method:'POST', body:JSON.stringify({
+      prompt:buildImagePrompt(proj,seg), model:'muse-image', aspect_ratio:proj.ratio,
+      response_format:'url', images:imgs })});
+    seg.kf.taskId=data.id||data.task_id; seg.kf.status='processing'; save(); pollTask('image',proj.id,seg.id);
+  }catch(e){ seg.kf.status='failed'; seg.kf.error=e.message; save(); }
+}
+async function waitSettled(proj, kind){
+  const t0=Date.now();
+  while(Date.now()-t0 < 20*60*1000){
+    if(batchStop) return;
+    const settled=proj.segments.every(s=>['done','failed'].includes(kind==='kf'? s.kf.status : s.vid.status));
+    if(settled) return;
+    await sleep(3000);
+  }
+}
+async function produceJob(job){
+  const st=S.settings; const prod=S.batch.find(b=>b.id===job.productId);
+  if(!prod){ job.status='failed'; job.step='Sản phẩm đã bị xoá'; return; }
+  job.status='running'; job.step='Đang soạn kịch bản'; renderMonitor();
+  const proj=createAutoProject(prod, st, job.version); job.projId=proj.id; save();
+  let scenes=null; try{ scenes=await genScriptAI(prod, st); }catch(e){ scenes=null; }
+  if(!scenes) scenes=genScriptFallback(prod, st);
+  scenes.forEach((sc,i)=>{ if(proj.segments[i]){ proj.segments[i].visual=sc.visual||''; proj.segments[i].dialogue=sc.dialogue||''; } });
+  save(); if(batchStop){ job.status='stopped'; return; }
+  job.step='Đang tạo keyframe'; renderMonitor();
+  for(const seg of proj.segments){ await batchStartKF(proj,seg); await sleep(700); }
+  await waitSettled(proj,'kf'); if(batchStop){ job.status='stopped'; return; }
+  proj.segments.forEach(s=>{ if(s.kf.status==='done') s.kf.approved=true; }); save();
+  job.step='Đang tạo video'; renderMonitor();
+  for(const seg of proj.segments){
+    if(seg.kf.approved){ seg.vid.retries=0; startVideoTask(proj,seg); }
+    else { seg.vid.status='failed'; seg.vid.error='Keyframe lỗi'; }
+    await sleep(700);
+  }
+  await waitSettled(proj,'vid'); if(batchStop){ job.status='stopped'; return; }
+  const allDone=proj.segments.every(s=>s.vid.status==='done');
+  job.status= allDone? 'done':'failed';
+  job.step= allDone? 'Hoàn thành — mở dự án để QC & tải clip' : 'Có cảnh lỗi — mở dự án để gen lại';
+  save(); renderMonitor();
+}
+async function runBatch(){
+  if(batchRunning) return;
+  const st=S.settings;
+  const prods=S.batch.filter(b=>b.name.trim());
+  if(!prods.length){ toast('Chưa có sản phẩm nào có tên'); return; }
+  if(prods.some(b=>!b.images.length)){ toast('Mỗi sản phẩm cần ít nhất 1 ảnh'); return; }
+  if(st.charMode==='review' && !st.charRefs.length){ toast('Chế độ Có người review cần ảnh nhân vật dùng chung'); return; }
+  if(!cfg().url){ toast('Chưa cấu hình địa chỉ Worker (tab Cài đặt)'); return; }
+  batchStop=false; batchRunning=true; requestWake();
+  S.jobs=[]; prods.forEach(prod=>{ for(let v=1; v<=st.versions; v++)
+    S.jobs.push({ id:uid(), productId:prod.id, name:prod.name, version:v, projId:null, status:'queued', step:'Đang chờ' }); });
+  save(); renderBatch(); renderMonitor();
+  for(const job of S.jobs){ if(batchStop) break; await produceJob(job); }
+  batchRunning=false; save(); renderBatch(); renderMonitor();
+  toast('Đợt sản xuất đã kết thúc');
+}
+async function stopAll(){
+  batchStop=true;
+  S.jobs.forEach(j=>{ if(['queued','running'].includes(j.status)){ j.status='stopped'; j.step='Đã dừng'; } });
+  for(const p of S.projects) for(const s of p.segments) for(const slot of [s.kf, s.vid]){
+    if(slot.taskId && ['queued','processing'].includes(slot.status)){
+      const tid=slot.taskId; slot.taskId=null; slot.status='failed'; slot.error='Đã dừng bởi người dùng';
+      try{ await api('/admin/tasks/'+tid,{method:'DELETE'}); }catch(e){}
+    } }
+  save(); renderMonitor(); toast('Đã buộc dừng tất cả');
+}
 
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+/* ---------------- Monitor ---------------- */
+function sceneProgress(s){
+  if(s.vid.status==='done') return 100;
+  if(s.vid.status==='processing') return 40+Math.round((s.vid.progress||0)*0.6);
+  if(s.vid.status==='queued') return 38;
+  if(s.vid.status==='failed') return 35;
+  if(s.kf.status==='done') return 35;
+  if(['queued','processing'].includes(s.kf.status)) return 15;
+  return 0;
+}
+function jobProgress(job){ const proj=S.projects.find(x=>x.id===job.projId);
+  if(!proj) return job.status==='done'?100:0;
+  return Math.round(proj.segments.reduce((a,s)=>a+sceneProgress(s),0)/Math.max(1,proj.segments.length)); }
+function sceneLine(proj){
+  return proj.segments.map((s,i)=>{
+    let t='chờ';
+    if(s.vid.status==='done') t='xong';
+    else if(s.vid.status==='processing') t=(s.vid.progress||0)+'%';
+    else if(s.vid.status==='failed') t='lỗi';
+    else if(['queued','processing'].includes(s.vid.status)) t='đang chạy';
+    else if(s.kf.status==='done') t='có keyframe';
+    else if(['queued','processing'].includes(s.kf.status)) t='keyframe...';
+    return 'Cảnh '+(i+1)+': <b>'+t+'</b>'; }).join(' · ');
+}
+function renderMonitor(){
+  const z=$('#monitorZone'); if(!z) return;
+  if(!S.jobs.length){ z.innerHTML=''; return; }
+  const doneN=S.jobs.filter(j=>j.status==='done').length;
+  const overall=Math.round(S.jobs.reduce((a,j)=>a+jobProgress(j),0)/S.jobs.length);
+  z.innerHTML=`<div class="card">
+    <h3>Video đang làm (${doneN}/${S.jobs.length} xong) <span class="sub">— ${overall}%</span></h3>
+    <div class="prog" style="margin-bottom:10px"><i style="width:${overall}%"></i></div>
+    ${S.jobs.map(j=>{ const proj=S.projects.find(x=>x.id===j.projId); const pct=jobProgress(j);
+      const badge= j.status==='done'? '<span class="jbadge done">Xong</span>' : j.status==='failed'? '<span class="jbadge fail">Lỗi</span>'
+        : j.status==='stopped'? '<span class="jbadge stop">Đã dừng</span>' : j.status==='running'? '<span class="jbadge run">Đang chạy</span>' : '<span class="jbadge">Đang chờ</span>';
+      return `<div class="jobrow"><div class="jhead">${badge}<b style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap">${esc(j.name)}${S.settings.versions>1?' · bản '+j.version:''}</b>
+        <span>${pct}%</span>${j.projId?`<button class="btn small" onclick="App.openJob('${j.projId}')">Mở</button>`:''}</div>
+        <div class="prog"><i style="width:${pct}%"></i></div>
+        <div class="sceneline">${esc(j.step||'')}${proj? ' — '+sceneLine(proj):''}</div></div>`; }).join('')}
+    <div class="btnrow"><button class="btn danger" onclick="App.stopAll()">Buộc dừng tất cả</button></div>
+    <p class="muted">Video xong nằm trong dự án tương ứng ở tab Xưởng (QC & tải) và trong Thư viện của bridge.</p>
+  </div>`;
+}
+function openJob(projId){
+  $$('#tabs button').forEach(x=>x.classList.toggle('active', x.dataset.view==='projects'));
+  ['control','projects','library','settings'].forEach(v=>$('#view-'+v).classList.toggle('hidden', v!=='projects'));
+  openProject(projId);
+}
+Object.assign(window.App,{ runBatch, stopAll, openJob });
+setInterval(()=>{ if(S.jobs.some(j=>['queued','running'].includes(j.status))) renderMonitor(); }, 3000);
+renderControl();
 
-        const data = await res.json();
-        dot.className = 'dot online';
-        txt.textContent = 'Xưởng Online';
+/* ---------------- V4: kịch bản từ ý tưởng ---------------- */
+function setSegBool(id,k,v){ const p=activeProject(); if(!p) return; const s=p.segments.find(x=>x.id===id); if(!s) return; s[k]=!!v; save(); }
+async function genScriptStructured(ctx, st, count){
+  const sys='Bạn là biên kịch video ngắn TikTok/Reels. Chỉ trả về DUY NHẤT một JSON object, không giải thích, không markdown.';
+  const usr=[ 'Chủ đề / ý tưởng: '+ctx,
+    'Mẫu kịch bản: '+TEMPLATES[st.template]+'. Số cảnh: '+count+' (mỗi cảnh ~10 giây).',
+    'Cảnh 1: hook demo trực diện, kết quả thấy ngay trong 2 giây đầu.'+((st.hookStyle&&st.hookStyle!=='ai')? ' Kiểu mở đầu: '+st.hookStyle : ''),
+    'Lời thoại '+(LANGS[st.language]||'tiếng Việt')+', tối đa 26 từ mỗi cảnh'+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'.',
+    'Trả về JSON: {"style":"một đoạn mô tả phong cách/giọng điệu chung của video, 2-3 câu","scenes":[{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại"}]} đủ '+count+' cảnh.'
+  ].join('\n');
+  const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
+    model:'muse-spark', stream:false, messages:[{role:'system',content:sys},{role:'user',content:usr}] })});
+  const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+  const m=text.match(/\{[\s\S]*\}/); if(!m) throw new Error('AI không trả JSON');
+  const obj=JSON.parse(m[0]); if(!obj||!Array.isArray(obj.scenes)||!obj.scenes.length) throw new Error('JSON thiếu scenes');
+  return { style:String(obj.style||''), scenes:obj.scenes.slice(0,count).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',28) })) };
+}
+async function aiScript(){
+  const p=activeProject(); if(!p) return; const st=S.settings;
+  const ctx=(p.idea||'').trim() || [p.brand, p.product, p.points].filter(Boolean).join(' — ');
+  if(!ctx){ toast('Nhập ý tưởng hoặc thông tin SP trước'); return; }
+  toast('AI đang lập kịch bản...');
+  try{
+    const r=await genScriptStructured(ctx, st, p.segments.length);
+    r.scenes.forEach((sc,i)=>{ if(p.segments[i]){ p.segments[i].visual=sc.visual; p.segments[i].dialogue=sc.dialogue; } });
+    if(r.style) p.stylePara=r.style;
+    save(); renderWorkspace(); toast('Đã lập kịch bản xong');
+  }catch(e){ toast('AI lập kịch bản lỗi: '+e.message); }
+}
 
-        // Nạp danh sách model thực tế từ server vào dropdown
-        if (data && Array.isArray(data.data) && data.data.length > 0) {
-          const select = document.getElementById('modelSelect');
-          select.innerHTML = '';
-          data.data.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m.id;
-            opt.textContent = m.id;
-            select.appendChild(opt);
-          });
-        }
-        if (!silent) logMsg('settingsLog', `Kết nối thành công! Xưởng đã sẵn sàng hoạt động.`);
-      } catch (err) {
-        dot.className = 'dot offline';
-        txt.textContent = 'Mất kết nối';
-        if (!silent) logMsg('settingsLog', `Chưa gọi được xưởng (${err.message}). Sếp bấm lại nút trạng thái góc trên sau 30 giây nhé!`, true);
-      }
-    }
+/* ---------------- V4: Ghép phim (ffmpeg) ---------------- */
+function ensureAsm(p){ if(!p.assembly) p.assembly=Object.assign({}, ASM_DEFAULTS); return p.assembly; }
+function setAsm(k,v){ const p=activeProject(); if(!p) return; ensureAsm(p)[k]=v; save(); }
+function setAsmBool(k,v){ const p=activeProject(); if(!p) return; ensureAsm(p)[k]=!!v; save(); }
+function setAsmRender(k,v){ setAsm(k,v); renderProductionZone(); }
+function setAsmBoolRender(k,v){ setAsmBool(k,v); renderProductionZone(); }
+async function addLogo(input){ const p=activeProject(); const f=input.files[0];
+  if(p&&f){ try{ ensureAsm(p).logo=await downscaleImage(f); }catch(e){} }
+  input.value=''; save(); renderProductionZone(); }
+function delLogo(){ const p=activeProject(); if(p){ ensureAsm(p).logo=''; save(); renderProductionZone(); } }
+function setMusic(input){ const p=activeProject(); const f=input.files[0];
+  if(p&&f){ ensureAsm(p).musicName=f.name; save(); renderProductionZone(); toast('Đã ghi nhận nhạc: '+f.name+' — nhớ gửi kèm file này với gói ghép'); }
+  input.value=''; }
+async function genCover(){
+  const p=activeProject(); if(!p) return; const a=ensureAsm(p);
+  const s1=p.segments[0]; if(!s1||!s1.kf.url){ toast('Cần keyframe cảnh 1 trước'); return; }
+  const title=((a.coverTitle||'').trim() || p.product || p.name || 'XEM NGAY');
+  a.coverStatus='Đang tạo ảnh bìa...'; save(); renderProductionZone();
+  try{
+    const kf=await urlToDataURI(s1.kf.url);
+    const data=await api('/v1/images/tasks',{method:'POST', body:JSON.stringify({
+      model:'muse-image', aspect_ratio:p.ratio, response_format:'url',
+      prompt:'Ảnh bìa (thumbnail) video dọc thật bắt mắt, sản phẩm là trung tâm, nền gọn tương phản cao, ánh sáng đẹp. Trên ảnh có tiêu đề chữ IN HOA thật to, rõ nét, đúng chính tả, tối đa 3 từ: "'+title.toUpperCase()+'". Không thêm bất kỳ chữ nào khác.',
+      images:[kf, ...p.refsProd.slice(0,1)] })});
+    const tid=data.id||data.task_id; const t0=Date.now();
+    const poll=async()=>{ try{ const t=await api('/v1/images/tasks/'+tid);
+      if(t.status==='completed'){ a.coverUrl=(t.data&&t.data[0]&&t.data[0].url)||(t.result&&t.result.url)||t.url||''; a.coverStatus=''; save(); renderProductionZone(); toast('Đã có ảnh bìa'); }
+      else if(t.status==='failed'){ a.coverStatus='Lỗi tạo bìa: '+(t.error||''); save(); renderProductionZone(); }
+      else if(Date.now()-t0<300000) setTimeout(poll,6000);
+      else { a.coverStatus='Quá thời gian chờ — thử lại'; save(); renderProductionZone(); } }catch(e){ setTimeout(poll,8000); } };
+    poll();
+  }catch(e){ a.coverStatus='Lỗi: '+e.message; save(); renderProductionZone(); }
+}
+async function genCaption(){
+  const p=activeProject(); if(!p) return; toast('AI đang viết caption...');
+  const ctx=['Sản phẩm: '+(p.product||p.name), p.points? 'Điểm bán hàng: '+p.points : '',
+    'Lời thoại các cảnh: '+p.segments.map(s=>s.dialogue).filter(Boolean).join(' / ')].filter(Boolean).join('\n');
+  try{
+    const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
+      model:'muse-spark', stream:false, messages:[
+        {role:'system',content:'Bạn viết caption đăng TikTok/Reels cho video affiliate. Trả về caption tiếng Việt ngắn gọn, câu đầu là hook, xuống dòng hợp lý, kèm 6-10 hashtag liên quan ở cuối. Chỉ trả caption, không giải thích.'},
+        {role:'user',content:ctx}] })});
+    p.caption=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||'').trim();
+    save(); renderProductionZone(); toast('Đã có caption');
+  }catch(e){ toast('Viết caption lỗi: '+e.message); }
+}
+function copyCaption(){ const p=activeProject(); if(p&&p.caption&&navigator.clipboard){ navigator.clipboard.writeText(p.caption); toast('Đã copy caption'); } }
+function exportPackage(){
+  const p=activeProject(); if(!p) return; const a=ensureAsm(p);
+  const spec={ loai:'goi-ghep-ffmpeg', duAn:p.name, sanPham:p.product, hang:p.brand, tiLe:p.ratio,
+    ghep:{ catKhoangLang:!!a.trimSilence,
+      phuDe: a.subOn? {co:true, coChu:a.subSize, viTri:a.subPos, kieu:a.subStyle, mauChu:a.subColor} : {co:false},
+      canhKetCTA:!!a.ctaEnd, tocDo:parseFloat(a.speed)||1,
+      logoShop: a.logo? 'co — file logo.png gui kem' : 'khong',
+      nhacNen: a.musicName||'khong',
+      anhBia: a.coverUrl? resolveUrl(a.coverUrl) : '', tieuDeBia:a.coverTitle||'' },
+    caption:p.caption||'',
+    cacCanh:p.segments.map((s,i)=>({ file:'doan-'+(i+1)+'.mp4', tieuDe:s.title, loiThoai:s.dialogue||'',
+      tatTieng:!!s.mute, coSanPham:s.hasProduct!==false, clip:s.vid.url? resolveUrl(s.vid.url) : '' })) };
+  const blob=new Blob([JSON.stringify(spec,null,2)],{type:'application/json'});
+  const el=document.createElement('a'); el.href=URL.createObjectURL(blob); el.download='goi-ghep.json'; el.click();
+  setTimeout(()=>URL.revokeObjectURL(el.href),3000);
+  if(a.logo) downloadUrl(a.logo,'logo.png');
+  downloadAll();
+  toast('Đã xuất gói ghép — gửi t: các clip + goi-ghep.json (+ logo/nhạc nếu có)', 4200);
+}
+function asmHTML(p){
+  const a=ensureAsm(p);
+  return `
+  <label class="fl">Tự cắt khoảng lặng đầu/cuối mỗi cảnh</label>
+  <div class="segbtn"><button class="${!a.trimSilence?'active':''}" onclick="App.setAsmBoolRender('trimSilence',false)">Tắt</button><button class="${a.trimSilence?'active':''}" onclick="App.setAsmBoolRender('trimSilence',true)">Bật</button></div>
+  <label class="fl">Phụ đề chạy theo lời thoại</label>
+  <div class="segbtn"><button class="${!a.subOn?'active':''}" onclick="App.setAsmBoolRender('subOn',false)">Tắt</button><button class="${a.subOn?'active':''}" onclick="App.setAsmBoolRender('subOn',true)">Bật</button></div>
+  ${a.subOn?`<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+    <div><label class="fl">Cỡ chữ</label><select onchange="App.setAsm('subSize',this.value)">${selOpts({nho:'Nhỏ',vua:'Vừa',lon:'Lớn'},a.subSize)}</select></div>
+    <div><label class="fl">Vị trí</label><select onchange="App.setAsm('subPos',this.value)">${selOpts({tren:'Trên',giua:'Giữa',duoi:'Dưới'},a.subPos)}</select></div>
+    <div><label class="fl">Kiểu phụ đề</label><select onchange="App.setAsm('subStyle',this.value)">${selOpts({tiktok:'TikTok',codien:'Cổ điển',nenden:'Nền đen'},a.subStyle)}</select></div>
+    <div><label class="fl">Màu chữ</label><select onchange="App.setAsm('subColor',this.value)">${selOpts({trang:'Trắng',vang:'Vàng'},a.subColor)}</select></div>
+  </div>`:''}
+  <label class="checkrow"><input type="checkbox" ${a.ctaEnd?'checked':''} onchange="App.setAsmBool('ctaEnd',this.checked)"> Thêm cảnh kết kêu gọi mua (+2,5 giây)</label>
+  <label class="fl">Tốc độ phát</label>
+  <div class="segbtn">${['1','1.15','1.25'].map(v=>`<button class="${a.speed===v?'active':''}" onclick="App.setAsmRender('speed','${v}')">${v}x</button>`).join('')}</div>
+  <label class="fl">Logo shop ở góc video (PNG)</label>
+  <div class="refs">${a.logo?`<div class="refbox"><img src="${a.logo}"><button onclick="App.delLogo()">×</button></div>`
+    :`<button class="addref" onclick="document.getElementById('asmLogoFile').click()">＋</button>`}
+    <input type="file" id="asmLogoFile" accept="image/*" class="hiddenfile" onchange="App.addLogo(this)"></div>
+  <label class="fl">Nhạc nền (ghi nhận tên file — gửi kèm file nhạc khi gửi gói)</label>
+  <div class="btnrow" style="margin-top:0"><button class="btn small" onclick="document.getElementById('asmMusicFile').click()">🎵 Chọn file nhạc</button>
+    <input type="file" id="asmMusicFile" accept="audio/*" class="hiddenfile" onchange="App.setMusic(this)">
+    <span class="muted">${a.musicName? esc(a.musicName) : 'Chưa chọn'}</span></div>
+  <label class="fl">Ảnh bìa video — tiêu đề (IN HOA, 2–3 từ)</label>
+  <div style="display:flex; gap:8px"><input type="text" value="${esc(a.coverTitle||'')}" oninput="App.setAsm('coverTitle',this.value)" placeholder="VD: QUÀ NOEL XỊN" style="flex:1">
+    <button class="btn small" onclick="App.genCover()">Tạo ảnh bìa</button></div>
+  ${a.coverStatus?`<p class="muted">${esc(a.coverStatus)}</p>`:''}
+  ${a.coverUrl?`<img src="${esc(resolveUrl(a.coverUrl))}" style="width:130px; border-radius:10px; margin-top:8px">`:''}
+  <div class="btnrow"><button class="btn primary" onclick="App.exportPackage()">📦 Xuất gói ghép + tải clip</button></div>
+  <p class="muted">Gửi cho t: các clip đã tải + file goi-ghep.json (+ logo/nhạc nếu có) → t ghép bằng ffmpeg: cắt khoảng lặng, cháy phụ đề theo lời thoại, bìa, logo, nhạc nền, cảnh kết → trả video hoàn chỉnh.</p>`;
+}
+Object.assign(window.App,{ setSegBool, aiScript, setAsm, setAsmBool, setAsmRender, setAsmBoolRender,
+  addLogo, delLogo, setMusic, genCover, genCaption, copyCaption, exportPackage });
 
-    // Chuyển đổi JSON Cookie-Editor thành chuỗi Cookie chuẩn và đẩy lên /admin/accounts
-    async function pushCookieToServer() {
-      const url = getCleanUrl();
-      const key = document.getElementById('apiKeyInput').value.trim();
-      const label = document.getElementById('accountLabelInput').value.trim() || 'Nick Phu 1';
-      const rawInput = document.getElementById('cookieJsonInput').value.trim();
-      const btn = document.getElementById('importCookieBtn');
+/* ---------------- V5: Lấy thông tin SP từ link (qua Worker) ---------------- */
+async function fetchProductInfo(link){
+  const {url}=cfg(); if(!url) throw new Error('Chưa cấu hình Worker (tab Cài đặt)');
+  const res=await fetch(url+'/fetch-product?url='+encodeURIComponent(link));
+  if(res.status===404) throw new Error('Worker chưa có tính năng này — dán đoạn mã v5 vào Worker trước');
+  const d=await res.json(); if(!d.ok) throw new Error(d.error||'Không lấy được');
+  if(/security check|are you human|captcha|verify you are/i.test(d.title||'')) d.title='';
+  if(!d.title && !d.price && !(d.images&&d.images.length)) throw new Error('Sàn chặn lấy tin tự động (tường bot) — nhập tay giúp');
+  return d;
+}
+function shrinkDataURI(d){
+  return new Promise(ok=>{ const img=new Image();
+    img.onload=()=>{ const max=1024; const w=img.naturalWidth, h=img.naturalHeight;
+      const k=Math.min(1, max/Math.max(w,h)); if(k>=1){ ok(d); return; }
+      const c=document.createElement('canvas'); c.width=Math.round(w*k); c.height=Math.round(h*k);
+      c.getContext('2d').drawImage(img,0,0,c.width,c.height); ok(c.toDataURL('image/jpeg',0.85)); };
+    img.onerror=()=>ok(d); img.src=d; });
+}
+function fmtPrice(p){ const n=parseInt(String(p||'').replace(/\D/g,''),10); return isNaN(n)? String(p||'') : n.toLocaleString('vi-VN'); }
+async function fetchBatchLink(id){
+  const b=S.batch.find(x=>x.id===id); const el=document.getElementById('link-'+id);
+  const link=(el&&el.value||'').trim(); if(!b||!link){ toast('Dán link vào ô trước đã'); return; }
+  toast('Đang lấy thông tin sản phẩm...');
+  try{
+    const d=await fetchProductInfo(link);
+    const imgs=[]; for(const im of (d.images||[])) imgs.push(await shrinkDataURI(im));
+    if(d.title) b.name=d.title; if(d.price) b.price=fmtPrice(d.price); if(d.desc) b.desc=d.desc;
+    if(imgs.length) b.images=b.images.concat(imgs).slice(0,8);
+    save(); renderBatch();
+    toast((d.title||imgs.length)? ('Đã điền: '+(d.title?'tên ✓ ':'')+(d.price?'giá ✓ ':'')+(imgs.length? imgs.length+' ảnh ✓':'')) : 'Trang này chặn lấy tự động — nhập tay giúp t');
+  }catch(e){ toast('Lấy tin lỗi: '+e.message); }
+}
+async function fetchProjLink(){
+  const p=activeProject(); const el=document.getElementById('projLink');
+  const link=(el&&el.value||'').trim(); if(!p||!link){ toast('Dán link vào ô trước đã'); return; }
+  toast('Đang lấy thông tin sản phẩm...');
+  try{
+    const d=await fetchProductInfo(link);
+    const imgs=[]; for(const im of (d.images||[])) imgs.push(await shrinkDataURI(im));
+    if(d.title) p.product=d.title; if(d.desc) p.points=d.desc;
+    if(imgs.length) p.refsProd=p.refsProd.concat(imgs).slice(0,8);
+    save(); renderWorkspace();
+    toast((d.title||imgs.length)? ('Đã điền thông tin SP + '+imgs.length+' ảnh tham chiếu') : 'Trang này chặn lấy tự động — nhập tay giúp t');
+  }catch(e){ toast('Lấy tin lỗi: '+e.message); }
+}
+Object.assign(window.App,{ fetchBatchLink, fetchProjLink });
 
-      if (!url || !key) {
-        logMsg('settingsLog', 'Sếp điền Link Render và MUSE2API_KEY ở trên trước nhé!', true);
-        return;
-      }
-      if (!rawInput) {
-        logMsg('settingsLog', 'Sếp chưa dán chuỗi JSON Cookie vào ô trống!', true);
-        return;
-      }
-
-      let cookieStr = rawInput;
-      let maxExpires = null;
-
-      // Tự động parse nếu là mảng JSON từ Cookie-Editor
-      try {
-        const parsed = JSON.parse(rawInput);
-        if (Array.isArray(parsed)) {
-          cookieStr = parsed
-            .filter(c => c.name && c.value)
-            .map(c => `${c.name}=${c.value}`)
-            .join('; ');
-          const expList = parsed.map(c => c.expirationDate).filter(Boolean);
-          if (expList.length > 0) maxExpires = Math.max(...expList);
-        }
-      } catch (e) {
-        // Nếu người dùng dán sẵn chuỗi key=value; thì giữ nguyên
-      }
-
-      btn.disabled = true;
-      btn.textContent = '⏳ Đang bơm Cookie vào xưởng...';
-      logMsg('settingsLog', 'Đang gửi dữ liệu tới cổng /admin/accounts...');
-
-      try {
-        const payload = { label: label, cookies: cookieStr };
-        if (maxExpires) payload.expires = Math.floor(maxExpires);
-
-        const res = await fetch(`${url}/admin/accounts`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`
-          },
-          body: JSON.stringify(payload)
-        });
-
-        const text = await res.text();
-        if (res.status === 401) {
-          logMsg('settingsLog', 'Lỗi 401: Sai mã MUSE2API_KEY!', true);
-          return;
-        }
-        if (!res.ok) {
-          logMsg('settingsLog', `Server từ chối (HTTP ${res.status}): ${text}`, true);
-          return;
-        }
-
-        localStorage.setItem('td_muse_url', url);
-        localStorage.setItem('td_muse_key', key);
-        logMsg('settingsLog', `🎉 BƠM COOKIE THÀNH CÔNG! Xưởng đã nhận tài khoản "${label}". Sếp chuyển sang tab "Xưởng Tạo Video" để quất luôn!`);
-        pingServer(true);
-      } catch (err) {
-        logMsg('settingsLog', `Lỗi gửi dữ liệu: ${err.message}. Có thể server Render đang ngủ, sếp đợi 30s rồi bấm lại nhé!`, true);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '🚀 Nạp Cookie Vào Xưởng Ngay';
-      }
-    }
-
-    // Gọi API tạo video
-    async function generateVideo() {
-      const url = getCleanUrl();
-      const key = document.getElementById('apiKeyInput').value.trim();
-      const model = document.getElementById('modelSelect').value;
-      const ratio = document.getElementById('ratioSelect').value;
-      const prompt = document.getElementById('promptInput').value.trim();
-      const btn = document.getElementById('generateBtn');
-      const dlBtn = document.getElementById('downloadBtn');
-
-      if (!url || !key) {
-        logMsg('studioLog', 'Sếp sang tab "Nạp Cookie & Key" điền thông tin server trước nhé!', true);
-        return;
-      }
-      if (!prompt) {
-        logMsg('studioLog', 'Sếp nhập mô tả cảnh quay vào ô Prompt đã nào!', true);
-        return;
-      }
-
-      btn.disabled = true;
-      btn.textContent = '⏳ Đang render video (mất 1 - 3 phút)...';
-      dlBtn.style.display = 'none';
-      logMsg('studioLog', `Đang gửi lệnh tới ${model} [Khung ${ratio}]...\nSếp giữ màn hình sáng, đừng tắt trình duyệt nhé.`);
-
-      try {
-        const finalPrompt = `${prompt} --ar ${ratio}`;
-        const res = await fetch(`${url}/v1/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${key}`
-          },
-          body: JSON.stringify({
-            model: model,
-            messages: [{ role: 'user', content: finalPrompt }],
-            stream: false
-          })
-        });
-
-        const rawText = await res.text();
-        if (!res.ok) {
-          throw new Error(`HTTP ${res.status}: ${rawText.slice(0, 150)}`);
-        }
-
-        const data = JSON.parse(rawText);
-        const content = data.choices?.[0]?.message?.content || '';
-
-        // Bóc tách link video từ nội dung trả về
-        const urlMatch = content.match(/https?:\/\/[^\s"'<>)]+\.(mp4|mov|webm)[^\s"'<>)]*/i) 
-                      || content.match(/\((https?:\/\/[^\s)]+)\)/i)
-                      || content.match(/(https?:\/\/[^\s"'<>]+)/i);
-
-        if (urlMatch) {
-          const videoUrl = urlMatch[1] || urlMatch[0];
-          const stage = document.getElementById('videoStage');
-          stage.innerHTML = `<video src="${videoUrl}" controls autoplay loop playsinline></video>`;
-          dlBtn.href = videoUrl;
-          dlBtn.style.display = 'flex';
-          logMsg('studioLog', `✅ XUẤT XƯỞNG THÀNH CÔNG!\nLink gốc: ${videoUrl}`);
-        } else {
-          logMsg('studioLog', `Xưởng phản hồi nhưng chưa thấy link video:\n${content}`, true);
-        }
-      } catch (err) {
-        logMsg('studioLog', `❌ Lỗi tạo video: ${err.message}`, true);
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '⚡ Bắt Đầu Xuất Video';
-      }
-    }
-  </script>
+/* ---------------- Init ---------------- */
+(function init(){
+  $('#cfgUrl').value=localStorage.getItem(LS_URL)||''; $('#cfgKey').value=localStorage.getItem(LS_KEY)||'';
+  renderProjects(); if(S.activeId) renderWorkspace();
+  // Resume polling for tasks that were running when the app was closed
+  S.projects.forEach(p=>p.segments.forEach(s=>{
+    if(s.kf.taskId && ['queued','processing'].includes(s.kf.status)) pollTask('image',p.id,s.id);
+    if(s.vid.taskId && ['queued','processing'].includes(s.vid.status)) pollTask('video',p.id,s.id);
+  }));
+  ping(true); setInterval(()=>ping(true), 90000);
+})();
+</script>
+</body>
+</html>
+</script>
+</body>
+</html>
+</script>
 </body>
 </html>
