@@ -287,7 +287,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.3</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.5</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
@@ -473,11 +473,14 @@ function downscaleImage(file){
 }
 async function downloadUrl(u, filename){
   try{
-    const res=await fetch(resolveUrl(u)); const blob=await res.blob();
+    toast('Đang tải file về máy…');
+    const res=await fetch(resolveUrl(u)); if(!res.ok) throw new Error('HTTP '+res.status);
+    const blob=await res.blob();
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename||'media';
     document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),4000);
-  }catch(e){ window.open(resolveUrl(u),'_blank'); }
+  }catch(e){ toast('Tải thẳng bị lỗi — m mở video bên trên rồi dùng nút chia sẻ / lưu video trong trình phát nhé', 6000); }
 }
+function downloadFinal(){ const p=activeProject(); if(p && p.asmResult && p.asmResult.url) downloadUrl(p.asmResult.url, 'video-ghep.mp4'); }
 
 /* ---------------- Navigation ---------------- */
 $$('#tabs button').forEach(b=>b.addEventListener('click',()=>{
@@ -649,7 +652,7 @@ function addSegment(){ const p=activeProject(); if(!p||p.segments.length>=5) ret
 function removeSegment(){ const p=activeProject(); if(!p||p.segments.length<=2) return; p.segments.pop(); save(); renderWorkspace(); }
 
 /* ---------------- Prompt builders (luật đồng nhất) ---------------- */
-const PROMPT_LOCKS='KHÓA CỨNG CHO MỌI CẢNH: (1) TUYỆT ĐỐI không in, vẽ hay hiển thị thêm bất kỳ chữ, ký tự, tên hãng, logo MỚI nào lên sản phẩm, điện thoại hay bất kỳ vật thể nào trong khung hình; chữ và logo vốn in sẵn trên sản phẩm thật phải giữ nguyên đúng như ảnh tham chiếu. (2) Nếu có điện thoại trong cảnh: màn hình điện thoại TẮT hẳn (màn hình đen) hoặc mặt lưng quay về phía camera; không hiện hình người trên màn hình, không giao diện quay phim, không nút ghi hình, không số đếm giờ. (3) Sản phẩm phải giống hệt ảnh tham chiếu: đúng hình dáng, đúng từng chi tiết (đầu kẹp, tay cầm, remote, khớp nối), đúng màu sắc — không tự thiết kế lại, không thêm bớt chi tiết. (4) Toàn bộ video chỉ quay ở MỘT bối cảnh duy nhất: cùng một phòng/không gian, cùng vị trí đồ đạc, cùng ánh sáng trong mọi cảnh; nhân vật mặc cùng một bộ trang phục trong mọi cảnh. (5) TUYỆT ĐỐI không chèn banner, nút bấm, biểu tượng giỏ hàng, giao diện ứng dụng hay bất kỳ dòng chữ nào phủ lên khung hình; lời kêu gọi mua hàng chỉ thể hiện bằng lời nói và cử chỉ tay hướng xuống góc dưới khung hình.';
+const PROMPT_LOCKS='KHÓA CỨNG CHO MỌI CẢNH: (1) TUYỆT ĐỐI không in, vẽ hay hiển thị thêm bất kỳ chữ, ký tự, tên hãng, logo MỚI nào lên sản phẩm, điện thoại hay bất kỳ vật thể nào trong khung hình; chữ và logo vốn in sẵn trên sản phẩm thật phải giữ nguyên đúng như ảnh tham chiếu. (2) Nếu có điện thoại trong cảnh: màn hình điện thoại TẮT hẳn (màn hình đen) hoặc mặt lưng quay về phía camera; không hiện hình người trên màn hình, không giao diện quay phim, không nút ghi hình, không số đếm giờ. (3) Sản phẩm phải giống hệt ảnh tham chiếu: đúng hình dáng, đúng từng chi tiết như ảnh tham chiếu, đúng màu sắc — không tự thiết kế lại, không thêm bớt chi tiết. (4) Toàn bộ video chỉ quay ở MỘT bối cảnh duy nhất: cùng một phòng/không gian, cùng vị trí đồ đạc, cùng ánh sáng trong mọi cảnh; nhân vật mặc cùng một bộ trang phục trong mọi cảnh. (5) TUYỆT ĐỐI không chèn banner, nút bấm, biểu tượng giỏ hàng, giao diện ứng dụng hay bất kỳ dòng chữ nào phủ lên khung hình; lời kêu gọi mua hàng chỉ thể hiện bằng lời nói và cử chỉ tay hướng xuống góc dưới khung hình.';
 function buildImagePrompt(p,s){
   if(s.scene2 && p.script2) return compileImagePromptV2(p,s);
   const styleAll=[p.styleText, p.stylePara].filter(Boolean).join('. ');
@@ -1465,7 +1468,7 @@ async function genScriptV2(prod, st){
     fmtPromptText(st)? ('Ý đồ của dạng video: '+fmtPromptText(st)) : '',
     isRev? 'Cấu trúc: cảnh 1 = HOOK + vấn đề (nhân vật nhìn thẳng camera nói câu hook trong 3–4 giây đầu, sản phẩm xuất hiện ngay); các cảnh giữa = DEMO thật theo FEATURE → ACTION → VISIBLE RESULT (nói tính năng nào thì tay làm đúng thao tác đó và thấy kết quả); cảnh cuối = kết quả + CTA bằng lời nói, nhân vật chỉ tay xuống góc dưới khung hình.'
          : 'Cấu trúc: cảnh 1 mở đầu gây chú ý ngay 3 giây đầu; các cảnh giữa phát triển nội dung chính bằng hành động cụ thể; cảnh cuối kết lại trọn vẹn, có điểm nhấn cuối.',
-    'Nhiệm vụ 1 — MASTER PROFILE khoá cứng cho cả video: product_lock = mô tả ngoại hình sản phẩm đúng như ảnh tham chiếu (hình dáng, màu sắc, chất liệu nhìn thấy, các bộ phận chính, chữ/logo in sẵn nếu có — giữ nguyên, không thêm bớt); wardrobe = MỘT bộ trang phục cụ thể cho nhân vật trong video này (chọn hợp bối cảnh và sản phẩm); environment = MỘT địa điểm cụ thể duy nhất (mô tả vị trí các đồ vật chính); lighting = hướng và chất lượng ánh sáng; style = phong cách hình ảnh (chân thực như quay bằng điện thoại xịn, UGC TikTok). TUYỆT ĐỐI không mô tả ngoại hình nhân vật (mặt, tóc, vóc dáng) — nhân vật lấy từ ảnh tham chiếu.',
+    'Nhiệm vụ 1 — MASTER PROFILE khoá cứng cho cả video: product_lock = mô tả ngoại hình sản phẩm đúng như ảnh tham chiếu (hình dáng, màu sắc, chất liệu nhìn thấy, các bộ phận chính, chữ/logo in sẵn nếu có — giữ nguyên, không thêm bớt). Chỉ khóa đúng màu sắc và biến thể nhìn thấy trong ảnh tham chiếu, không liệt kê các màu/biến thể khác của listing; wardrobe = MỘT bộ trang phục cụ thể cho nhân vật trong video này (chọn hợp bối cảnh và sản phẩm); environment = MỘT địa điểm cụ thể duy nhất (mô tả vị trí các đồ vật chính); lighting = hướng và chất lượng ánh sáng; style = phong cách hình ảnh (chân thực như quay bằng điện thoại xịn, UGC TikTok). TUYỆT ĐỐI không mô tả ngoại hình nhân vật (mặt, tóc, vóc dáng) — nhân vật lấy từ ảnh tham chiếu.',
     st.dialogue===false ? 'KHÔNG có lời thoại: dialogue của mọi cảnh để trống "".' :
       ('Nhiệm vụ 2 — dialogue từng cảnh bằng '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh 37–40 từ (tốc độ nói 3,7–4 từ/giây trong 10 giây), câu ngắn dễ khớp khẩu hình, giàu thông tin đúng điểm bán'+(isRev?', nhịp review nhanh, gãy gọn':'')+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'. Chữ "giỏ hàng" chỉ được xuất hiện trong dialogue của cảnh cuối.'),
     'Trả về JSON: {"profile":{"product_lock":"...","wardrobe":"...","environment":"...","lighting":"...","style":"..."},"scenes":[{"purpose":"mục đích cảnh, ngắn gọn","dialogue":"..."}]} đủ '+st.scenes+' cảnh. CẤU TRÚC BẮT BUỘC: "scenes" là một MẢNG — mở bằng ký tự [ và đóng bằng ký tự ], mọi cảnh nằm TRONG mảng, ngăn nhau bằng dấu phẩy.'
@@ -1486,6 +1489,7 @@ async function genScriptV2(prod, st){
       'Tạo START_STATE và END_STATE thật cụ thể về mặt vật lý: character = vị trí, tư thế, hướng mặt, tay trái/tay phải đang làm gì/cầm gì; product = vị trí, hướng, trạng thái (gập/mở/bật/tắt), bộ phận đang được dùng; camera = cỡ cảnh + chiều cao + góc; environment = bối cảnh (giữ đúng MASTER PROFILE).',
       'TRANSITION: from = trạng thái đầu, action = hành động DUY NHẤT chuyển từ đầu tới cuối cảnh (vật lý hợp lý, khớp lời thoại: thoại nói tới đâu, hành động cho thấy đúng thứ đó), to = trạng thái cuối.',
       'CAMERA_TIMELINE: 3 mốc trong 10 giây (0–3s, 3–7s, 7–10s), mỗi mốc gồm shot (cỡ cảnh) và action (hành động trong mốc, khớp nội dung thoại ở mốc đó).',
+      'Mốc timeline đầu tiên (0–3s) PHẢI bắt đầu đúng từ tư thế và động tác mở đầu trong start_state (không được bỏ động tác đó); mỗi tính năng được nhắc trong dialogue phải có hành động tương ứng trong timeline, theo đúng thứ tự thoại nhắc tới.',
       'IMAGE_PROMPT: mô tả khung hình MỞ ĐẦU của cảnh để tạo ảnh keyframe — trạng thái vật lý cụ thể (tay nào cầm gì, sản phẩm ở đâu, người đứng đâu, camera nhìn từ đâu); dùng đúng người và sản phẩm trong ảnh tham chiếu, không mô tả lại ngoại hình nhân vật, không chữ/logo mới trên vật thể.',
       'Không nhắc giỏ hàng, nút bấm hay giao diện ứng dụng trong mọi trường (dialogue đã có sẵn, không viết lại).',
       'Trả về JSON: {"start_state":{"character":"...","product":"...","camera":"...","environment":"..."},"end_state":{"character":"...","product":"...","camera":"...","environment":"..."},"transition":{"from":"...","action":"...","to":"..."},"camera_timeline":[{"span":"0–3s","shot":"...","action":"..."},{"span":"3–7s","shot":"...","action":"..."},{"span":"7–10s","shot":"...","action":"..."}],"image_prompt":"..."}'
@@ -1893,7 +1897,7 @@ function asmResultHTML(p){ const r=p.asmResult; if(!r) return '';
   if(r.status==='processing') return `<p class="muted">⏳ Đang ghép trên xưởng... ${r.progress||0}%</p>`;
   if(r.status==='failed') return `<p class="muted">❌ Ghép lỗi: ${esc(r.error||'không rõ')} — thử lại, hoặc dùng gói ghép dự phòng bên dưới.</p>`;
   if(r.status==='done'&&r.url) return `<video src="${esc(resolveUrl(r.url))}" controls playsinline style="width:100%; border-radius:12px; margin-top:6px"></video>
-  <div class="btnrow"><a class="btn primary" href="${esc(resolveUrl(r.url))}" download="video-ghep.mp4">⬇️ Tải video hoàn chỉnh</a></div>`;
+  <div class="btnrow"><button class="btn primary" onclick="App.downloadFinal()">⬇️ Tải video hoàn chỉnh</button></div>`;
   return ''; }
 async function assembleNow(){
   const p=activeProject(); if(!p||asmBusy) return;
@@ -1958,7 +1962,7 @@ function asmHTML(p){
   <p class="muted">Gửi cho t: các clip đã tải + file goi-ghep.json (+ logo/nhạc nếu có) → t ghép bằng ffmpeg: cắt khoảng lặng, cháy phụ đề theo lời thoại, bìa, logo, nhạc nền, cảnh kết → trả video hoàn chỉnh.</p>`;
 }
 Object.assign(window.App,{ setSegBool, aiScript, setAsm, setAsmBool, setAsmRender, setAsmBoolRender,
-  addLogo, delLogo, setMusic, genCover, genCaption, copyCaption, exportPackage, assembleNow });
+  addLogo, delLogo, setMusic, genCover, genCaption, copyCaption, exportPackage, assembleNow, downloadFinal });
 
 /* ---------------- V5: Lấy thông tin SP từ link (qua Worker) ---------------- */
 function shrinkDataURI(d){
