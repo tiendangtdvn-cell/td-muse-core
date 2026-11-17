@@ -287,7 +287,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.8</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.10</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
@@ -375,7 +375,9 @@
         <label class="fl">API key Gemini</label>
         <input type="password" id="gemKey" placeholder="Key lấy miễn phí tại aistudio.google.com/apikey">
         <label class="fl">Model Gemini</label>
-        <select id="gemModel"><option value="gemini-3.8-flash">Gemini 3.8 Flash — mới nhất, mạnh nhất dòng Flash (khuyên dùng)</option><option value="gemini-2.5-flash">Gemini 2.5 Flash — nhanh, ổn định</option><option value="gemini-2.5-pro">Gemini 2.5 Pro — kịch bản sâu hơn, hạn mức free thấp hơn</option><option value="gemini-flash-latest">Flash mới nhất — Google tự cập nhật</option><option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite — hạn mức free rộng nhất</option></select>
+        <select id="gemModel"><option value="gemini-3.8-flash">Gemini 3.8 Flash — mới nhất, mạnh nhất dòng Flash (khuyên dùng)</option><option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite — nhanh nhất, ít bị quá tải</option><option value="gemini-2.5-flash">Gemini 2.5 Flash — nhanh, ổn định</option><option value="gemini-2.5-pro">Gemini 2.5 Pro — kịch bản sâu hơn, hạn mức free thấp hơn</option><option value="gemini-flash-latest">Flash mới nhất — Google tự cập nhật</option><option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite — hạn mức free rộng nhất</option></select>
+        <label class="fl">Hoặc tự nhập model ID khác</label>
+        <input type="text" id="gemModelCustom" placeholder="Để trống thì dùng model chọn ở trên">
         <div class="btnrow">
           <button class="btn primary" id="gemSave">Lưu cấu hình Gemini</button>
           <button class="btn" id="gemTest">Kiểm tra kết nối</button>
@@ -424,7 +426,7 @@ const DEFAULT_SETTINGS={ charMode:'review', bgImage:'', charRefs:[], template:'r
   expression:'tnhien', animalTalk:false, retry:3, charLib:[], activeChar:'', char2:'', useChar2:false,
   dialogue:true, format:'review', fmtStore:{},
   flow:{ engImage:'muse', engVideo:'muse', url:'', key:'', vidModel:'omni11' },
-  gemini:{ engine:'gemini', key:'', model:'gemini-3.8-flash' } };
+  gemini:{ engine:'gemini', key:'', model:'gemini-3.8-flash', modelCustom:'' } };
 const ASM_DEFAULTS={ trimSilence:true, subOn:true, subSize:'vua', subPos:'duoi', subStyle:'tiktok',
   subColor:'trang', coverTitle:'', ctaEnd:false, logo:'', speed:'1', musicName:'', headCut:'0' };
 let S = loadState();
@@ -536,7 +538,9 @@ async function testFlowConn(){
 }
 /* ---------------- Đạo diễn Gemini ---------------- */
 function gemCfg(){ const g=(typeof S!=='undefined' && S.settings && S.settings.gemini)||{};
-  return { engine:g.engine||'gemini', key:(g.key||'').trim(), model:g.model||'gemini-3.8-flash' }; }
+  return { engine:g.engine||'gemini', key:(g.key||'').trim(),
+    model:(g.modelCustom||'').trim() || g.model || 'gemini-3.8-flash',
+    modelSel:g.model||'gemini-3.8-flash', modelCustom:(g.modelCustom||'') }; }
 let lastGemToastAt=0;
 async function geminiChat(messages, jsonMode){
   const g=gemCfg();
@@ -572,15 +576,21 @@ async function geminiChat(messages, jsonMode){
 async function aiChat(messages, opts){
   opts=opts||{}; const g=gemCfg();
   if(g.engine==='gemini' && g.key){
-    try{ const t=await geminiChat(messages, !!opts.json); return { choices:[{ message:{ content:t } }] }; }
-    catch(e){ const now=Date.now(); if(now-lastGemToastAt>60000){ lastGemToastAt=now; toast('Gemini lỗi ('+String(e.message||e).slice(0,90)+') — đã chuyển qua Muse thay', 5000); } }
+    let err=null;
+    for(let att=0; att<2; att++){
+      try{ const t=await geminiChat(messages, !!opts.json); return { choices:[{ message:{ content:t } }] }; }
+      catch(e){ err=e; const msg=String((e&&e.message)||e);
+        if(att===0 && /high demand|overloaded|unavailable|503|429|resource_exhausted/i.test(msg)){ await new Promise(r=>setTimeout(r,6000)); continue; }
+        break; }
+    }
+    if(err){ const now=Date.now(); if(now-lastGemToastAt>60000){ lastGemToastAt=now; toast('Gemini lỗi ('+String(err.message||err).slice(0,90)+') — đã chuyển qua Muse thay', 5000); } }
   }
   return api('/v1/chat/completions',{ method:'POST', body:JSON.stringify({ model:'muse-spark', stream:false, messages }) });
 }
 function renderGemCfg(){
   const g=gemCfg();
   const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
-  set('gemEngine', g.engine); set('gemKey', g.key); set('gemModel', g.model);
+  set('gemEngine', g.engine); set('gemKey', g.key); set('gemModel', g.modelSel); set('gemModelCustom', g.modelCustom);
 }
 async function testGemConn(){
   const lg=$('#gemLog'); const g=gemCfg();
@@ -1159,6 +1169,7 @@ $('#gemSave').addEventListener('click', ()=>{
   S.settings.gemini.engine=$('#gemEngine').value;
   S.settings.gemini.key=$('#gemKey').value.trim();
   S.settings.gemini.model=$('#gemModel').value;
+  S.settings.gemini.modelCustom=$('#gemModelCustom').value.trim();
   save(); const lg=$('#gemLog'); if(lg) lg.textContent='Đã lưu cấu hình Gemini.';
   toast('Đã lưu cấu hình Gemini');
 });
