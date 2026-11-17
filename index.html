@@ -287,7 +287,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.6</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.7</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
@@ -368,6 +368,21 @@
         <div class="log" id="flowLog" style="margin-top:10px">Chưa kiểm tra.</div>
       </div>
       <div class="card">
+        <h3>Đạo diễn Gemini (Google AI Studio)</h3>
+        <p class="muted">Gemini viết kịch bản và phân tích sản phẩm thay cho AI của Muse — trả JSON chuẩn, nhanh, miễn phí theo hạn mức AI Studio. Key chỉ lưu trên máy này. Nếu Gemini lỗi hoặc hết hạn mức, app tự chuyển qua Muse như cũ.</p>
+        <label class="fl">Đạo diễn chính</label>
+        <select id="gemEngine"><option value="gemini">Gemini (đạo diễn chính)</option><option value="muse">Muse (như cũ)</option></select>
+        <label class="fl">API key Gemini</label>
+        <input type="password" id="gemKey" placeholder="Key lấy miễn phí tại aistudio.google.com/apikey">
+        <label class="fl">Model Gemini</label>
+        <select id="gemModel"><option value="gemini-2.5-flash">Gemini 2.5 Flash — nhanh, ổn định (khuyên dùng)</option><option value="gemini-2.5-pro">Gemini 2.5 Pro — kịch bản sâu hơn, hạn mức free thấp hơn</option><option value="gemini-flash-latest">Flash mới nhất — Google tự cập nhật</option><option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite — hạn mức free rộng nhất</option></select>
+        <div class="btnrow">
+          <button class="btn primary" id="gemSave">Lưu cấu hình Gemini</button>
+          <button class="btn" id="gemTest">Kiểm tra kết nối</button>
+        </div>
+        <div class="log" id="gemLog" style="margin-top:10px">Chưa kiểm tra.</div>
+      </div>
+      <div class="card">
         <h3>Về TD Muse Studio</h3>
         <p class="muted">Dây chuyền: Dự án → Nguyên liệu → Kịch bản → Keyframe (duyệt) → Sản xuất (hàng đợi) → QC &amp; Xuất.
         Mọi video đều đi từ keyframe đã duyệt kèm ảnh tham chiếu để giữ mặt nhân vật và sản phẩm đồng nhất.
@@ -408,7 +423,8 @@ const DEFAULT_SETTINGS={ charMode:'review', bgImage:'', charRefs:[], template:'r
   style:'chan-thuc', presets:[], speechSpeed:'vua', hookStyle:'ai', speakMode:'tnhien',
   expression:'tnhien', animalTalk:false, retry:3, charLib:[], activeChar:'', char2:'', useChar2:false,
   dialogue:true, format:'review', fmtStore:{},
-  flow:{ engImage:'muse', engVideo:'muse', url:'', key:'', vidModel:'omni11' } };
+  flow:{ engImage:'muse', engVideo:'muse', url:'', key:'', vidModel:'omni11' },
+  gemini:{ engine:'gemini', key:'', model:'gemini-2.5-flash' } };
 const ASM_DEFAULTS={ trimSilence:true, subOn:true, subSize:'vua', subPos:'duoi', subStyle:'tiktok',
   subColor:'trang', coverTitle:'', ctaEnd:false, logo:'', speed:'1', musicName:'', headCut:'0' };
 let S = loadState();
@@ -518,6 +534,67 @@ async function testFlowConn(){
     if(lg) lg.textContent='✅ Cổng Flow online — API key đúng, thấy '+n+' model.';
   }catch(e){ if(lg) lg.textContent='❌ Không nối được cổng Flow: '+(e.message||e)+' — kiểm tra xưởng đã mở chưa và cổng 8000 đã để Public chưa.'; }
 }
+/* ---------------- Đạo diễn Gemini ---------------- */
+function gemCfg(){ const g=(typeof S!=='undefined' && S.settings && S.settings.gemini)||{};
+  return { engine:g.engine||'gemini', key:(g.key||'').trim(), model:g.model||'gemini-2.5-flash' }; }
+let lastGemToastAt=0;
+async function geminiChat(messages, jsonMode){
+  const g=gemCfg();
+  const sysTexts=[], parts=[];
+  for(const m of (messages||[])){
+    if(!m) continue;
+    if(m.role==='system'){ if(m.content) sysTexts.push(String(m.content)); continue; }
+    const c=m.content;
+    if(typeof c==='string'){ if(c) parts.push({text:c}); }
+    else if(Array.isArray(c)){ for(const part of c){
+      if(part.type==='text'){ if(part.text) parts.push({text:part.text}); }
+      else if(part.type==='image_url'){ const u=part.image_url&&part.image_url.url; if(!u) continue;
+        let du=u; if(!du.startsWith('data:')){ try{ du=await urlToDataURI(du); }catch(e){ continue; } }
+        const mm=/^data:([^;]+);base64,(.+)$/.exec(du||''); if(mm) parts.push({inline_data:{mime_type:mm[1], data:mm[2]}}); }
+    } }
+  }
+  if(!parts.length) throw new Error('Gemini: không có nội dung để gửi');
+  const body={ contents:[{ role:'user', parts }], generationConfig:{ temperature:0.7 } };
+  if(sysTexts.length) body.systemInstruction={ parts:[{ text:sysTexts.join('\n') }] };
+  if(jsonMode) body.generationConfig.responseMimeType='application/json';
+  const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(), 180000);
+  let res;
+  try{ res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(g.model)+':generateContent',
+    { method:'POST', signal:ctl.signal, headers:{ 'Content-Type':'application/json', 'x-goog-api-key':g.key }, body:JSON.stringify(body) });
+  }catch(e){ clearTimeout(to); throw new Error('Không gọi được Gemini: '+(e.message||e)); }
+  clearTimeout(to);
+  const text=await res.text(); let data=null; try{ data=text?JSON.parse(text):null; }catch(e){}
+  if(!res.ok || (data&&data.error)){ const em=(data&&data.error&&data.error.message)||('HTTP '+res.status); throw new Error('Gemini báo lỗi: '+em); }
+  const cand=((data||{}).candidates||[])[0]||{}; const joined=(((cand.content||{}).parts)||[]).map(p=>p.text||'').join('');
+  if(!joined) throw new Error('Gemini trả về rỗng');
+  return joined;
+}
+async function aiChat(messages, opts){
+  opts=opts||{}; const g=gemCfg();
+  if(g.engine==='gemini' && g.key){
+    try{ const t=await geminiChat(messages, !!opts.json); return { choices:[{ message:{ content:t } }] }; }
+    catch(e){ const now=Date.now(); if(now-lastGemToastAt>60000){ lastGemToastAt=now; toast('Gemini lỗi ('+String(e.message||e).slice(0,90)+') — đã chuyển qua Muse thay', 5000); } }
+  }
+  return api('/v1/chat/completions',{ method:'POST', body:JSON.stringify({ model:'muse-spark', stream:false, messages }) });
+}
+function renderGemCfg(){
+  const g=gemCfg();
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
+  set('gemEngine', g.engine); set('gemKey', g.key); set('gemModel', g.model);
+}
+async function testGemConn(){
+  const lg=$('#gemLog'); const g=gemCfg();
+  if(!g.key){ if(lg) lg.textContent='Chưa nhập API key Gemini.'; return; }
+  if(lg) lg.textContent='Đang kiểm tra Gemini...';
+  try{
+    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models',{ headers:{ 'x-goog-api-key':g.key } });
+    const data=await res.json().catch(()=>null);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const list=(data&&Array.isArray(data.models))? data.models : [];
+    const has=list.some(m=>String(m.name||'').endsWith('/'+g.model));
+    if(lg) lg.textContent='✅ Gemini online — key thấy '+list.length+' model'+(has? ', model đang chọn khả dụng.' : ', NHƯNG model đang chọn không có trong danh sách của key này — hãy đổi model.');
+  }catch(e){ if(lg) lg.textContent='❌ Không nối được Gemini: '+(e.message||e); }
+}
 function resolveUrl(u){
   if(!u) return '';
   if(/^https?:\/\//i.test(u) || u.startsWith('data:') || u.startsWith('blob:')) return u;
@@ -555,7 +632,7 @@ $$('#tabs button').forEach(b=>b.addEventListener('click',()=>{
   $$('#tabs button').forEach(x=>x.classList.toggle('active',x===b));
   ['control','projects','library','settings'].forEach(v=>$('#view-'+v).classList.toggle('hidden', v!==b.dataset.view));
   if(b.dataset.view==='library') loadLibrary();
-  if(b.dataset.view==='settings'){ renderAccRoles(); renderFlowCfg(); if(!poolAccounts) loadPoolAccounts(); }
+  if(b.dataset.view==='settings'){ renderAccRoles(); renderFlowCfg(); renderGemCfg(); if(!poolAccounts) loadPoolAccounts(); }
   window.scrollTo({top:0});
 }));
 
@@ -1077,6 +1154,15 @@ $('#flowSave').addEventListener('click', ()=>{
   toast('Đã lưu cấu hình Flow');
 });
 $('#flowTest').addEventListener('click', testFlowConn);
+$('#gemSave').addEventListener('click', ()=>{
+  if(!S.settings.gemini) S.settings.gemini={};
+  S.settings.gemini.engine=$('#gemEngine').value;
+  S.settings.gemini.key=$('#gemKey').value.trim();
+  S.settings.gemini.model=$('#gemModel').value;
+  save(); const lg=$('#gemLog'); if(lg) lg.textContent='Đã lưu cấu hình Gemini.';
+  toast('Đã lưu cấu hình Gemini');
+});
+$('#gemTest').addEventListener('click', testGemConn);
 
 /* ============================================================
    V3 — BẢNG ĐIỀU KHIỂN: tuỳ chọn sản xuất + hàng loạt + giám sát
@@ -1225,7 +1311,7 @@ async function analyzeImages(images){
   const content=[{ type:'text', text:'Bạn nhận được các ảnh của MỘT sản phẩm cần bán, gồm 2 loại: ẢNH CHỤP SẢN PHẨM (nhìn thấy hình dáng sản phẩm) và ẢNH CHỮ (ảnh chụp màn hình thông số kỹ thuật, mô tả sản phẩm, hoặc chữ trên bao bì). CÁCH ĐỌC: (1) Tên sản phẩm: xác định từ ẢNH CHỤP — hình dáng sản phẩm, kèm hãng/model nếu thấy chữ in trên sản phẩm hoặc bao bì; tên ngắn gọn. (2) Điểm bán hàng: GỘP CẢ HAI NGUỒN — đặc điểm nhìn thấy trong ảnh chụp (hình dáng, chất liệu, công năng) VÀ thông số/mô tả đọc được từ ẢNH CHỮ: chép lại CHÍNH XÁC các con số và thông số như trong ảnh (không làm tròn, không bịa thêm, không suy đoán). Mỗi điểm một dòng, các dòng thông số để ở cuối. (3) Chỉ khi ẢNH CHỮ rõ ràng nói về một sản phẩm KHÁC HẲN với ảnh chụp (khác loại sản phẩm) thì mới bỏ qua ảnh chữ đó và đặt "mixed":true; nếu tất cả cùng một sản phẩm thì "mixed":false. Trả về DUY NHẤT một JSON, không giải thích thêm: {"name":"tên sản phẩm","points":"các điểm bán hàng và thông số, mỗi ý một dòng","mixed":false}' }];
   imgs.forEach(u=>content.push({ type:'image_url', image_url:{ url:u } }));
   const ask=async(extra)=>{ const c=extra? content.concat([{type:'text', text:extra}]) : content;
-    const data=await api('/v1/chat/completions',{ method:'POST', body:JSON.stringify({ model:'muse-spark', stream:false, messages:[{ role:'user', content:c }] }) });
+    const data=await aiChat([{ role:'user', content:c }], { json:true });
     const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
     return parseLooseJSON(text); };
   let j=await ask('');
@@ -1522,9 +1608,7 @@ async function genScriptAI(prod, st){
     st.dialogue===false ? 'KHÔNG có lời thoại: trường dialogue của mọi cảnh để trống "".' : ('Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh vừa đủ nói hết trong 10 giây với nhịp NHANH, dồn dập, năng động kiểu review bán hàng (khoảng 37–40 từ, tốc độ nói 3,7–4 từ/giây), văn phong review chuyên nghiệp: gãy gọn, giàu thông tin về sản phẩm, đúng trọng tâm điểm bán, không lan man, không mở đầu chậm, '+(st.noPrice?'TUYỆT ĐỐI không nhắc giá tiền':'có thể nhắc ưu đãi')+'.'),
     'Trả về JSON: [{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại","camera":"góc máy","timeline":"0–2s: ...; 2–6s: ...; 6–10s: ..."}] đủ '+st.scenes+' cảnh.'
   ].filter(Boolean).join('\n');
-  const ask=async(extra)=>{ const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
-    model:'muse-spark', stream:false,
-    messages:[{role:'system',content:sys},{role:'user',content:usr+extra}] })});
+  const ask=async(extra)=>{ const data=await aiChat([{role:'system',content:sys},{role:'user',content:usr+extra}], { json:true });
     const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
     let a=parseLooseJSON(text); if(a && !Array.isArray(a) && Array.isArray(a.scenes)) a=a.scenes; return a; };
   let arr=await ask('');
@@ -1536,8 +1620,7 @@ async function genScriptAI(prod, st){
 /* ---------------- Schema V2: continuity JSON + app-compiled prompts ---------------- */
 let lastAiError='';
 async function askChatJSON(sys, usr){
-  const ask=async(extra)=>{ try{ const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
-    model:'muse-spark', stream:false, messages:[{role:'system',content:sys},{role:'user',content:usr+extra}] })});
+  const ask=async(extra)=>{ try{ const data=await aiChat([{role:'system',content:sys},{role:'user',content:usr+extra}], { json:true });
     const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
     return parseLooseJSON(text); }catch(e){ lastAiError=String((e && e.message) || e); return null; } };
   let o=await ask('');
@@ -1907,8 +1990,7 @@ async function genScriptStructured(ctx, st, count){
     'Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh vừa đủ nói trong 10 giây với nhịp NHANH, dồn dập, năng động (khoảng 37–40 từ, tốc độ nói 3,7–4 từ/giây), văn phong review chuyên nghiệp: gãy gọn, giàu thông tin về sản phẩm, đúng trọng tâm'+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'.',
     'Trả về JSON: {"style":"một đoạn mô tả phong cách/giọng điệu chung của video, 2-3 câu","scenes":[{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại","camera":"góc máy","timeline":"0–2s: ...; 2–6s: ...; 6–10s: ..."}]} đủ '+count+' cảnh.'
   ].join('\n');
-  const ask=async(extra)=>{ const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
-    model:'muse-spark', stream:false, messages:[{role:'system',content:sys},{role:'user',content:usr+extra}] })});
+  const ask=async(extra)=>{ const data=await aiChat([{role:'system',content:sys},{role:'user',content:usr+extra}], { json:true });
     const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
     let o=parseLooseJSON(text); if(Array.isArray(o)) o={ style:'', scenes:o }; return o; };
   let obj=await ask('');
@@ -1972,10 +2054,9 @@ async function genCaption(){
   const ctx=['Sản phẩm: '+(p.product||p.name), p.points? 'Điểm bán hàng: '+p.points : '',
     'Lời thoại các cảnh: '+p.segments.map(s=>s.dialogue).filter(Boolean).join(' / ')].filter(Boolean).join('\n');
   try{
-    const data=await api('/v1/chat/completions',{method:'POST', body:JSON.stringify({
-      model:'muse-spark', stream:false, messages:[
+    const data=await aiChat([
         {role:'system',content:'Bạn viết caption đăng TikTok/Reels cho video affiliate. Trả về caption tiếng Việt ngắn gọn, câu đầu là hook, xuống dòng hợp lý, kèm 6-10 hashtag liên quan ở cuối. Chỉ trả caption, không giải thích.'},
-        {role:'user',content:ctx}] })});
+        {role:'user',content:ctx}], { json:false });
     p.caption=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||'').trim();
     save(); renderProductionZone(); toast('Đã có caption');
   }catch(e){ toast('Viết caption lỗi: '+e.message); }
