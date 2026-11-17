@@ -287,7 +287,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.10</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.11</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
@@ -542,6 +542,26 @@ function gemCfg(){ const g=(typeof S!=='undefined' && S.settings && S.settings.g
     model:(g.modelCustom||'').trim() || g.model || 'gemini-3.8-flash',
     modelSel:g.model||'gemini-3.8-flash', modelCustom:(g.modelCustom||'') }; }
 let lastGemToastAt=0;
+const __dsCache=new Map();
+async function downscaleDataURI(u, maxDim){
+  if(!u || !u.startsWith('data:image/')) return u;
+  if(__dsCache.has(u)) return __dsCache.get(u);
+  let out=u;
+  try{
+    const img=await Promise.race([
+      new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=u; }),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('img load timeout')),1500))
+    ]);
+    const w=img.naturalWidth||img.width, h=img.naturalHeight||img.height;
+    if(w && h && Math.max(w,h)>maxDim){
+      const sc=maxDim/Math.max(w,h);
+      const cv=document.createElement('canvas'); cv.width=Math.round(w*sc); cv.height=Math.round(h*sc);
+      cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);
+      const du=cv.toDataURL('image/jpeg',0.88); if(du && du.length<u.length) out=du;
+    }
+  }catch(e){ out=u; }
+  __dsCache.set(u,out); return out;
+}
 async function geminiChat(messages, jsonMode){
   const g=gemCfg();
   const sysTexts=[], parts=[];
@@ -554,6 +574,7 @@ async function geminiChat(messages, jsonMode){
       if(part.type==='text'){ if(part.text) parts.push({text:part.text}); }
       else if(part.type==='image_url'){ const u=part.image_url&&part.image_url.url; if(!u) continue;
         let du=u; if(!du.startsWith('data:')){ try{ du=await urlToDataURI(du); }catch(e){ continue; } }
+        du=await downscaleDataURI(du, 1536);
         const mm=/^data:([^;]+);base64,(.+)$/.exec(du||''); if(mm) parts.push({inline_data:{mime_type:mm[1], data:mm[2]}}); }
     } }
   }
@@ -561,11 +582,11 @@ async function geminiChat(messages, jsonMode){
   const body={ contents:[{ role:'user', parts }], generationConfig:{ temperature:0.7 } };
   if(sysTexts.length) body.systemInstruction={ parts:[{ text:sysTexts.join('\n') }] };
   if(jsonMode) body.generationConfig.responseMimeType='application/json';
-  const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(), 180000);
+  const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(), 90000);
   let res;
   try{ res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(g.model)+':generateContent',
     { method:'POST', signal:ctl.signal, headers:{ 'Content-Type':'application/json', 'x-goog-api-key':g.key }, body:JSON.stringify(body) });
-  }catch(e){ clearTimeout(to); throw new Error('Không gọi được Gemini: '+(e.message||e)); }
+  }catch(e){ clearTimeout(to); throw new Error(e && e.name==='AbortError' ? 'Gemini quá chậm — quá 90 giây chưa trả kết quả' : 'Không gọi được Gemini: '+(e.message||e)); }
   clearTimeout(to);
   const text=await res.text(); let data=null; try{ data=text?JSON.parse(text):null; }catch(e){}
   if(!res.ok || (data&&data.error)){ const em=(data&&data.error&&data.error.message)||('HTTP '+res.status); throw new Error('Gemini báo lỗi: '+em); }
