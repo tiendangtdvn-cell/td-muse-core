@@ -287,7 +287,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.13</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.14</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
@@ -599,13 +599,18 @@ async function aiChat(messages, opts){
   opts=opts||{}; const g=gemCfg();
   if(g.engine==='gemini' && g.key){
     let err=null;
-    for(let att=0; att<2; att++){
+    const waits=[6000,18000,40000];
+    for(let att=0; att<4; att++){
       try{ const t=await geminiChat(messages, !!opts.json); return { choices:[{ message:{ content:t } }] }; }
       catch(e){ err=e; const msg=String((e&&e.message)||e);
-        if(att===0 && /high demand|overloaded|unavailable|503|429|resource_exhausted/i.test(msg)){ await new Promise(r=>setTimeout(r,6000)); continue; }
+        if(att<3 && /high demand|overloaded|unavailable|503/i.test(msg)){ await new Promise(r=>setTimeout(r,waits[att])); continue; }
         break; }
     }
-    if(err){ const now=Date.now(); if(now-lastGemToastAt>60000){ lastGemToastAt=now; toast('Gemini lỗi: '+String(err.message||err).slice(0,110)+' — app KHÔNG tự chuyển Muse (đang chọn tay model này)', 6000); } throw err; }
+    if(err){ const msg=String(err.message||err); const overload=/high demand|overloaded|unavailable|503/i.test(msg);
+      const now=Date.now(); if(now-lastGemToastAt>60000){ lastGemToastAt=now;
+        toast(overload ? 'Gemini đang quá tải — app đã tự thử lại 4 lần trong ~1 phút vẫn bận. Chờ 1–2 phút bấm lại, hoặc đổi model khác trong Cài đặt (app không tự chuyển Muse)'
+                       : 'Gemini lỗi: '+msg.slice(0,110)+' — app KHÔNG tự chuyển Muse (đang chọn tay model này)', 7000); }
+      throw err; }
   }
   return api('/v1/chat/completions',{ method:'POST', body:JSON.stringify({ model:'muse-spark', stream:false, messages }) });
 }
