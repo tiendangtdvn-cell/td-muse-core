@@ -287,7 +287,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.11</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.13</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
@@ -369,13 +369,13 @@
       </div>
       <div class="card">
         <h3>Đạo diễn Gemini (Google AI Studio)</h3>
-        <p class="muted">Gemini viết kịch bản và phân tích sản phẩm thay cho AI của Muse — trả JSON chuẩn, nhanh, miễn phí theo hạn mức AI Studio. Key chỉ lưu trên máy này. Nếu Gemini lỗi hoặc hết hạn mức, app tự chuyển qua Muse như cũ.</p>
+        <p class="muted">Gemini viết kịch bản và phân tích sản phẩm thay cho AI của Muse — trả JSON chuẩn, nhanh, miễn phí theo hạn mức AI Studio. Key chỉ lưu trên máy này. App dùng đúng model đang chọn: Gemini lỗi là báo lỗi ngay, KHÔNG tự chuyển qua Muse — muốn dùng Muse thì chọn Đạo diễn = Muse.</p>
         <label class="fl">Đạo diễn chính</label>
         <select id="gemEngine"><option value="gemini">Gemini (đạo diễn chính)</option><option value="muse">Muse (như cũ)</option></select>
         <label class="fl">API key Gemini</label>
         <input type="password" id="gemKey" placeholder="Key lấy miễn phí tại aistudio.google.com/apikey">
         <label class="fl">Model Gemini</label>
-        <select id="gemModel"><option value="gemini-3.8-flash">Gemini 3.8 Flash — mới nhất, mạnh nhất dòng Flash (khuyên dùng)</option><option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite — nhanh nhất, ít bị quá tải</option><option value="gemini-2.5-flash">Gemini 2.5 Flash — nhanh, ổn định</option><option value="gemini-2.5-pro">Gemini 2.5 Pro — kịch bản sâu hơn, hạn mức free thấp hơn</option><option value="gemini-flash-latest">Flash mới nhất — Google tự cập nhật</option><option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite — hạn mức free rộng nhất</option></select>
+        <select id="gemModel"><option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite — nhanh nhất, ít quá tải (khuyên dùng)</option><option value="gemini-3.8-flash">Gemini 3.8 Flash — mạnh nhất dòng Flash, giờ cao điểm hay quá tải</option><option value="gemini-flash-latest">Flash mới nhất — Google tự cập nhật</option><option value="gemini-2.5-flash">Gemini 2.5 Flash — ⚠️ Google đã khoá cho key mới</option><option value="gemini-2.5-pro">Gemini 2.5 Pro — ⚠️ Google đã khoá cho key mới</option><option value="gemini-2.5-flash-lite">Gemini 2.5 Flash-Lite — ⚠️ Google đã khoá cho key mới</option></select>
         <label class="fl">Hoặc tự nhập model ID khác</label>
         <input type="text" id="gemModelCustom" placeholder="Để trống thì dùng model chọn ở trên">
         <div class="btnrow">
@@ -426,7 +426,7 @@ const DEFAULT_SETTINGS={ charMode:'review', bgImage:'', charRefs:[], template:'r
   expression:'tnhien', animalTalk:false, retry:3, charLib:[], activeChar:'', char2:'', useChar2:false,
   dialogue:true, format:'review', fmtStore:{},
   flow:{ engImage:'muse', engVideo:'muse', url:'', key:'', vidModel:'omni11' },
-  gemini:{ engine:'gemini', key:'', model:'gemini-3.8-flash', modelCustom:'' } };
+  gemini:{ engine:'gemini', key:'', model:'gemini-3.5-flash-lite', modelCustom:'' } };
 const ASM_DEFAULTS={ trimSilence:true, subOn:true, subSize:'vua', subPos:'duoi', subStyle:'tiktok',
   subColor:'trang', coverTitle:'', ctaEnd:false, logo:'', speed:'1', musicName:'', headCut:'0' };
 let S = loadState();
@@ -538,9 +538,10 @@ async function testFlowConn(){
 }
 /* ---------------- Đạo diễn Gemini ---------------- */
 function gemCfg(){ const g=(typeof S!=='undefined' && S.settings && S.settings.gemini)||{};
+  const sel = g.model || 'gemini-3.5-flash-lite';
   return { engine:g.engine||'gemini', key:(g.key||'').trim(),
-    model:(g.modelCustom||'').trim() || g.model || 'gemini-3.8-flash',
-    modelSel:g.model||'gemini-3.8-flash', modelCustom:(g.modelCustom||'') }; }
+    model:(g.modelCustom||'').trim() || sel,
+    modelSel:sel, modelCustom:(g.modelCustom||'') }; }
 let lastGemToastAt=0;
 const __dsCache=new Map();
 async function downscaleDataURI(u, maxDim){
@@ -604,7 +605,7 @@ async function aiChat(messages, opts){
         if(att===0 && /high demand|overloaded|unavailable|503|429|resource_exhausted/i.test(msg)){ await new Promise(r=>setTimeout(r,6000)); continue; }
         break; }
     }
-    if(err){ const now=Date.now(); if(now-lastGemToastAt>60000){ lastGemToastAt=now; toast('Gemini lỗi ('+String(err.message||err).slice(0,90)+') — đã chuyển qua Muse thay', 5000); } }
+    if(err){ const now=Date.now(); if(now-lastGemToastAt>60000){ lastGemToastAt=now; toast('Gemini lỗi: '+String(err.message||err).slice(0,110)+' — app KHÔNG tự chuyển Muse (đang chọn tay model này)', 6000); } throw err; }
   }
   return api('/v1/chat/completions',{ method:'POST', body:JSON.stringify({ model:'muse-spark', stream:false, messages }) });
 }
@@ -616,15 +617,16 @@ function renderGemCfg(){
 async function testGemConn(){
   const lg=$('#gemLog'); const g=gemCfg();
   if(!g.key){ if(lg) lg.textContent='Chưa nhập API key Gemini.'; return; }
-  if(lg) lg.textContent='Đang kiểm tra Gemini...';
+  if(lg) lg.textContent='Đang gọi thử Gemini một câu thật...';
   try{
-    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models',{ headers:{ 'x-goog-api-key':g.key } });
+    const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(g.model)+':generateContent',
+      { method:'POST', headers:{ 'Content-Type':'application/json', 'x-goog-api-key':g.key },
+        body:JSON.stringify({ contents:[{ role:'user', parts:[{ text:'Trả lời đúng một chữ: OK' }] }], generationConfig:{ maxOutputTokens:64 } }) });
     const data=await res.json().catch(()=>null);
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const list=(data&&Array.isArray(data.models))? data.models : [];
-    const has=list.some(m=>String(m.name||'').endsWith('/'+g.model));
-    if(lg) lg.textContent='✅ Gemini online — key thấy '+list.length+' model'+(has? ', model đang chọn khả dụng.' : ', NHƯNG model đang chọn không có trong danh sách của key này — hãy đổi model.');
-  }catch(e){ if(lg) lg.textContent='❌ Không nối được Gemini: '+(e.message||e); }
+    if(!res.ok || (data&&data.error)) throw new Error((data&&data.error&&data.error.message)||('HTTP '+res.status));
+    const cand=((data||{}).candidates||[])[0]||{}; const out=(((cand.content||{}).parts)||[]).map(p=>p.text||'').join('');
+    if(lg) lg.textContent = out ? ('✅ Gemini trả lời thật — model '+g.model+' dùng được với key này.') : '⚠️ Gemini trả lời rỗng — thử lại sau.';
+  }catch(e){ if(lg) lg.textContent='❌ Model '+g.model+' chưa dùng được: '+(e.message||e); }
 }
 function resolveUrl(u){
   if(!u) return '';
