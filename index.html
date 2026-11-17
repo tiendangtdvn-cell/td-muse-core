@@ -287,7 +287,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.5</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.6</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
@@ -349,6 +349,25 @@
         <div class="log" id="accRolesLog" style="margin-top:10px"></div>
       </div>
       <div class="card">
+        <h3>Cổng Flow (Google) — động cơ phụ</h3>
+        <p class="muted">Gen ảnh bằng Nano Banana, gen video bằng Omni, chạy bằng credits của các nick Google đã nạp ở panel Flow. Mặc định mọi thứ vẫn chạy qua Muse; chỉ khi chọn Flow bên dưới thì đoạn đó mới đi qua cổng Flow.</p>
+        <label class="fl">Gen ảnh (keyframe) qua</label>
+        <select id="flowEngImage"><option value="muse">Muse (mặc định)</option><option value="flow">Flow — Nano Banana</option></select>
+        <label class="fl">Gen video qua</label>
+        <select id="flowEngVideo"><option value="muse">Muse (mặc định)</option><option value="flow">Flow — Omni</option></select>
+        <label class="fl">Địa chỉ cổng Flow</label>
+        <input type="url" id="flowUrl" placeholder="https://...-8000.app.github.dev">
+        <label class="fl">API key của cổng Flow</label>
+        <input type="password" id="flowKey" placeholder="Key trong file setting.toml của flow2api">
+        <label class="fl">Model video Flow</label>
+        <select id="flowVidModel"><option value="omni11">Omni 1.1 Flash — đã test chạy được, Google bỏ sau 5/12</option><option value="omni12">Omni 1.2 Flash — dùng lâu dài</option></select>
+        <div class="btnrow">
+          <button class="btn primary" id="flowSave">Lưu cấu hình Flow</button>
+          <button class="btn" id="flowTest">Kiểm tra kết nối</button>
+        </div>
+        <div class="log" id="flowLog" style="margin-top:10px">Chưa kiểm tra.</div>
+      </div>
+      <div class="card">
         <h3>Về TD Muse Studio</h3>
         <p class="muted">Dây chuyền: Dự án → Nguyên liệu → Kịch bản → Keyframe (duyệt) → Sản xuất (hàng đợi) → QC &amp; Xuất.
         Mọi video đều đi từ keyframe đã duyệt kèm ảnh tham chiếu để giữ mặt nhân vật và sản phẩm đồng nhất.
@@ -388,7 +407,8 @@ const DEFAULT_SETTINGS={ charMode:'review', bgImage:'', charRefs:[], template:'r
   region:'bac', voice:'nu-bac-chuan', scenes:3, ratio:'9:16', versions:1, noPrice:true,
   style:'chan-thuc', presets:[], speechSpeed:'vua', hookStyle:'ai', speakMode:'tnhien',
   expression:'tnhien', animalTalk:false, retry:3, charLib:[], activeChar:'', char2:'', useChar2:false,
-  dialogue:true, format:'review', fmtStore:{} };
+  dialogue:true, format:'review', fmtStore:{},
+  flow:{ engImage:'muse', engVideo:'muse', url:'', key:'', vidModel:'omni11' } };
 const ASM_DEFAULTS={ trimSilence:true, subOn:true, subSize:'vua', subPos:'duoi', subStyle:'tiktok',
   subColor:'trang', coverTitle:'', ctaEnd:false, logo:'', speed:'1', musicName:'', headCut:'0' };
 let S = loadState();
@@ -450,6 +470,54 @@ async function api(path, opts={}){
   }
   return data;
 }
+/* ---------------- Cổng Flow (flow2api) ---------------- */
+const DEFAULT_FLOW_URL='https://expert-xylophone-gx79jj6ww5wwcpv9x-8000.app.github.dev';
+function flowCfg(){ const f=(typeof S!=='undefined' && S.settings && S.settings.flow)||{};
+  return { engImage:f.engImage||'muse', engVideo:f.engVideo||'muse',
+    url:((f.url||'').trim()||DEFAULT_FLOW_URL).replace(/\/+$/,''), key:(f.key||'').trim(), vidModel:f.vidModel||'omni11' }; }
+async function flowGen(kind, prompt, images, ratio, timeoutMs){
+  const f=flowCfg();
+  if(!f.key) throw new Error('Chưa nhập API key cổng Flow — vào tab Cài đặt, mục Cổng Flow.');
+  const orient = ratio==='16:9' ? 'landscape' : 'portrait';
+  const model = kind==='image' ? ('gemini-3.1-flash-image-'+orient)
+    : ((f.vidModel==='omni12' ? 'omni-1.2-flash-10s-' : 'omni-1.1-flash-10s-')+orient);
+  const content=[{type:'text', text:prompt}];
+  (images||[]).slice(0, kind==='image'?5:3).forEach(u=>{ if(u) content.push({type:'image_url', image_url:{url:u}}); });
+  const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(), timeoutMs||(kind==='image'?240000:420000));
+  let res;
+  try{ res=await fetch(f.url+'/v1/chat/completions',{ method:'POST', signal:ctl.signal,
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+f.key},
+    body:JSON.stringify({ model, stream:false, messages:[{role:'user', content}] }) });
+  }catch(e){ clearTimeout(to); throw new Error(e && e.name==='AbortError' ? 'Cổng Flow quá lâu không trả kết quả — thử lại sau' : 'Không gọi được cổng Flow: '+(e.message||e)); }
+  clearTimeout(to);
+  const text=await res.text(); let data=null; try{ data=text?JSON.parse(text):null; }catch(e){}
+  if(data && data.error){ const em=(data.error && data.error.message)||JSON.stringify(data.error); throw new Error('Flow báo lỗi: '+em); }
+  if(!res.ok){ const m=(data&&(data.detail||data.message))||text||('HTTP '+res.status); throw new Error('Flow báo lỗi: '+(typeof m==='string'? m : JSON.stringify(m))); }
+  const c=(data&&data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+  let mUrl='';
+  if(kind==='image'){ const mm=String(c).match(/\((https?:[^)\s]+)\)/); mUrl=mm?mm[1]:''; }
+  else { const mm=String(c).match(/src='(https?:[^']+)'/)||String(c).match(/src="(https?:[^"]+)"/); mUrl=mm?mm[1]:''; }
+  if(!mUrl) throw new Error('Cổng Flow không trả về '+(kind==='image'?'ảnh':'video')+' — nội dung lạ: '+String(c).slice(0,160));
+  return mUrl;
+}
+function renderFlowCfg(){
+  const f=flowCfg();
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
+  set('flowEngImage', f.engImage); set('flowEngVideo', f.engVideo);
+  set('flowUrl', f.url); set('flowKey', f.key); set('flowVidModel', f.vidModel);
+}
+async function testFlowConn(){
+  const lg=$('#flowLog'); const f=flowCfg();
+  if(!f.key){ if(lg) lg.textContent='Chưa nhập API key cổng Flow.'; return; }
+  if(lg) lg.textContent='Đang kiểm tra cổng Flow...';
+  try{
+    const res=await fetch(f.url+'/v1/models',{ headers:{'Authorization':'Bearer '+f.key} });
+    const data=await res.json().catch(()=>null);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    const n=(data&&Array.isArray(data.data))? data.data.length : 0;
+    if(lg) lg.textContent='✅ Cổng Flow online — API key đúng, thấy '+n+' model.';
+  }catch(e){ if(lg) lg.textContent='❌ Không nối được cổng Flow: '+(e.message||e)+' — kiểm tra xưởng đã mở chưa và cổng 8000 đã để Public chưa.'; }
+}
 function resolveUrl(u){
   if(!u) return '';
   if(/^https?:\/\//i.test(u) || u.startsWith('data:') || u.startsWith('blob:')) return u;
@@ -487,7 +555,7 @@ $$('#tabs button').forEach(b=>b.addEventListener('click',()=>{
   $$('#tabs button').forEach(x=>x.classList.toggle('active',x===b));
   ['control','projects','library','settings'].forEach(v=>$('#view-'+v).classList.toggle('hidden', v!==b.dataset.view));
   if(b.dataset.view==='library') loadLibrary();
-  if(b.dataset.view==='settings'){ renderAccRoles(); if(!poolAccounts) loadPoolAccounts(); }
+  if(b.dataset.view==='settings'){ renderAccRoles(); renderFlowCfg(); if(!poolAccounts) loadPoolAccounts(); }
   window.scrollTo({top:0});
 }));
 
@@ -711,6 +779,13 @@ async function startImageTask(proj,seg){
   try{
     const imgs= seg.hasProduct===false ? [...proj.refsChar] : [...proj.refsChar, ...proj.refsProd];
     const pvI=prevSeg(proj,seg); if(pvI && pvI.endFrame){ try{ imgs.push(await urlToDataURI(pvI.endFrame)); }catch(e){} }
+    seg.kf.engine=flowCfg().engImage;
+    if(seg.kf.engine==='flow'){
+      seg.kf.status='processing'; save(); renderProductionZone();
+      const furl=await flowGen('image', (seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg), imgs, proj.ratio);
+      seg.kf.url=furl; seg.kf.status='done'; seg.kf.error=''; save(); renderProductionZone();
+      toast('Keyframe (Flow) xong: '+seg.title); return;
+    }
     const data=await api('/v1/images/tasks',{method:'POST', body:JSON.stringify({
       prompt:(seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg), model:'muse-image', aspect_ratio:proj.ratio,
       response_format:'url', images: imgs })});
@@ -725,6 +800,13 @@ async function startVideoTask(proj,seg){
     const idx=proj.segments.indexOf(seg);
     const vimgs= seg.hasProduct===false ? [kfData] : [kfData, ...proj.refsProd.slice(0,2)];
     const pvV=proj.segments[idx-1]; if(pvV && pvV.endFrame){ try{ vimgs.push(await urlToDataURI(pvV.endFrame)); }catch(e){} }
+    seg.vid.engine=flowCfg().engVideo;
+    if(seg.vid.engine==='flow'){
+      seg.vid.status='processing'; save(); renderProductionZone();
+      const furl=await flowGen('video', (seg.promptVid&&seg.promptVid.trim())||buildVideoPrompt(proj,seg,idx), vimgs, proj.ratio);
+      seg.vid.url=furl; seg.vid.status='done'; seg.vid.progress=100; seg.vid.error=''; save(); renderProductionZone();
+      toast('Video (Flow) xong: '+seg.title); return;
+    }
     const data=await api('/v1/videos',{method:'POST', body:JSON.stringify({
       prompt:(seg.promptVid&&seg.promptVid.trim())||buildVideoPrompt(proj,seg,idx), model:'muse-video', aspect_ratio:proj.ratio, duration:10,
       images: vimgs })});
@@ -733,9 +815,18 @@ async function startVideoTask(proj,seg){
   }catch(e){ seg.vid.status='failed'; seg.vid.error=e.message; save(); renderProductionZone(); handleVideoFailure(proj,seg); }
 }
 function handleVideoFailure(proj,seg){
+  if(seg.vid && seg.vid.engine==='flow') return; // Flow: không tự gen lại — tránh tốn credits và bị Google gắn cờ
   const lim=(proj && typeof proj.retryLimit==='number') ? proj.retryLimit : 3;
   if(seg.vid.retries<lim){ seg.vid.retries++; seg.vid.status='queued'; seg.vid.error='Tự gen lại lần '+seg.vid.retries+'/'+lim+'...'; save(); renderProductionZone();
     setTimeout(()=>{ if(seg.vid.status==='queued') startVideoTask(proj,seg); }, 9000); }
+}
+function sweepFlowStuck(){
+  let changed=false;
+  S.projects.forEach(p=>p.segments.forEach(s=>{
+    if(s.kf && !s.kf.taskId && s.kf.engine==='flow' && ['queued','processing'].includes(s.kf.status)){ s.kf.status='failed'; s.kf.error='Bị ngắt giữa chừng (app đóng khi đang gen Flow) — bấm Gen lại'; changed=true; }
+    if(s.vid && !s.vid.taskId && s.vid.engine==='flow' && ['queued','processing'].includes(s.vid.status)){ s.vid.status='failed'; s.vid.error='Bị ngắt giữa chừng (app đóng khi đang gen Flow) — bấm Gen lại'; changed=true; }
+  }));
+  if(changed) save();
 }
 function pollTask(kind,projId,segId){
   const key=kind+':'+segId; if(pollers[key]) return; pollers[key]=true;
@@ -975,6 +1066,17 @@ function setAccRole(k,v){
 }
 Object.assign(window.App,{ setAccRole });
 $('#accRolesLoad').addEventListener('click', loadPoolAccounts);
+$('#flowSave').addEventListener('click', ()=>{
+  if(!S.settings.flow) S.settings.flow={};
+  S.settings.flow.engImage=$('#flowEngImage').value;
+  S.settings.flow.engVideo=$('#flowEngVideo').value;
+  S.settings.flow.url=$('#flowUrl').value.trim();
+  S.settings.flow.key=$('#flowKey').value.trim();
+  S.settings.flow.vidModel=$('#flowVidModel').value;
+  save(); const lg=$('#flowLog'); if(lg) lg.textContent='Đã lưu cấu hình Flow.';
+  toast('Đã lưu cấu hình Flow');
+});
+$('#flowTest').addEventListener('click', testFlowConn);
 
 /* ============================================================
    V3 — BẢNG ĐIỀU KHIỂN: tuỳ chọn sản xuất + hàng loạt + giám sát
@@ -1595,6 +1697,12 @@ async function batchStartKF(proj,seg){
   try{
     const imgs= seg.hasProduct===false ? [...proj.refsChar] : [...proj.refsChar, ...proj.refsProd];
     if(S.settings.bgImage) imgs.push(S.settings.bgImage);
+    seg.kf.engine=flowCfg().engImage;
+    if(seg.kf.engine==='flow'){
+      seg.kf.status='processing'; save();
+      const furl=await flowGen('image', (seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg), imgs, proj.ratio);
+      seg.kf.url=furl; seg.kf.status='done'; seg.kf.error=''; save(); return;
+    }
     const data=await api('/v1/images/tasks',{method:'POST', body:JSON.stringify({
       prompt:(seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg), model:'muse-image', aspect_ratio:proj.ratio,
       response_format:'url', images:imgs })});
@@ -1906,7 +2014,9 @@ async function assembleNow(){
   const fname=u=>{ const m=String(u||'').split('/v1/media/'); if(m.length<2) return ''; try{ return decodeURIComponent(m[1].split(/[?#]/)[0]); }catch(e){ return ''; } };
   const a=ensureAsm(p); const hc=parseFloat(a.headCut)||0;
   const clips=done.map(s=>{ const c={file:fname(s.vid.url)}; if(hc>0) c.start=hc; return c; }).filter(c=>c.file);
-  if(!clips.length){ toast('Không đọc được tên file clip trên xưởng'); return; }
+  const flowN=done.length-clips.length;
+  if(!clips.length){ toast(flowN? 'Tất cả clip đã xong là của cổng Flow — ghép trong app chỉ hỗ trợ clip Muse. Hãy tải từng clip về rồi ghép ở CapCut' : 'Không đọc được tên file clip trên xưởng'); return; }
+  if(flowN) toast('Có '+flowN+' đoạn gen qua Flow không ghép trong app được — chỉ ghép các đoạn Muse; đoạn Flow tải về ghép thêm ở CapCut', 6000);
   if(done.length<p.segments.length) toast('Mới có '+done.length+'/'+p.segments.length+' đoạn xong — ghép các đoạn đã xong trước');
   asmBusy=true; p.asmResult={status:'processing', progress:0}; save(); renderProductionZone();
   try{
@@ -1980,6 +2090,7 @@ function fmtPrice(p){ const n=parseInt(String(p||'').replace(/\D/g,''),10); retu
   $('#cfgUrl').value=localStorage.getItem(LS_URL)||DEFAULT_WORKER;
   renderProjects(); if(S.activeId) renderWorkspace();
   // Resume polling for tasks that were running when the app was closed
+  sweepFlowStuck();
   S.projects.forEach(p=>p.segments.forEach(s=>{
     if(s.kf.taskId && ['queued','processing'].includes(s.kf.status)) pollTask('image',p.id,s.id);
     if(s.vid.taskId && ['queued','processing'].includes(s.vid.status)) pollTask('video',p.id,s.id);
@@ -1994,6 +2105,7 @@ function fmtPrice(p){ const n=parseInt(String(p||'').replace(/\D/g,''),10); retu
       if(!Array.isArray(s2.jobs)) s2.jobs=[];
       S=s2;
       renderControl(); renderProjects(); if(S.activeId) renderWorkspace();
+      sweepFlowStuck();
       S.projects.forEach(p=>p.segments.forEach(s=>{
         if(s.kf.taskId && ['queued','processing'].includes(s.kf.status)) pollTask('image',p.id,s.id);
         if(s.vid.taskId && ['queued','processing'].includes(s.vid.status)) pollTask('video',p.id,s.id);
