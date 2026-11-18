@@ -287,7 +287,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.15</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.17</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
@@ -350,7 +350,7 @@
       </div>
       <div class="card">
         <h3>Cổng Flow (Google) — động cơ phụ</h3>
-        <p class="muted">Gen ảnh bằng Nano Banana, gen video bằng Omni, chạy bằng credits của các nick Google đã nạp ở panel Flow. Mặc định mọi thứ vẫn chạy qua Muse; chỉ khi chọn Flow bên dưới thì đoạn đó mới đi qua cổng Flow.</p>
+        <p class="muted">Gen ảnh bằng Nano Banana, gen video bằng Omni, chạy bằng credits của các nick Google đã nạp ở panel Flow. Mặc định mọi thứ vẫn chạy qua Muse; chỉ khi chọn Flow bên dưới thì đoạn đó mới đi qua cổng Flow. Việc Flow được giao cho cầu chạy nền: bấm gen xong thoát app thoải mái, mở lại app sẽ tự lấy kết quả về.</p>
         <label class="fl">Gen ảnh (keyframe) qua</label>
         <select id="flowEngImage"><option value="muse">Muse (mặc định)</option><option value="flow">Flow — Nano Banana</option></select>
         <label class="fl">Gen video qua</label>
@@ -493,36 +493,41 @@ const DEFAULT_FLOW_URL='https://expert-xylophone-gx79jj6ww5wwcpv9x-8000.app.gith
 function flowCfg(){ const f=(typeof S!=='undefined' && S.settings && S.settings.flow)||{};
   return { engImage:f.engImage||'muse', engVideo:f.engVideo||'muse',
     url:((f.url||'').trim()||DEFAULT_FLOW_URL).replace(/\/+$/,''), key:(f.key||'').trim(), vidModel:f.vidModel||'omni11' }; }
-async function flowGen(kind, prompt, images, ratio, timeoutMs){
+let __wakeLock=null;
+async function keepAwake(on){
+  try{
+    if(on && 'wakeLock' in navigator && !__wakeLock){ __wakeLock=await navigator.wakeLock.request('screen'); }
+    else if(!on && __wakeLock){ const wl=__wakeLock; __wakeLock=null; await wl.release(); }
+  }catch(e){}
+}
+async function pollFlowTask(id, kind){
+  const deadline=Date.now()+((kind==='video'?12:8)*60*1000);
+  let misses=0;
+  while(Date.now()<deadline){
+    await sleep(5000);
+    let t=null;
+    try{ t=await api('/v1/flow/tasks/'+id); misses=0; }
+    catch(e){ misses++; if(misses>=10) throw new Error('Mất kết nối tới cầu khi chờ việc Flow — mở lại app để tự lấy kết quả'); continue; }
+    if(t && t.status==='completed' && t.result && t.result.url) return t.result.url;
+    if(t && t.status==='failed') throw new Error('Flow báo lỗi: '+(t.error||'không rõ'));
+  }
+  throw new Error('Việc Flow quá lâu chưa xong — có thể cầu đã khởi động lại giữa chừng; mở lại app kiểm tra hoặc bấm Gen lại');
+}
+async function flowGen(kind, prompt, images, ratio, onTaskId){
   const f=flowCfg();
   if(!f.key) throw new Error('Chưa nhập API key cổng Flow — vào tab Cài đặt, mục Cổng Flow.');
   const orient = ratio==='16:9' ? 'landscape' : 'portrait';
   const model = kind==='image' ? ('gemini-3.1-flash-image-'+orient)
     : ((f.vidModel==='omni12' ? 'omni-1.2-flash-10s-' : 'omni-1.1-flash-10s-')+orient);
-  const content=[{type:'text', text:prompt}];
   const rawImgs=(images||[]).slice(0, kind==='image'?5:3).filter(Boolean);
   const smallImgs=await Promise.all(rawImgs.map(u=>downscaleDataURI(u,1536)));
-  smallImgs.forEach(u=>content.push({type:'image_url', image_url:{url:u}}));
-  const payload=JSON.stringify({ model, stream:false, messages:[{role:'user', content}] });
-  let res=null, netErr=null;
-  const attempts = kind==='image' ? 2 : 1; // ảnh: rớt mạng thì thử lại 1 lần (không tốn credits); video: không tự thử lại (tránh tốn credits 2 lần)
-  for(let att=0; att<attempts; att++){
-    const ctl=new AbortController(); const to=setTimeout(()=>ctl.abort(), timeoutMs||(kind==='image'?240000:420000));
-    try{ res=await fetch(f.url+'/v1/chat/completions',{ method:'POST', signal:ctl.signal,
-      headers:{'Content-Type':'application/json','Authorization':'Bearer '+f.key}, body:payload });
-      clearTimeout(to); netErr=null; break;
-    }catch(e){ clearTimeout(to); netErr=e; if(att<attempts-1) await new Promise(r=>setTimeout(r,3000)); }
-  }
-  if(!res) throw new Error(netErr && netErr.name==='AbortError' ? 'Cổng Flow quá lâu không trả kết quả — thử lại sau' : 'Không gọi được cổng Flow (mất kết nối — vào Cài đặt bấm Kiểm tra kết nối ở mục Cổng Flow rồi gen lại): '+((netErr&&netErr.message)||netErr));
-  const text=await res.text(); let data=null; try{ data=text?JSON.parse(text):null; }catch(e){}
-  if(data && data.error){ const em=(data.error && data.error.message)||JSON.stringify(data.error); throw new Error('Flow báo lỗi: '+em); }
-  if(!res.ok){ const m=(data&&(data.detail||data.message))||text||('HTTP '+res.status); throw new Error('Flow báo lỗi: '+(typeof m==='string'? m : JSON.stringify(m))); }
-  const c=(data&&data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
-  let mUrl='';
-  if(kind==='image'){ const mm=String(c).match(/\((https?:[^)\s]+)\)/); mUrl=mm?mm[1]:''; }
-  else { const mm=String(c).match(/src='(https?:[^']+)'/)||String(c).match(/src="(https?:[^"]+)"/); mUrl=mm?mm[1]:''; }
-  if(!mUrl) throw new Error('Cổng Flow không trả về '+(kind==='image'?'ảnh':'video')+' — nội dung lạ: '+String(c).slice(0,160));
-  return mUrl;
+  await keepAwake(true);
+  try{
+    const data=await api('/v1/flow/tasks',{ method:'POST', body:JSON.stringify({ kind, model, prompt, images:smallImgs, flow_key:f.key }) });
+    const id=data.id||data.task_id; if(!id) throw new Error('Cầu không nhận việc Flow (không trả mã việc)');
+    if(onTaskId) onTaskId(id);
+    return await pollFlowTask(id, kind);
+  } finally { keepAwake(false); }
 }
 function renderFlowCfg(){
   const f=flowCfg();
@@ -903,7 +908,7 @@ async function startImageTask(proj,seg){
     seg.kf.engine=flowCfg().engImage;
     if(seg.kf.engine==='flow'){
       seg.kf.status='processing'; save(); renderProductionZone();
-      const furl=await flowGen('image', (seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg), imgs, proj.ratio);
+      const furl=await flowGen('image', (seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg), imgs, proj.ratio, id=>{ seg.kf.flowTaskId=id; save(); });
       seg.kf.url=furl; seg.kf.status='done'; seg.kf.error=''; save(); renderProductionZone();
       toast('Keyframe (Flow) xong: '+seg.title); return;
     }
@@ -924,7 +929,7 @@ async function startVideoTask(proj,seg){
     seg.vid.engine=flowCfg().engVideo;
     if(seg.vid.engine==='flow'){
       seg.vid.status='processing'; save(); renderProductionZone();
-      const furl=await flowGen('video', (seg.promptVid&&seg.promptVid.trim())||buildVideoPrompt(proj,seg,idx), vimgs, proj.ratio);
+      const furl=await flowGen('video', (seg.promptVid&&seg.promptVid.trim())||buildVideoPrompt(proj,seg,idx), vimgs, proj.ratio, id=>{ seg.vid.flowTaskId=id; save(); });
       seg.vid.url=furl; seg.vid.status='done'; seg.vid.progress=100; seg.vid.error=''; save(); renderProductionZone();
       toast('Video (Flow) xong: '+seg.title); return;
     }
@@ -941,11 +946,27 @@ function handleVideoFailure(proj,seg){
   if(seg.vid.retries<lim){ seg.vid.retries++; seg.vid.status='queued'; seg.vid.error='Tự gen lại lần '+seg.vid.retries+'/'+lim+'...'; save(); renderProductionZone();
     setTimeout(()=>{ if(seg.vid.status==='queued') startVideoTask(proj,seg); }, 9000); }
 }
+const __flowResuming=new Set();
+async function resumeFlowSlot(p, s, kind){
+  const key=p.id+':'+s.id+':'+kind; if(__flowResuming.has(key)) return; __flowResuming.add(key);
+  const sl = kind==='image'? s.kf : s.vid;
+  try{
+    const url=await pollFlowTask(sl.flowTaskId, kind);
+    sl.url=url; sl.status='done'; if(kind==='video') sl.progress=100; sl.error=''; save(); renderProductionZone();
+    toast((kind==='image'?'Keyframe':'Video')+' (Flow) đã lấy về: '+s.title);
+  }catch(e){ sl.status='failed'; sl.error=e.message; save(); renderProductionZone(); }
+  finally{ __flowResuming.delete(key); }
+}
 function sweepFlowStuck(){
   let changed=false;
   S.projects.forEach(p=>p.segments.forEach(s=>{
-    if(s.kf && !s.kf.taskId && s.kf.engine==='flow' && ['queued','processing'].includes(s.kf.status)){ s.kf.status='failed'; s.kf.error='Bị ngắt giữa chừng (app đóng khi đang gen Flow) — bấm Gen lại'; changed=true; }
-    if(s.vid && !s.vid.taskId && s.vid.engine==='flow' && ['queued','processing'].includes(s.vid.status)){ s.vid.status='failed'; s.vid.error='Bị ngắt giữa chừng (app đóng khi đang gen Flow) — bấm Gen lại'; changed=true; }
+    [['kf','image'],['vid','video']].forEach(([slot,kind])=>{
+      const sl=s[slot]; if(!sl) return;
+      if(sl.engine==='flow' && ['queued','processing'].includes(sl.status)){
+        if(sl.flowTaskId){ resumeFlowSlot(p, s, kind); }
+        else { sl.status='failed'; sl.error='Bị ngắt giữa chừng (việc Flow cũ không có mã việc) — bấm Gen lại'; changed=true; }
+      }
+    });
   }));
   if(changed) save();
 }
@@ -1828,7 +1849,7 @@ async function batchStartKF(proj,seg){
     seg.kf.engine=flowCfg().engImage;
     if(seg.kf.engine==='flow'){
       seg.kf.status='processing'; save();
-      const furl=await flowGen('image', (seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg), imgs, proj.ratio);
+      const furl=await flowGen('image', (seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg), imgs, proj.ratio, id=>{ seg.kf.flowTaskId=id; save(); });
       seg.kf.url=furl; seg.kf.status='done'; seg.kf.error=''; save(); return;
     }
     const data=await api('/v1/images/tasks',{method:'POST', body:JSON.stringify({
