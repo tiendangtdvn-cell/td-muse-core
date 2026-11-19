@@ -287,7 +287,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.17</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.19</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
@@ -350,7 +350,7 @@
       </div>
       <div class="card">
         <h3>Cổng Flow (Google) — động cơ phụ</h3>
-        <p class="muted">Gen ảnh bằng Nano Banana, gen video bằng Omni, chạy bằng credits của các nick Google đã nạp ở panel Flow. Mặc định mọi thứ vẫn chạy qua Muse; chỉ khi chọn Flow bên dưới thì đoạn đó mới đi qua cổng Flow. Việc Flow được giao cho cầu chạy nền: bấm gen xong thoát app thoải mái, mở lại app sẽ tự lấy kết quả về.</p>
+        <p class="muted">Gen ảnh bằng Nano Banana, gen video bằng Omni, chạy bằng credits của các nick Google đã nạp ở panel Flow. Mặc định mọi thứ vẫn chạy qua Muse; chỉ khi chọn Flow bên dưới thì đoạn đó mới đi qua cổng Flow. Việc Flow được giao cho cầu chạy nền: bấm gen xong thoát app thoải mái, mở lại app sẽ tự lấy kết quả về. Clip Flow gen xong được cầu tự tải về kho nên ghép ngay trong app được như clip Muse.</p>
         <label class="fl">Gen ảnh (keyframe) qua</label>
         <select id="flowEngImage"><option value="muse">Muse (mặc định)</option><option value="flow">Flow — Nano Banana</option></select>
         <label class="fl">Gen video qua</label>
@@ -538,14 +538,11 @@ function renderFlowCfg(){
 async function testFlowConn(){
   const lg=$('#flowLog'); const f=flowCfg();
   if(!f.key){ if(lg) lg.textContent='Chưa nhập API key cổng Flow.'; return; }
-  if(lg) lg.textContent='Đang kiểm tra cổng Flow...';
+  if(lg) lg.textContent='Đang kiểm tra qua cầu...';
   try{
-    const res=await fetch(f.url+'/v1/models',{ headers:{'Authorization':'Bearer '+f.key} });
-    const data=await res.json().catch(()=>null);
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    const n=(data&&Array.isArray(data.data))? data.data.length : 0;
-    if(lg) lg.textContent='✅ Cổng Flow online — API key đúng, thấy '+n+' model.';
-  }catch(e){ if(lg) lg.textContent='❌ Không nối được cổng Flow: '+(e.message||e)+' — kiểm tra xưởng đã mở chưa và cổng 8000 đã để Public chưa.'; }
+    await api('/v1/models');
+    if(lg) lg.textContent='✅ Cầu online — gen Flow đi qua cầu nên cổng 8000 để Private vẫn chạy bình thường. Key Flow đúng hay sai sẽ rõ ngay ở lần gen đầu tiên (lỗi của Flow hiện nguyên văn trong đoạn).';
+  }catch(e){ if(lg) lg.textContent='❌ Không nối được cầu: '+(e.message||e)+' — kiểm tra xưởng đã mở chưa và cổng 18610 đã để Public chưa.'; }
 }
 /* ---------------- Đạo diễn Gemini ---------------- */
 function gemCfg(){ const g=(typeof S!=='undefined' && S.settings && S.settings.gemini)||{};
@@ -895,6 +892,14 @@ async function fetchEndFrame(proj,seg){
     if(d && d.url){ seg.endFrame=d.url; save(); }
   }catch(e){}
 }
+async function importFlowClip(proj, seg, flowUrl){
+  seg.vid.srcUrl=flowUrl;
+  try{
+    const d=await api('/v1/media/import',{method:'POST', body:JSON.stringify({url:flowUrl})});
+    if(d && d.url){ seg.vid.url=d.url; save(); fetchEndFrame(proj,seg); return true; }
+  }catch(e){}
+  seg.vid.url=flowUrl; save(); return false;
+}
 function renderProductionZone(){ const p=activeProject(); if(p && window.__renderProduction) window.__renderProduction(p); }
 
 async function startImageTask(proj,seg){
@@ -930,8 +935,9 @@ async function startVideoTask(proj,seg){
     if(seg.vid.engine==='flow'){
       seg.vid.status='processing'; save(); renderProductionZone();
       const furl=await flowGen('video', (seg.promptVid&&seg.promptVid.trim())||buildVideoPrompt(proj,seg,idx), vimgs, proj.ratio, id=>{ seg.vid.flowTaskId=id; save(); });
-      seg.vid.url=furl; seg.vid.status='done'; seg.vid.progress=100; seg.vid.error=''; save(); renderProductionZone();
-      toast('Video (Flow) xong: '+seg.title); return;
+      const okImp=await importFlowClip(proj,seg,furl);
+      seg.vid.status='done'; seg.vid.progress=100; seg.vid.error=''; save(); renderProductionZone();
+      toast(okImp? 'Video (Flow) xong — đã nhập kho, ghép trong app được: '+seg.title : 'Video (Flow) xong — chưa nhập kho được nên ghép ở CapCut: '+seg.title); return;
     }
     const data=await api('/v1/videos',{method:'POST', body:JSON.stringify({
       prompt:(seg.promptVid&&seg.promptVid.trim())||buildVideoPrompt(proj,seg,idx), model:'muse-video', aspect_ratio:proj.ratio, duration:10,
@@ -952,7 +958,9 @@ async function resumeFlowSlot(p, s, kind){
   const sl = kind==='image'? s.kf : s.vid;
   try{
     const url=await pollFlowTask(sl.flowTaskId, kind);
-    sl.url=url; sl.status='done'; if(kind==='video') sl.progress=100; sl.error=''; save(); renderProductionZone();
+    if(kind==='video'){ await importFlowClip(p, s, url); sl.progress=100; }
+    else sl.url=url;
+    sl.status='done'; sl.error=''; save(); renderProductionZone();
     toast((kind==='image'?'Keyframe':'Video')+' (Flow) đã lấy về: '+s.title);
   }catch(e){ sl.status='failed'; sl.error=e.message; save(); renderProductionZone(); }
   finally{ __flowResuming.delete(key); }
@@ -2162,8 +2170,8 @@ async function assembleNow(){
   const a=ensureAsm(p); const hc=parseFloat(a.headCut)||0;
   const clips=done.map(s=>{ const c={file:fname(s.vid.url)}; if(hc>0) c.start=hc; return c; }).filter(c=>c.file);
   const flowN=done.length-clips.length;
-  if(!clips.length){ toast(flowN? 'Tất cả clip đã xong là của cổng Flow — ghép trong app chỉ hỗ trợ clip Muse. Hãy tải từng clip về rồi ghép ở CapCut' : 'Không đọc được tên file clip trên xưởng'); return; }
-  if(flowN) toast('Có '+flowN+' đoạn gen qua Flow không ghép trong app được — chỉ ghép các đoạn Muse; đoạn Flow tải về ghép thêm ở CapCut', 6000);
+  if(!clips.length){ toast(flowN? 'Tất cả clip đã xong đều chưa nằm trong kho trên xưởng — hãy tải từng clip về rồi ghép ở CapCut' : 'Không đọc được tên file clip trên xưởng'); return; }
+  if(flowN) toast('Có '+flowN+' đoạn chưa nhập kho nên không ghép trong app được — tải các đoạn đó về ghép thêm ở CapCut', 6000);
   if(done.length<p.segments.length) toast('Mới có '+done.length+'/'+p.segments.length+' đoạn xong — ghép các đoạn đã xong trước');
   asmBusy=true; p.asmResult={status:'processing', progress:0}; save(); renderProductionZone();
   try{
