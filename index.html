@@ -287,7 +287,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V8.19</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V9.0</span></div>
   <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
@@ -361,6 +361,7 @@
         <input type="password" id="flowKey" placeholder="Key trong file setting.toml của flow2api">
         <label class="fl">Model video Flow</label>
         <select id="flowVidModel"><option value="omni11">Omni 1.1 Flash — đã test chạy được, Google bỏ sau 5/12</option><option value="omni12">Omni 1.2 Flash — dùng lâu dài</option></select>
+        <p class="muted">Omni 1.1 cố định 10 giây/cảnh. Muốn cảnh dài 8–15 giây đúng thời lượng đã chọn ở Điều khiển thì dùng Omni 1.2 — app tự chọn model theo số giây.</p>
         <div class="btnrow">
           <button class="btn primary" id="flowSave">Lưu cấu hình Flow</button>
           <button class="btn" id="flowTest">Kiểm tra kết nối</button>
@@ -421,7 +422,7 @@ function logTo(el,msg,cls){ const b=$(el); if(!b) return; const d=document.creat
 
 /* ---------------- State ---------------- */
 const DEFAULT_SETTINGS={ charMode:'review', bgImage:'', charRefs:[], template:'review', language:'vi',
-  region:'bac', voice:'nu-bac-chuan', scenes:3, ratio:'9:16', versions:1, noPrice:true,
+  region:'bac', voice:'nu-bac-chuan', scenes:3, sceneDur:10, ratio:'9:16', versions:1, noPrice:true,
   style:'chan-thuc', presets:[], speechSpeed:'vua', hookStyle:'ai', speakMode:'tnhien',
   expression:'tnhien', animalTalk:false, retry:3, charLib:[], activeChar:'', char2:'', useChar2:false,
   dialogue:true, format:'review', fmtStore:{},
@@ -513,12 +514,12 @@ async function pollFlowTask(id, kind){
   }
   throw new Error('Việc Flow quá lâu chưa xong — có thể cầu đã khởi động lại giữa chừng; mở lại app kiểm tra hoặc bấm Gen lại');
 }
-async function flowGen(kind, prompt, images, ratio, onTaskId){
+async function flowGen(kind, prompt, images, ratio, onTaskId, dur){
   const f=flowCfg();
   if(!f.key) throw new Error('Chưa nhập API key cổng Flow — vào tab Cài đặt, mục Cổng Flow.');
   const orient = ratio==='16:9' ? 'landscape' : 'portrait';
   const model = kind==='image' ? ('gemini-3.1-flash-image-'+orient)
-    : ((f.vidModel==='omni12' ? 'omni-1.2-flash-10s-' : 'omni-1.1-flash-10s-')+orient);
+    : ((f.vidModel==='omni12' ? ('omni-1.2-flash-'+(dur||10)+'s-') : 'omni-1.1-flash-10s-')+orient);
   const rawImgs=(images||[]).slice(0, kind==='image'?5:3).filter(Boolean);
   const smallImgs=await Promise.all(rawImgs.map(u=>downscaleDataURI(u,1536)));
   await keepAwake(true);
@@ -692,13 +693,13 @@ const HOOKS=[
 ];
 const SEG_TITLES=['Đoạn 1 — Hook + Demo','Đoạn 2 — Chi tiết nổi bật','Đoạn 3 — Kết quả + Kêu gọi'];
 function newSegment(i){
-  return { id:uid(), title:SEG_TITLES[i]||('Đoạn '+(i+1)), visual:'', dialogue:'', camera:'', timeline:'', promptKf:'', promptVid:'', endFrame:'', hasProduct:true, mute:false,
+  return { id:uid(), title:SEG_TITLES[i]||('Đoạn '+(i+1)), visual:'', dialogue:'', camera:'', timeline:'', promptKf:'', promptVid:'', endFrame:'', hasProduct:true, mute:false, dur:10,
     kf:{status:'idle',taskId:null,url:'',approved:false,error:''},
     vid:{status:'idle',taskId:null,url:'',progress:0,error:'',retries:0},
     qc:{c1:false,c2:false,c3:false,c4:false,c5:false,c6:false,c7:false,c8:false,c9:false,c10:false} };
 }
 function newProject(){
-  const p={ id:uid(), name:'Video sản phẩm mới', brand:'', product:'', points:'', hook:HOOKS[0],
+  const p={ id:uid(), name:'Video sản phẩm mới', brand:'', product:'', points:'', category:'', sceneDur:10, hook:HOOKS[0],
     ratio:'9:16', identity:DEFAULT_IDENTITY,
     refsChar:[], refsProd:[], segments:[newSegment(0),newSegment(1),newSegment(2)], createdAt:Date.now(),
     idea:'', stylePara:'', caption:'', voiceDir:voiceDirText(S.settings), styleText:(STYLES[S.settings.style]||''), fmtText:fmtPromptText(S.settings), charMode:S.settings.charMode, bgText: S.settings.bgImage? '' : bgAutoText('', '', S.settings), retryLimit:S.settings.retry, exprText:EXPRESSIONS[S.settings.expression]||'', assembly:Object.assign({}, ASM_DEFAULTS) };
@@ -782,8 +783,8 @@ function renderWorkspace(){
       <select onchange="App.setP('ratio',this.value)">
         ${['9:16','16:9','1:1'].map(r=>`<option ${p.ratio===r?'selected':''}>${r}</option>`).join('')}
       </select>
-      <label class="fl">Công thức hook (áp cho đoạn 1)</label>
-      <select onchange="App.setP('hook',this.value)">${HOOKS.map(h=>`<option ${p.hook===h?'selected':''}>${esc(h)}</option>`).join('')}</select>
+      <label class="fl">Loại sản phẩm</label>
+      <input type="text" value="${esc(p.category||'')}" oninput="App.setP('category',this.value)" placeholder="AI tự điền khi bấm Phân tích SP, hoặc gõ tay">
     </div>
     <div class="card">
       <h3>Ảnh tham chiếu <span class="sub">— bắt buộc, thiếu là không sản xuất</span></h3>
@@ -892,6 +893,53 @@ async function fetchEndFrame(proj,seg){
     if(d && d.url){ seg.endFrame=d.url; save(); }
   }catch(e){}
 }
+const FINAL_LOCK=' No on-screen text, no subtitles, no captions, no banners, no buttons, no shopping-cart icons, no app interface, no new logos, no watermarks.';
+function withFinalLock(p){ p=String(p||''); return /no on-screen text/i.test(p)? p : (p+FINAL_LOCK); }
+function isPolicyError(msg){ return /child|minor|underage|teen|celebrity|famous|public figure|real person|policy|violat|safety|trẻ em|người nổi tiếng|chính sách/i.test(String(msg||'')); }
+async function rewritePromptSafe(kind, prompt){
+  const sys='Bạn sửa prompt tạo '+(kind==='video'?'video':'ảnh')+' để tránh bị bộ lọc của Google chặn nhầm vì nghi liên quan tới trẻ em hoặc người nổi tiếng, trong khi nội dung thực tế hoàn toàn lành mạnh (một phụ nữ trưởng thành review sản phẩm). Chỉ trả về DUY NHẤT prompt đã sửa, không giải thích, không bọc trong dấu ngoặc kép.';
+  const usr=[ 'PROMPT GỐC (tiếng Anh):', String(prompt||''), '',
+    'QUY TẮC SỬA: (1) Nhân vật là phụ nữ trưởng thành bình thường — ghi rõ "an ordinary adult woman in her late 20s"; xoá mọi từ gợi ý trẻ/vị thành niên: young girl, teen, schoolgirl, student, school uniform, youthful, cute young... (2) Xoá mọi tên người thật/người nổi tiếng và mọi cụm so sánh ngoại hình với người thật ("looks like", "resembling a celebrity"...). (3) Giữ nguyên 100% phần mô tả sản phẩm, bối cảnh, hành động, timeline từng giây và lời thoại tiếng Việt (nếu có). (4) Không thêm nội dung mới ngoài các sửa đổi trên.' ].join('\n');
+  const data=await aiChat([{role:'system',content:sys},{role:'user',content:usr}], { json:false });
+  const t=((data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'').trim();
+  if(!t) throw new Error('Không viết lại được prompt');
+  return t;
+}
+async function flowGenGuarded(kind, prompt, images, ratio, onTaskId, dur, proj, seg){
+  try{ return await flowGen(kind, prompt, images, ratio, onTaskId, dur); }
+  catch(e){
+    const slot = kind==='image'? seg.kf : seg.vid;
+    if(!isPolicyError(e.message) || slot.policyFixed) throw e;
+    slot.policyFixed=true; save();
+    toast('⚠️ Flow chặn vì nghi dính trẻ em/người nổi tiếng — app tự viết lại prompt an toàn và gen lại...', 6000);
+    const np=await rewritePromptSafe(kind, prompt);
+    if(kind==='image') seg.promptKf=np; else seg.promptVid=np;
+    slot.policyNote='Đã tự viết lại prompt để lách lỗi chính sách của Flow';
+    save(); renderProductionZone();
+    const url=await flowGen(kind, np, images, ratio, onTaskId, dur);
+    toast('✓ Đã gen lại bằng prompt an toàn: '+seg.title);
+    return url;
+  }
+}
+async function regenSegPrompts(segId){
+  const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(!p||!s) return;
+  if(!p.script2||!p.script2.profile){ toast('Dự án chưa có hồ sơ đạo diễn — hãy soạn lại kịch bản trước'); return; }
+  const idx=p.segments.indexOf(s);
+  const st=Object.assign({}, S.settings, { scenes:p.segments.length, sceneDur:s.dur||p.sceneDur||10, ratio:p.ratio||S.settings.ratio });
+  if(p.hasVoice===false) st.dialogue=false;
+  const prod={ name:p.product||p.name, desc:p.points||'', category:p.category||'', images:p.refsProd||[] };
+  const prev=p.segments[idx-1];
+  const prevEnd= prev&&prev.scene2? (prev.scene2.end_state_text||'') : '';
+  toast('Gemini đang soạn lại prompt cho '+s.title+'...');
+  try{
+    const pr=await genScenePrompts(prod, st, p.script2.profile, { purpose:s.visual||'', dialogue:s.dialogue||'' }, idx, p.segments.length, prevEnd);
+    if(!pr) throw new Error('Gemini không trả prompt hợp lệ');
+    s.promptKf=pr.kf_prompt; s.promptVid=pr.vid_prompt;
+    if(s.scene2) s.scene2.end_state_text=pr.end_state;
+    save(); renderProductionZone(); toast('Đã soạn lại prompt cho '+s.title);
+  }catch(e){ toast('Soạn lại prompt lỗi: '+e.message); }
+}
+window.App = window.App || {}; Object.assign(window.App,{ regenSegPrompts });
 async function importFlowClip(proj, seg, flowUrl){
   seg.vid.srcUrl=flowUrl;
   try{
@@ -913,7 +961,7 @@ async function startImageTask(proj,seg){
     seg.kf.engine=flowCfg().engImage;
     if(seg.kf.engine==='flow'){
       seg.kf.status='processing'; save(); renderProductionZone();
-      const furl=await flowGen('image', (seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg), imgs, proj.ratio, id=>{ seg.kf.flowTaskId=id; save(); });
+      const furl=await flowGenGuarded('image', (seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg), imgs, proj.ratio, id=>{ seg.kf.flowTaskId=id; save(); }, 10, proj, seg);
       seg.kf.url=furl; seg.kf.status='done'; seg.kf.error=''; save(); renderProductionZone();
       toast('Keyframe (Flow) xong: '+seg.title); return;
     }
@@ -932,15 +980,17 @@ async function startVideoTask(proj,seg){
     const vimgs= seg.hasProduct===false ? [kfData] : [kfData, ...proj.refsProd.slice(0,2)];
     const pvV=proj.segments[idx-1]; if(pvV && pvV.endFrame){ try{ vimgs.push(await urlToDataURI(pvV.endFrame)); }catch(e){} }
     seg.vid.engine=flowCfg().engVideo;
+    let effVP=(seg.promptVid&&seg.promptVid.trim())||buildVideoPrompt(proj,seg,idx);
+    if(proj.scriptMode==='v3') effVP=withFinalLock(effVP);
     if(seg.vid.engine==='flow'){
       seg.vid.status='processing'; save(); renderProductionZone();
-      const furl=await flowGen('video', (seg.promptVid&&seg.promptVid.trim())||buildVideoPrompt(proj,seg,idx), vimgs, proj.ratio, id=>{ seg.vid.flowTaskId=id; save(); });
+      const furl=await flowGenGuarded('video', effVP, vimgs, proj.ratio, id=>{ seg.vid.flowTaskId=id; save(); }, seg.dur||proj.sceneDur||10, proj, seg);
       const okImp=await importFlowClip(proj,seg,furl);
       seg.vid.status='done'; seg.vid.progress=100; seg.vid.error=''; save(); renderProductionZone();
       toast(okImp? 'Video (Flow) xong — đã nhập kho, ghép trong app được: '+seg.title : 'Video (Flow) xong — chưa nhập kho được nên ghép ở CapCut: '+seg.title); return;
     }
     const data=await api('/v1/videos',{method:'POST', body:JSON.stringify({
-      prompt:(seg.promptVid&&seg.promptVid.trim())||buildVideoPrompt(proj,seg,idx), model:'muse-video', aspect_ratio:proj.ratio, duration:10,
+      prompt:effVP, model:'muse-video', aspect_ratio:proj.ratio, duration:seg.dur||proj.sceneDur||10,
       images: vimgs })});
     seg.vid.taskId=data.id||data.task_id; seg.vid.status='processing'; seg.vid.progress=data.progress||10;
     save(); renderProductionZone(); pollTask('video',proj.id,seg.id);
@@ -962,7 +1012,17 @@ async function resumeFlowSlot(p, s, kind){
     else sl.url=url;
     sl.status='done'; sl.error=''; save(); renderProductionZone();
     toast((kind==='image'?'Keyframe':'Video')+' (Flow) đã lấy về: '+s.title);
-  }catch(e){ sl.status='failed'; sl.error=e.message; save(); renderProductionZone(); }
+  }catch(e){
+    if(isPolicyError(e.message) && !sl.policyFixed){
+      sl.policyFixed=true;
+      try{ const np=await rewritePromptSafe(kind, (kind==='image'? s.promptKf : s.promptVid) || (kind==='image'? buildImagePrompt(p,s) : buildVideoPrompt(p,s,p.segments.indexOf(s))));
+        if(kind==='image') s.promptKf=np; else s.promptVid=np;
+        sl.policyNote='Đã tự viết lại prompt để lách lỗi chính sách của Flow';
+        sl.status='failed'; sl.error='Flow chặn vì nghi dính trẻ em/người nổi tiếng — app đã tự viết lại prompt an toàn, bấm Gen lại để chạy prompt mới.';
+      }catch(e2){ sl.status='failed'; sl.error=e.message; }
+    } else { sl.status='failed'; sl.error=e.message; }
+    save(); renderProductionZone();
+  }
   finally{ __flowResuming.delete(key); }
 }
 function sweepFlowStuck(){
@@ -1028,7 +1088,7 @@ window.__renderProduction=function(p){
       </div>
       <details class="promptbox"><summary>Prompt ảnh (xem / sửa trước khi gen)</summary>
         <textarea style="min-height:90px" onchange="App.setSegPrompt('${s.id}','kf',this.value)">${esc(s.promptKf||buildImagePrompt(p,s))}</textarea>
-        <div class="btnrow"><button class="btn small" onclick="App.resetSegPrompt('${s.id}','kf')">↺ Về prompt gốc</button></div></details>
+        <div class="btnrow"><button class="btn small" onclick="App.regenSegPrompts('${s.id}')">✨ Gemini soạn lại prompt</button><button class="btn small" onclick="App.resetSegPrompt('${s.id}','kf')">↺ Về prompt gốc</button></div></details>
       </div></div>`).join('');
   const vidCards=p.segments.map((s,si)=>`
     <div class="seg"><div class="seg-head"><b>${esc(s.title)}</b><span style="flex:1"></span>
@@ -1037,13 +1097,14 @@ window.__renderProduction=function(p){
         : s.kf.url?`<img src="${esc(resolveUrl(s.kf.url))}">`:'<div class="empty">Chưa có clip</div>'}</div>
       <div class="prog"><i id="vid-prog-${s.id}" style="width:${s.vid.progress||0}%"></i></div>
       <div class="statusline" id="vid-status-${s.id}">${vidStatusText(s)}</div>
+      ${(()=>{ const wc=(s.dialogue||'').trim().split(/\s+/).filter(Boolean).length; if(!wc) return ''; const d=s.dur||p.sceneDur||10; const w=wc/d; const off=w<4.2||w>5.3; return '<div class="statusline"'+(off?' style="color:#e0653a"':'')+'>🗣️ '+wc+' từ · ~'+w.toFixed(1)+' từ/giây (chuẩn 4,5–5)'+(off?' — lệch chuẩn, nên sửa thoại':'')+'</div>'; })()}
       <div class="btnrow">
         <button class="btn small primary" onclick="App.genVideo('${s.id}')" ${s.kf.approved&&!['queued','processing'].includes(s.vid.status)?'':'disabled'}>${s.vid.url?'Gen lại video':'Gen video'}</button>
         ${s.vid.url?`<button class="btn small" onclick="App.downloadSeg('${s.id}')">⬇ Tải clip</button>`:''}
       </div>
       <details class="promptbox"><summary>Prompt video (xem / sửa trước khi gen)</summary>
         <textarea style="min-height:90px" onchange="App.setSegPrompt('${s.id}','vid',this.value)">${esc(s.promptVid||buildVideoPrompt(p,s,si))}</textarea>
-        <div class="btnrow"><button class="btn small" onclick="App.resetSegPrompt('${s.id}','vid')">↺ Về prompt gốc</button></div></details>
+        <div class="btnrow"><button class="btn small" onclick="App.regenSegPrompts('${s.id}')">✨ Gemini soạn lại prompt</button><button class="btn small" onclick="App.resetSegPrompt('${s.id}','vid')">↺ Về prompt gốc</button></div></details>
       </div></div>`).join('');
   zone.innerHTML=`
   <div class="steptitle" id="sec3">3 · Keyframe — duyệt bằng mắt</div>
@@ -1382,7 +1443,7 @@ function parseLooseJSON(text){
 }
 async function analyzeImages(images){
   const imgs=(images||[]).slice(0,5); if(!imgs.length) throw new Error('Chưa có ảnh sản phẩm để phân tích');
-  const content=[{ type:'text', text:'Bạn nhận được các ảnh của MỘT sản phẩm cần bán, gồm 2 loại: ẢNH CHỤP SẢN PHẨM (nhìn thấy hình dáng sản phẩm) và ẢNH CHỮ (ảnh chụp màn hình thông số kỹ thuật, mô tả sản phẩm, hoặc chữ trên bao bì). CÁCH ĐỌC: (1) Tên sản phẩm: xác định từ ẢNH CHỤP — hình dáng sản phẩm, kèm hãng/model nếu thấy chữ in trên sản phẩm hoặc bao bì; tên ngắn gọn. (2) Điểm bán hàng: GỘP CẢ HAI NGUỒN — đặc điểm nhìn thấy trong ảnh chụp (hình dáng, chất liệu, công năng) VÀ thông số/mô tả đọc được từ ẢNH CHỮ: chép lại CHÍNH XÁC các con số và thông số như trong ảnh (không làm tròn, không bịa thêm, không suy đoán). Mỗi điểm một dòng, các dòng thông số để ở cuối. (3) Chỉ khi ẢNH CHỮ rõ ràng nói về một sản phẩm KHÁC HẲN với ảnh chụp (khác loại sản phẩm) thì mới bỏ qua ảnh chữ đó và đặt "mixed":true; nếu tất cả cùng một sản phẩm thì "mixed":false. Trả về DUY NHẤT một JSON, không giải thích thêm: {"name":"tên sản phẩm","points":"các điểm bán hàng và thông số, mỗi ý một dòng","mixed":false}' }];
+  const content=[{ type:'text', text:'Bạn nhận được các ảnh của MỘT sản phẩm cần bán, gồm 2 loại: ẢNH CHỤP SẢN PHẨM (nhìn thấy hình dáng sản phẩm) và ẢNH CHỮ (ảnh chụp màn hình thông số kỹ thuật, mô tả sản phẩm, hoặc chữ trên bao bì). CÁCH ĐỌC: (1) Tên sản phẩm: xác định từ ẢNH CHỤP — hình dáng sản phẩm, kèm hãng/model nếu thấy chữ in trên sản phẩm hoặc bao bì; tên ngắn gọn. (2) Điểm bán hàng: GỘP CẢ HAI NGUỒN — đặc điểm nhìn thấy trong ảnh chụp (hình dáng, chất liệu, công năng) VÀ thông số/mô tả đọc được từ ẢNH CHỮ: chép lại CHÍNH XÁC các con số và thông số như trong ảnh (không làm tròn, không bịa thêm, không suy đoán). Mỗi điểm một dòng, các dòng thông số để ở cuối. (3) Chỉ khi ẢNH CHỮ rõ ràng nói về một sản phẩm KHÁC HẲN với ảnh chụp (khác loại sản phẩm) thì mới bỏ qua ảnh chữ đó và đặt "mixed":true; nếu tất cả cùng một sản phẩm thì "mixed":false. Trả về DUY NHẤT một JSON, không giải thích thêm: {"name":"tên sản phẩm","category":"loại sản phẩm — một cụm ngắn gọn, VD: đồ gia dụng nhà bếp, phụ kiện điện thoại, mỹ phẩm chăm sóc da, thời trang nữ, đồ mẹ và bé","points":"các điểm bán hàng và thông số, mỗi ý một dòng","mixed":false}' }];
   imgs.forEach(u=>content.push({ type:'image_url', image_url:{ url:u } }));
   const ask=async(extra)=>{ const c=extra? content.concat([{type:'text', text:extra}]) : content;
     const data=await aiChat([{ role:'user', content:c }], { json:true });
@@ -1391,12 +1452,13 @@ async function analyzeImages(images){
   let j=await ask('');
   if(!j) j=await ask('LƯU Ý: lần trả trước bị lỗi cú pháp JSON. Lần này CHỈ trả về một JSON hợp lệ duy nhất: khóa và chuỗi bọc trong dấu ngoặc kép ", không markdown, không giải thích thêm.');
   if(!j) throw new Error('AI không đọc được ảnh này');
-  return { name:String(j.name||'').slice(0,120), points:String(j.points||'').slice(0,600), mixed: !!j.mixed };
+  return { name:String(j.name||'').slice(0,120), category:String(j.category||'').slice(0,80), points:String(j.points||'').slice(0,600), mixed: !!j.mixed };
 }
 async function analyzeBatch(id){ const b=S.batch.find(x=>x.id===id); if(!b) return;
   try{ toast('Đang phân tích ảnh sản phẩm...');
     const r=await analyzeImages(b.images);
     if(r.name) b.name=r.name;
+    if(r.category) b.category=r.category;
     if(r.points) b.desc=r.points;
     save(); renderBatch(); toast(r.mixed? '⚠️ Ảnh gồm nhiều sản phẩm khác nhau — đã lấy theo ảnh đầu tiên, kiểm tra lại nhé' : 'Đã điền từ phân tích — kiểm tra lại tên & điểm bán hàng');
   }catch(e){ toast('Phân tích lỗi: '+e.message); } }
@@ -1404,6 +1466,7 @@ async function analyzeProject(){ const p=activeProject(); if(!p) return;
   try{ toast('Đang phân tích ảnh sản phẩm...');
     const r=await analyzeImages(p.refsProd);
     if(r.name) p.product=r.name;
+    if(r.category) p.category=r.category;
     if(r.points) p.points=r.points;
     save(); renderWorkspace(); toast(r.mixed? '⚠️ Ảnh gồm nhiều sản phẩm khác nhau — đã lấy theo ảnh đầu tiên, kiểm tra lại nhé' : 'Đã điền từ phân tích — kiểm tra lại trước khi sản xuất');
   }catch(e){ toast('Phân tích lỗi: '+e.message); } }
@@ -1491,17 +1554,7 @@ function renderOptions(){
     ${(st.format==='family'||st.format==='drama')?`<div class="switchrow"><span style="flex:1; font-weight:700">Thêm nhân vật 2</span>
       <span class="switch"><input type="checkbox" ${st.useChar2?'checked':''} onchange="App.setOptBool('useChar2',this.checked)"><i></i></span></div>
     ${(st.format==='family'||st.format==='drama') && st.useChar2?`<label class="fl">Nhân vật 2 (từ thư viện)</label><select onchange="App.setOpt('char2',this.value)"><option value="">— Chọn nhân vật 2 —</option>${st.charLib.map(c=>`<option value="${c.id}" ${st.char2===c.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select>`:''}`:''}
-    ${st.charMode==='review'?`<div class="optgroup">THƯ VIỆN NHÂN VẬT</div>
-    ${st.charLib.map(c=>`<div class="thumbrow" style="margin-bottom:7px">
-      ${c.refs[0]?`<img src="${c.refs[0]}" style="width:36px; height:45px; object-fit:cover; border-radius:8px">`:'<div style="width:36px"></div>'}
-      <b style="flex:1">${esc(c.name)}</b>
-      <button class="btn small ${st.activeChar===c.id?'ok':''}" onclick="App.setActiveChar('${c.id}')">${st.activeChar===c.id?'✓ Đang dùng':'Dùng'}</button>
-      <button class="btn small danger" onclick="App.delCharPack('${c.id}')">×</button></div>`).join('')}
-    <div style="display:flex; gap:8px; margin-top:6px">
-      <input type="text" id="charPackName" placeholder="Tên nhân vật mới..." style="flex:1">
-      <button class="btn small" onclick="document.getElementById('charPackFile').click()">＋ Ảnh</button>
-      <input type="file" id="charPackFile" accept="image/*" multiple class="hiddenfile" onchange="App.addCharPack(this)">
-    </div>`:''}`}
+    ${st.charMode==='review'?``:''}`}
     ${st.charMode!=='review'?`
     <label class="fl">Ảnh bối cảnh</label>
     <div class="refs">${st.bgImage?`<div class="refbox"><img src="${st.bgImage}"><button onclick="App.delBg()">×</button></div>`
@@ -1542,17 +1595,16 @@ function renderOptions(){
     <select onchange="App.setOpt('voice',this.value)">${VOICES.map(v=>`<option value="${v.id}" ${st.voice===v.id?'selected':''}>${esc(v.label)}</option>`).join('')}</select>
     <label class="fl">Biểu cảm / thần thái</label>
     <select onchange="App.setOpt('expression',this.value)">${selOpts(EXPRESSIONS,st.expression)}</select>
-    <label class="fl">Kiểu mở đầu (hook cảnh 1)</label>
-    <select onchange="App.setOpt('hookStyle',this.value)"><option value="ai" ${st.hookStyle==='ai'?'selected':''}>Tự chọn (AI quyết định)</option>${HOOKS.map(h=>`<option ${st.hookStyle===h?'selected':''}>${esc(h)}</option>`).join('')}</select>`:''}
+`:''}
   </div>
 
   <div class="card">
     <div class="sechead"><span class="secnum">${st.format==='review'?4:5}</span><span class="sectitle">Hình ảnh & số lượng</span>
-      <span class="secchip">${st.scenes} cảnh · ${st.ratio}</span></div>
+      <span class="secchip">${st.scenes} cảnh · ${st.sceneDur||10}s/cảnh · ${st.ratio}</span></div>
     <label class="fl">Số cảnh / video</label>
     <div class="segbtn">${[2,3,4,5].map(n=>`<button class="${st.scenes===n?'active':''}" onclick="App.setOptNum('scenes',${n})">${n} cảnh</button>`).join('')}</div>
-    <label class="fl">Thời lượng mỗi cảnh</label>
-    <div class="segbtn"><button class="active">10 giây / cảnh (cố định)</button></div>
+    <label class="fl">Thời lượng mỗi cảnh (8–15 giây)</label>
+    <select onchange="App.setOptNum('sceneDur',this.value)">${[8,9,10,11,12,13,14,15].map(n=>`<option value="${n}" ${(+st.sceneDur||10)===n?'selected':''}>${n} giây / cảnh</option>`).join('')}</select>
     <label class="fl">Tỷ lệ khung hình</label>
     <div class="segbtn">
       <button class="${st.ratio==='9:16'?'active':''}" onclick="App.setOpt('ratio','9:16')">9:16</button>
@@ -1606,7 +1658,7 @@ function deletePreset(){ const i=parseInt($('#presetSel').value,10); if(isNaN(i)
   S.settings.presets.splice(i,1); save(); renderControl(); }
 
 /* ---------------- Batch products ---------------- */
-function newBatchProduct(){ return { id:uid(), name:'', price:'', note:'', desc:'', images:[] }; }
+function newBatchProduct(){ return { id:uid(), name:'', category:'', desc:'', images:[] }; }
 function batchTotals(){ const n=S.batch.filter(b=>b.name.trim()).length; return { products:n, videos:n*S.settings.versions }; }
 function renderBatch(){
   const z=$('#batchSlot'); if(!z) return; const t=batchTotals(); const st=S.settings;
@@ -1628,12 +1680,11 @@ function renderBatch(){
       </div>
       <div class="phead"><span class="pnum">${i+1}</span>
         <input type="text" placeholder="Tên sản phẩm" value="${esc(b.name)}" oninput="App.setBatch('${b.id}','name',this.value)" style="flex:1">
-        <span class="price">₫<input type="text" placeholder="34.000" value="${esc(b.price)}" oninput="App.setBatch('${b.id}','price',this.value)" style="width:86px; display:inline-block"></span>
         <button class="btn small danger" onclick="App.delBatch('${b.id}')">×</button></div>
       <div class="refs" style="margin-bottom:8px">${b.images.map((r,j)=>`<div class="refbox"><img src="${r}"><button onclick="App.delBatchImg('${b.id}',${j})">×</button></div>`).join('')}
         <button class="addref" onclick="document.getElementById('bf-${b.id}').click()">＋ Ảnh</button>
         <input type="file" id="bf-${b.id}" accept="image/*" multiple class="hiddenfile" onchange="App.addBatchImgs('${b.id}',this)"></div>
-      <input type="text" placeholder="Lưu ý cho Muse (không bắt buộc). VD: chỉ quay màu hồng, nhấn mạnh freeship, đang giảm 50%" value="${esc(b.note)}" oninput="App.setBatch('${b.id}','note',this.value)">
+      <input type="text" placeholder="Loại sản phẩm — AI tự điền khi bấm Phân tích SP, hoặc gõ tay. VD: đồ gia dụng nhà bếp" value="${esc(b.category||'')}" oninput="App.setBatch('${b.id}','category',this.value)" style="margin-bottom:8px">
       <textarea style="min-height:40px; margin-top:8px" placeholder="Mô tả sản phẩm (điểm bán hàng, chất liệu, công dụng...)" oninput="App.setBatch('${b.id}','desc',this.value)">${esc(b.desc)}</textarea>
     </div>`).join('')}
     <div class="btnrow" style="margin-top:0"><button class="btn" onclick="App.addBatch()">＋ Thêm sản phẩm</button></div>
@@ -1674,12 +1725,12 @@ async function genScriptAI(prod, st){
   const usr=[((st.format==='review'||st.format==='pov')? 'Sản phẩm: ' : 'Chủ đề video: ')+prod.name,
     prod.desc? 'Mô tả/điểm bán hàng: '+prod.desc : '',
     prod.note? 'Lưu ý bắt buộc: '+prod.note : '',
-    'Mẫu kịch bản: '+TEMPLATES[st.template]+'. Số cảnh: '+st.scenes+' (mỗi cảnh ~10 giây).',
+    'Mẫu kịch bản: '+TEMPLATES[st.template]+'. Số cảnh: '+st.scenes+' (mỗi cảnh đúng '+(st.sceneDur||10)+' giây).',
     fmtPromptText(st)? ('Ý đồ của dạng video: '+fmtPromptText(st)) : '',
-    'Cấu trúc bắt buộc: cảnh 1 mở bằng nhân vật nhìn thẳng camera nói câu HOOK trong 3–4 giây đầu, sau đó tập trung vào sản phẩm; các cảnh giữa XEN KẼ người nói và CẬN CẢNH demo tay/sản phẩm (ít nhất một cảnh cận cảnh demo thật); cảnh cuối là kết quả + CTA bằng lời nói, nhân vật chỉ tay xuống góc dưới khung hình. Trong camera/timeline/visual TUYỆT ĐỐI không nhắc giỏ hàng, nút bấm hay giao diện ứng dụng — chỉ mô tả cử chỉ; chữ giỏ hàng chỉ được xuất hiện trong dialogue. Toàn bộ nội dung xoay quanh sản phẩm: công năng, lợi ích, tiện lợi, hiệu quả, chất liệu.',
-    'Mỗi cảnh phải có camera (chuỗi cỡ cảnh luân chuyển trong cảnh, VD: "Trung cảnh → Cận cảnh → Toàn cảnh") và timeline (diễn biến theo mốc giây trong đúng 10 giây, mỗi mốc ghi rõ CỠ CẢNH + hành động + nội dung thoại lúc đó). Quy tắc khớp hình–tiếng: thoại nói tới đâu, camera cho thấy đúng thứ đó — nói về chất liệu thì cận vào chất liệu, nói về hiệu quả thì cận kết quả, nói về tiện lợi thì toàn/trung cảnh thao tác. Cắt máy liên tục giữa các cỡ cảnh để giữ nhịp, không để một cỡ cảnh đứng yên quá 4 giây.',
+    'Cấu trúc bắt buộc: 3 GIÂY ĐẦU của cảnh 1 là HOOK giật gân do bạn tự sáng tác từ sản phẩm, đánh mạnh tâm lý người xem, nói ngay từ giây 0, không chào hỏi; sau đó tập trung vào sản phẩm; các cảnh giữa XEN KẼ người nói và CẬN CẢNH demo tay/sản phẩm (ít nhất một cảnh cận cảnh demo thật); cảnh cuối là kết quả + CTA ở 3 GIÂY CUỐI bằng lời nói, nhân vật chỉ tay xuống góc dưới khung hình. Trong camera/timeline/visual TUYỆT ĐỐI không nhắc giỏ hàng, nút bấm hay giao diện ứng dụng — chỉ mô tả cử chỉ; chữ giỏ hàng chỉ được xuất hiện trong dialogue. Toàn bộ nội dung xoay quanh sản phẩm: công năng, lợi ích, tiện lợi, hiệu quả, chất liệu.',
+    'Mỗi cảnh phải có camera (chuỗi cỡ cảnh luân chuyển trong cảnh, VD: "Trung cảnh → Cận cảnh → Toàn cảnh") và timeline (diễn biến theo mốc giây trong đúng '+(st.sceneDur||10)+' giây, mỗi mốc ghi rõ CỠ CẢNH + hành động + nội dung thoại lúc đó). Quy tắc khớp hình–tiếng: thoại nói tới đâu, camera cho thấy đúng thứ đó — nói về chất liệu thì cận vào chất liệu, nói về hiệu quả thì cận kết quả, nói về tiện lợi thì toàn/trung cảnh thao tác. Cắt máy liên tục giữa các cỡ cảnh để giữ nhịp, không để một cỡ cảnh đứng yên quá 4 giây.',
     'Mọi cảnh quay ở CÙNG MỘT bối cảnh duy nhất và nhân vật mặc CÙNG một bộ trang phục; trường visual không đổi địa điểm, không mô tả chữ hay logo in trên sản phẩm/điện thoại.',
-    st.dialogue===false ? 'KHÔNG có lời thoại: trường dialogue của mọi cảnh để trống "".' : ('Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh vừa đủ nói hết trong 10 giây với nhịp NHANH, dồn dập, năng động kiểu review bán hàng (khoảng 37–40 từ, tốc độ nói 3,7–4 từ/giây), văn phong review chuyên nghiệp: gãy gọn, giàu thông tin về sản phẩm, đúng trọng tâm điểm bán, không lan man, không mở đầu chậm, '+(st.noPrice?'TUYỆT ĐỐI không nhắc giá tiền':'có thể nhắc ưu đãi')+'.'),
+    st.dialogue===false ? 'KHÔNG có lời thoại: trường dialogue của mọi cảnh để trống "".' : ('Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh vừa đủ nói hết trong '+(st.sceneDur||10)+' giây với nhịp NHANH, dồn dập, năng động kiểu review bán hàng (khoảng '+Math.round((st.sceneDur||10)*4.5)+'–'+Math.round((st.sceneDur||10)*5)+' từ, tốc độ nói 4,5–5 từ/giây), văn phong review chuyên nghiệp: gãy gọn, giàu thông tin về sản phẩm, đúng trọng tâm điểm bán, không lan man, không mở đầu chậm, '+(st.noPrice?'TUYỆT ĐỐI không nhắc giá tiền':'có thể nhắc ưu đãi')+'.'),
     'Trả về JSON: [{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại","camera":"góc máy","timeline":"0–2s: ...; 2–6s: ...; 6–10s: ..."}] đủ '+st.scenes+' cảnh.'
   ].filter(Boolean).join('\n');
   const ask=async(extra)=>{ const data=await aiChat([{role:'system',content:sys},{role:'user',content:usr+extra}], { json:true });
@@ -1688,7 +1739,7 @@ async function genScriptAI(prod, st){
   let arr=await ask('');
   if(!Array.isArray(arr)||!arr.length) arr=await ask('\nLƯU Ý: lần trả trước bị lỗi cú pháp JSON. CHỈ trả mảng JSON hợp lệ, khóa và chuỗi bọc trong dấu ngoặc kép ".');
   if(!Array.isArray(arr)||!arr.length) throw new Error('AI không trả JSON hợp lệ');
-  return arr.slice(0, st.scenes).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',45), camera:String(o.camera||''), timeline:String(o.timeline||'') }));
+  return arr.slice(0, st.scenes).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',Math.ceil((st.sceneDur||10)*5)+3), camera:String(o.camera||''), timeline:String(o.timeline||'') }));
 }
 
 /* ---------------- Schema V2: continuity JSON + app-compiled prompts ---------------- */
@@ -1717,57 +1768,68 @@ function synthScene(i, scA, profile, leg, prevEnd){
     camera_timeline: tl.length? tl : [{span:'0–10s', shot:leg.camera||'Trung cảnh', action:leg.visual||''}],
     image_prompt: leg.visual||'' };
 }
+async function askChatJSONImg(sys, text, images){
+  const content=[{type:'text', text}];
+  (images||[]).slice(0,3).forEach(u=>content.push({type:'image_url', image_url:{url:u}}));
+  const ask=async(extra)=>{ try{ const data=await aiChat([{role:'system',content:sys},{role:'user',content: extra? content.concat([{type:'text',text:extra}]) : content}], { json:true });
+    const t=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+    return parseLooseJSON(t); }catch(e){ lastAiError=String((e&&e.message)||e); return null; } };
+  let o=await ask('');
+  if(!o) o=await ask('LƯU Ý: lần trả trước bị lỗi cú pháp JSON. CHỈ trả JSON hợp lệ, khóa và chuỗi bọc trong dấu ngoặc kép ".');
+  return o;
+}
+async function genScenePrompts(prod, st, profile, scA, idx, total, prevEnd){
+  const sys='Bạn là đạo diễn video ngắn TikTok/Reels kiêm chuyên gia viết prompt cho model tạo ảnh và tạo video AI. Chỉ trả về DUY NHẤT một JSON object, không giải thích, không markdown.';
+  const dur=st.sceneDur||10, vc=voiceProfile(st);
+  const isFirst=idx===0, isLast=idx===total-1;
+  const usr=[ 'MASTER PROFILE (khoá cứng của cả video): '+JSON.stringify(profile),
+    'Sản phẩm: '+prod.name+(prod.category? ' — loại sản phẩm: '+prod.category : ''),
+    'Cảnh '+(idx+1)+'/'+total+', thời lượng đúng '+dur+' giây, tỉ lệ khung '+(st.ratio||'9:16')+'. Mục đích cảnh: '+scA.purpose,
+    'Lời thoại của cảnh (giữ nguyên văn, không sửa một chữ): "'+scA.dialogue+'"',
+    prevEnd? ('Trạng thái kết thúc của cảnh trước — cảnh này phải mở đầu tiếp nối đúng trạng thái đó: '+prevEnd) : 'Đây là cảnh đầu tiên của video.',
+    'NHIỆM VỤ: viết 2 prompt TIẾNG ANH hoàn chỉnh, sẵn sàng gửi thẳng cho model tạo ảnh/video. KHÔNG viết mô tả trung gian, KHÔNG chia ô trạng thái — prompt phải là câu văn hoàn chỉnh, giàu chi tiết vật lý.',
+    'KF_PROMPT (prompt tạo ảnh keyframe — khung hình MỞ ĐẦU của cảnh): mô tả MỘT khung hình tĩnh bằng tiếng Anh: người phụ nữ giống hệt ảnh tham chiếu (giữ nguyên khuôn mặt và kiểu tóc — TUYỆT ĐỐI không mô tả chi tiết gương mặt cô ấy), mặc đúng trang phục trong MASTER PROFILE, ở đúng bối cảnh trong MASTER PROFILE, sản phẩm đúng hệt product_lock (hình dáng, màu sắc, chất liệu, các bộ phận chính), tư thế và hành động là khoảnh khắc mở đầu của cảnh, ánh sáng theo MASTER PROFILE, phong cách ảnh UGC chụp bằng điện thoại, chân thực. Không chữ, không logo mới, không watermark.',
+    'VID_PROMPT (prompt tạo video): viết bằng tiếng Anh theo TIMELINE TỪNG GIÂY từ 0 đến '+dur+' giây, chia 4–6 shot với CẮT CỨNG (jump cut) đan xen: (a) trung cảnh nhân vật nói thẳng vào camera, (b) cận cảnh sản phẩm — chức năng đang hoạt động, chất liệu bề mặt, chi tiết cấu tạo, kết quả/lợi ích thấy rõ. Mỗi shot ghi rõ khoảng giây, cỡ cảnh, hành động, và phần lời thoại tương ứng: thoại nói tới đâu, hình cho thấy đúng thứ đó. TUYỆT ĐỐI không dùng zoom in/zoom out hay lia máy chậm làm ngôn ngữ camera chính — phải cắt shot thật giữa các cỡ cảnh.',
+    isFirst? 'HOOK 3 GIÂY ĐẦU: shot đầu tiên (0–3s) là hook — hình ảnh demo hoặc kết quả mạnh nhất, bắt mắt nhất của sản phẩm + nhân vật nói ngay phần hook mở đầu của lời thoại, nhìn thẳng camera, không chào hỏi, không giới thiệu vòng vo.' : '',
+    isLast? 'CTA 3 GIÂY CUỐI: các shot cuối ('+(dur-3)+'–'+dur+'s) là CTA — nhân vật nhìn thẳng camera nói phần kêu gọi ở cuối lời thoại và chỉ tay xuống góc dưới khung hình.' : '',
+    st.dialogue===false ? 'Video này KHÔNG có lời thoại: timeline chỉ gồm hành động và demo sản phẩm.' :
+      ('CHỈ ĐẠO GIỌNG phải viết vào VID_PROMPT: giọng '+vc.gender+', '+vc.region+', phát âm chuẩn '+vc.area+', cảm xúc '+(vc.emotion||'tự nhiên, giàu năng lượng')+'; nói nhanh 4,5–5 từ/giây; nhúng NGUYÊN VĂN lời thoại tiếng Việt ở trên vào đúng các shot tương ứng, khẩu hình khớp lời; khi nhân vật không nằm trong khung hình, giọng vẫn tiếp tục như voiceover không ngắt quãng.'),
+    'LUẬT BẮT BUỘC phải tự viết vào cả 2 prompt: sản phẩm giống hệt ảnh tham chiếu trong suốt đoạn; giữ nguyên khuôn mặt và kiểu tóc nhân vật; chỉ một trang phục và một bối cảnh duy nhất; màn hình điện thoại (nếu xuất hiện) phải tắt/đen hoặc quay mặt sau về phía camera; KHÔNG banner, nút bấm, biểu tượng giỏ hàng, giao diện ứng dụng, phụ đề chữ hay watermark trong khung hình.',
+    'END_STATE: 1–2 câu TIẾNG VIỆT mô tả trạng thái kết thúc cảnh (tư thế nhân vật, vị trí và trạng thái sản phẩm, cỡ cảnh) để cảnh sau kế thừa liền mạch.',
+    'Trả về JSON: {"kf_prompt":"...","vid_prompt":"...","end_state":"..."}'
+  ].filter(Boolean).join('\n');
+  const b=await askChatJSON(sys, usr);
+  if(!b || !b.kf_prompt || !b.vid_prompt) return null;
+  return { kf_prompt:String(b.kf_prompt), vid_prompt:String(b.vid_prompt), end_state:String(b.end_state||'') };
+}
 async function genScriptV2(prod, st){
   const sys='Bạn là đạo diễn video ngắn TikTok/Reels. Chỉ trả về DUY NHẤT một JSON object, không giải thích, không markdown.';
   const isRev = st.format==='review'||st.format==='pov';
+  const dur=st.sceneDur||10, wMin=Math.round(dur*4.5), wMax=Math.round(dur*5), cap=Math.ceil(dur*5)+3;
   const usrA=[ (isRev?'Sản phẩm: ':'Chủ đề video: ')+prod.name,
+    prod.category? 'Loại sản phẩm: '+prod.category : '',
     prod.desc? 'Mô tả/điểm bán hàng (CHỈ dùng thông tin này, không bịa thêm thông số hay công dụng): '+prod.desc : '',
-    prod.note? 'Lưu ý bắt buộc: '+prod.note : '',
-    'Mẫu kịch bản: '+TEMPLATES[st.template]+'. Số cảnh: '+st.scenes+' (mỗi cảnh đúng 10 giây).',
+    'Mẫu kịch bản: '+TEMPLATES[st.template]+'. Số cảnh: '+st.scenes+' (mỗi cảnh đúng '+dur+' giây).',
     fmtPromptText(st)? ('Ý đồ của dạng video: '+fmtPromptText(st)) : '',
-    isRev? 'Cấu trúc: cảnh 1 = HOOK + vấn đề (nhân vật nhìn thẳng camera nói câu hook trong 3–4 giây đầu, sản phẩm xuất hiện ngay); các cảnh giữa = DEMO thật theo FEATURE → ACTION → VISIBLE RESULT (nói tính năng nào thì tay làm đúng thao tác đó và thấy kết quả); cảnh cuối = kết quả + CTA bằng lời nói, nhân vật chỉ tay xuống góc dưới khung hình.'
-         : 'Cấu trúc: cảnh 1 mở đầu gây chú ý ngay 3 giây đầu; các cảnh giữa phát triển nội dung chính bằng hành động cụ thể; cảnh cuối kết lại trọn vẹn, có điểm nhấn cuối.',
-    'Nhiệm vụ 1 — MASTER PROFILE khoá cứng cho cả video: product_lock = mô tả ngoại hình sản phẩm đúng như ảnh tham chiếu (hình dáng, màu sắc, chất liệu nhìn thấy, các bộ phận chính, chữ/logo in sẵn nếu có — giữ nguyên, không thêm bớt). Chỉ khóa đúng màu sắc và biến thể nhìn thấy trong ảnh tham chiếu, không liệt kê các màu/biến thể khác của listing; wardrobe = MỘT bộ trang phục cụ thể cho nhân vật trong video này (chọn hợp bối cảnh và sản phẩm); environment = MỘT địa điểm cụ thể duy nhất (mô tả vị trí các đồ vật chính); lighting = hướng và chất lượng ánh sáng; style = phong cách hình ảnh (chân thực như quay bằng điện thoại xịn, UGC TikTok). TUYỆT ĐỐI không mô tả ngoại hình nhân vật (mặt, tóc, vóc dáng) — nhân vật lấy từ ảnh tham chiếu.',
+    isRev? 'CẤU TRÚC BẮT BUỘC: (1) 3 GIÂY ĐẦU của cảnh 1 = HOOK: tự sáng tác câu hook giật gân, giật tít, đánh mạnh vào tâm lý người xem (tò mò, tiếc nuối, sợ bỏ lỡ, chạm đúng nỗi đau của họ) dựa vào điểm bán mạnh nhất của sản phẩm — hook là phần MỞ ĐẦU của dialogue cảnh 1, nói ngay từ giây 0, cấm chào hỏi, cấm giới thiệu vòng vo. (2) Các cảnh giữa: mỗi cảnh xoáy sâu 1–2 điểm bán theo mạch chức năng → chất liệu → lợi ích → trải nghiệm thật, cảm xúc dẫn dắt tăng dần, người xem càng xem càng muốn mua. (3) 3 GIÂY CUỐI của cảnh cuối = CTA: phần cuối dialogue cảnh cuối là lời kêu gọi hành động tự nhiên (xem giỏ hàng, xem thêm, chốt đơn), không hô hào quá đà.'
+         : 'CẤU TRÚC BẮT BUỘC: (1) 3 GIÂY ĐẦU của cảnh 1 = mở đầu giật gân, gây tò mò mạnh ngay lập tức, không giới thiệu chậm. (2) Các cảnh giữa phát triển nội dung bằng hành động cụ thể, cảm xúc tăng dần. (3) 3 GIÂY CUỐI của cảnh cuối = câu kết có điểm nhấn đọng lại trong đầu người xem.',
+    'Nhiệm vụ 1 — MASTER PROFILE khoá cứng cho cả video: product_lock = mô tả ngoại hình sản phẩm đúng như ảnh tham chiếu (hình dáng, màu sắc, chất liệu nhìn thấy, các bộ phận chính, chữ/logo in sẵn nếu có — giữ nguyên, không thêm bớt). Chỉ khóa đúng màu sắc và biến thể nhìn thấy trong ảnh tham chiếu, không liệt kê các màu/biến thể khác của listing; wardrobe = MỘT bộ trang phục cụ thể, CHỌN PHÙ HỢP với loại sản phẩm và tình huống sử dụng sản phẩm; environment = MỘT địa điểm cụ thể duy nhất — chính là nơi sản phẩm này thực sự được dùng (mô tả vị trí các đồ vật chính); lighting = hướng và chất lượng ánh sáng; style = phong cách hình ảnh (chân thực như quay bằng điện thoại xịn, UGC TikTok). TUYỆT ĐỐI không mô tả ngoại hình nhân vật (mặt, tóc, vóc dáng) — nhân vật lấy từ ảnh tham chiếu.',
     st.dialogue===false ? 'KHÔNG có lời thoại: dialogue của mọi cảnh để trống "".' :
-      ('Nhiệm vụ 2 — dialogue từng cảnh bằng '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh 37–40 từ (tốc độ nói 3,7–4 từ/giây trong 10 giây), câu ngắn dễ khớp khẩu hình, giàu thông tin đúng điểm bán'+(isRev?', nhịp review nhanh, gãy gọn':'')+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'. Chữ "giỏ hàng" chỉ được xuất hiện trong dialogue của cảnh cuối.'),
+      ('Nhiệm vụ 2 — dialogue từng cảnh bằng '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh '+wMin+'–'+wMax+' từ (tốc độ nói 4,5–5 từ/giây trong '+dur+' giây — nhồi được nhiều thông tin sản phẩm nhất có thể mà vẫn tự nhiên), câu ngắn dễ khớp khẩu hình, giàu thông tin đúng điểm bán'+(isRev?', nhịp review nhanh, gãy gọn, dồn dập':'')+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'. Chữ "giỏ hàng" chỉ được xuất hiện trong dialogue của cảnh cuối.'),
     'Trả về JSON: {"profile":{"product_lock":"...","wardrobe":"...","environment":"...","lighting":"...","style":"..."},"scenes":[{"purpose":"mục đích cảnh, ngắn gọn","dialogue":"..."}]} đủ '+st.scenes+' cảnh. CẤU TRÚC BẮT BUỘC: "scenes" là một MẢNG — mở bằng ký tự [ và đóng bằng ký tự ], mọi cảnh nằm TRONG mảng, ngăn nhau bằng dấu phẩy.'
   ].filter(Boolean).join('\n');
-  const a=await askChatJSON(sys, usrA);
+  const a = (prod.images&&prod.images.length)? await askChatJSONImg(sys, usrA, prod.images) : await askChatJSON(sys, usrA);
   if(!a || !a.profile || !Array.isArray(a.scenes) || !a.scenes.length) return null;
   const profile={ product_lock:String(a.profile.product_lock||''), wardrobe:String(a.profile.wardrobe||''), environment:String(a.profile.environment||''), lighting:String(a.profile.lighting||''), style:String(a.profile.style||'Chân thực như quay bằng điện thoại xịn, phong cách UGC TikTok') };
   if(isRev && !profile.product_lock) return null;
-  const scenesA=a.scenes.slice(0, st.scenes).map(o=>({ purpose:String(o.purpose||''), dialogue: st.dialogue===false? '' : capWords(o.dialogue||'',45) }));
+  const scenesA=a.scenes.slice(0, st.scenes).map(o=>({ purpose:String(o.purpose||''), dialogue: st.dialogue===false? '' : capWords(o.dialogue||'',cap) }));
   while(scenesA.length<st.scenes) scenesA.push({ purpose:'', dialogue:'' });
-  const scenes=[]; let prevEnd=null; let legacyCache=null;
+  const scenes=[]; let prevEnd='';
   for(let i=0;i<scenesA.length;i++){
-    const scA=scenesA[i];
-    const usrB=[ 'MASTER PROFILE: '+JSON.stringify(profile),
-      'Cảnh '+(i+1)+'/'+scenesA.length+' — mục đích: '+scA.purpose,
-      'Lời thoại của cảnh: "'+scA.dialogue+'"',
-      prevEnd? ('Trạng thái cuối của cảnh trước (trạng thái đầu của cảnh này PHẢI kế thừa đúng trạng thái này): '+JSON.stringify(prevEnd)) : 'Đây là cảnh đầu tiên của video.',
-      'Tạo START_STATE và END_STATE thật cụ thể về mặt vật lý: character = vị trí, tư thế, hướng mặt, tay trái/tay phải đang làm gì/cầm gì; product = vị trí, hướng, trạng thái (gập/mở/bật/tắt), bộ phận đang được dùng; camera = cỡ cảnh + chiều cao + góc; environment = bối cảnh (giữ đúng MASTER PROFILE).',
-      'TRANSITION: from = trạng thái đầu, action = hành động DUY NHẤT chuyển từ đầu tới cuối cảnh (vật lý hợp lý, khớp lời thoại: thoại nói tới đâu, hành động cho thấy đúng thứ đó), to = trạng thái cuối.',
-      'CAMERA_TIMELINE: 3 mốc trong 10 giây (0–3s, 3–7s, 7–10s), mỗi mốc gồm shot (cỡ cảnh) và action (hành động trong mốc, khớp nội dung thoại ở mốc đó).',
-      'Mốc timeline đầu tiên (0–3s) PHẢI bắt đầu đúng từ tư thế và động tác mở đầu trong start_state (không được bỏ động tác đó); mỗi tính năng được nhắc trong dialogue phải có hành động tương ứng trong timeline, theo đúng thứ tự thoại nhắc tới.',
-      'IMAGE_PROMPT: mô tả khung hình MỞ ĐẦU của cảnh để tạo ảnh keyframe — trạng thái vật lý cụ thể (tay nào cầm gì, sản phẩm ở đâu, người đứng đâu, camera nhìn từ đâu); dùng đúng người và sản phẩm trong ảnh tham chiếu, không mô tả lại ngoại hình nhân vật, không chữ/logo mới trên vật thể.',
-      'Không nhắc giỏ hàng, nút bấm hay giao diện ứng dụng trong mọi trường (dialogue đã có sẵn, không viết lại).',
-      'Trả về JSON: {"start_state":{"character":"...","product":"...","camera":"...","environment":"..."},"end_state":{"character":"...","product":"...","camera":"...","environment":"..."},"transition":{"from":"...","action":"...","to":"..."},"camera_timeline":[{"span":"0–3s","shot":"...","action":"..."},{"span":"3–7s","shot":"...","action":"..."},{"span":"7–10s","shot":"...","action":"..."}],"image_prompt":"..."}'
-    ].join('\n');
-    const b=await askChatJSON(sys, usrB);
-    let sc;
-    if(b && b.start_state && b.end_state){
-      sc={ purpose:scA.purpose, dialogue:scA.dialogue,
-        start_state:cleanState(b.start_state), end_state:cleanState(b.end_state),
-        transition:{ from:String((b.transition||{}).from||''), action:String((b.transition||{}).action||''), to:String((b.transition||{}).to||'') },
-        camera_timeline: (Array.isArray(b.camera_timeline)&&b.camera_timeline.length)? b.camera_timeline.slice(0,4).map(t=>({span:String(t.span||''), shot:String(t.shot||''), action:String(t.action||'')})) : [],
-        image_prompt:String(b.image_prompt||'') };
-    } else {
-      if(!legacyCache) legacyCache=genScriptFallback(prod, st);
-      sc=synthScene(i, scA, profile, legacyCache[i]||{}, prevEnd);
-    }
-    if(prevEnd) sc.start_state=JSON.parse(JSON.stringify(prevEnd));
-    if(!sc.camera_timeline.length) sc.camera_timeline=[{span:'0–10s', shot:'Trung cảnh', action:sc.transition.action||''}];
-    scenes.push(sc); prevEnd=sc.end_state;
+    const pr=await genScenePrompts(prod, st, profile, scenesA[i], i, scenesA.length, prevEnd);
+    if(!pr) return null;
+    scenes.push({ purpose:scenesA[i].purpose, dialogue:scenesA[i].dialogue, kf_prompt:pr.kf_prompt, vid_prompt:pr.vid_prompt, end_state:pr.end_state });
+    prevEnd=pr.end_state;
   }
   return { profile, scenes };
 }
@@ -1840,11 +1902,11 @@ function createAutoProject(prod, st, version){
     story:'Giọng điệu: kể chuyện gần gũi, có cảm xúc, kết ấm áp.',
     that:'Giọng điệu: thẳng thắn như nói thật với bạn bè — nêu điểm chưa ưng trước, điểm tốt sau, kết luận rõ ràng có đáng mua hay không; tuyệt đối không quảng cáo lộ liễu.' }[st.template]||'';
   const p={ id:uid(), name:prod.name+(st.versions>1? ' — bản '+version : ''), brand:'', product:prod.name,
-    points:prod.desc||'', hook:(st.hookStyle&&st.hookStyle!=='ai')? st.hookStyle : HOOKS[0], ratio:st.ratio,
+    points:prod.desc||'', hook:'', ratio:st.ratio,
     identity, refsChar, refsProd:[...prod.images],
     voiceDir: voiceDirText(st), fmtText: fmtPromptText(st), charMode: st.charMode, bgText: S.settings.bgImage? '' : bgAutoText(prod.name, prod.desc, st), styleText:(STYLES[st.style]||'')+'. '+tone,
     exprText: EXPRESSIONS[st.expression]||'', retryLimit: st.retry,
-    fmtKind: st.format, noPrice: !!st.noPrice, idea: prod.note||'', stylePara:'', caption:'', assembly:Object.assign({}, ASM_DEFAULTS),
+    fmtKind: st.format, noPrice: !!st.noPrice, idea: prod.note||'', category: prod.category||'', sceneDur: st.sceneDur||10, stylePara:'', caption:'', assembly:Object.assign({}, ASM_DEFAULTS),
     segments:[], createdAt:Date.now(), auto:true };
   for(let i=0;i<st.scenes;i++) p.segments.push(newSegment(i));
   S.projects.unshift(p); return p;
@@ -1857,7 +1919,7 @@ async function batchStartKF(proj,seg){
     seg.kf.engine=flowCfg().engImage;
     if(seg.kf.engine==='flow'){
       seg.kf.status='processing'; save();
-      const furl=await flowGen('image', (seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg), imgs, proj.ratio, id=>{ seg.kf.flowTaskId=id; save(); });
+      const furl=await flowGenGuarded('image', (seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg), imgs, proj.ratio, id=>{ seg.kf.flowTaskId=id; save(); }, 10, proj, seg);
       seg.kf.url=furl; seg.kf.status='done'; seg.kf.error=''; save(); return;
     }
     const data=await api('/v1/images/tasks',{method:'POST', body:JSON.stringify({
@@ -1910,13 +1972,19 @@ async function scriptIntoProject(proj, prod, st){
   lastAiError='';
   let v2=null; try{ v2=await genScriptV2(prod, st); }catch(e){ v2=null; }
   if(v2){
-    proj.schema='v2'; proj.scriptMode='v2';
+    proj.schema='v3'; proj.scriptMode='v3';
     proj.script2={ profile:v2.profile, voice:voiceProfile(st) };
+    proj.sceneDur=st.sceneDur||10;
     v2.scenes.forEach((sc,i)=>{ const sg=proj.segments[i]; if(!sg) return;
-      sg.scene2=sc; sg.dialogue=sc.dialogue||'';
-      sg.camera=[...new Set(sc.camera_timeline.map(t=>t.shot).filter(Boolean))].join(' → ');
-      sg.timeline=sc.camera_timeline.map(t=>t.span+(t.shot? ' ('+t.shot+')':'')+': '+t.action).join('; ');
-      sg.visual=((sc.purpose? sc.purpose+' — ':'')+(sc.transition? sc.transition.action : ''))||'';
+      sg.scene2={ purpose:sc.purpose||'', dialogue:sc.dialogue||'', end_state_text:sc.end_state||'',
+        start_state:{character:'',product:'',camera:'',environment:''},
+        end_state:{character:sc.end_state||'',product:'',camera:'',environment:''},
+        transition:{from:'',action:sc.purpose||'',to:''},
+        camera_timeline:[{span:'0–'+(st.sceneDur||10)+'s', shot:'Multi-shot', action:sc.purpose||''}], image_prompt:'' };
+      sg.dialogue=sc.dialogue||'';
+      sg.promptKf=sc.kf_prompt||''; sg.promptVid=sc.vid_prompt||'';
+      sg.visual=sc.purpose||''; sg.camera='Multi-shot · jump cut'; sg.timeline='Timeline từng giây nằm trong prompt video';
+      sg.dur=st.sceneDur||10;
     });
     return true;
   }
@@ -1932,11 +2000,11 @@ async function rescript(){
   const busy=p.segments.some(s=>['done','queued','processing'].includes(s.kf.status)||['done','queued','processing'].includes(s.vid.status));
   if(busy && !confirm('Dự án đã có keyframe/video. Soạn lại kịch bản sẽ làm nội dung lệch với hình đã tạo. Vẫn soạn lại?')) return;
   toast('Đang soạn lại kịch bản bằng AI… (có thể mất 1–2 phút)');
-  const st=Object.assign({}, S.settings, { scenes:p.segments.length });
+  const st=Object.assign({}, S.settings, { scenes:p.segments.length, ratio:p.ratio||S.settings.ratio, sceneDur:p.sceneDur||S.settings.sceneDur||10 });
   const prod={ name:p.product||p.name, desc:p.points||'', note:p.idea||'', images:p.refsProd||[] };
   await scriptIntoProject(p, prod, st);
   save(); renderWorkspace();
-  toast(p.scriptMode==='v2'? 'Đã soạn lại — kịch bản chuẩn continuity (schema mới)' : (p.scriptMode==='ai'? 'Đã soạn lại bằng AI (đường cũ)' : ('AI lỗi: '+(lastAiError? lastAiError.slice(0,160) : 'không rõ')+' — app giữ kịch bản mẫu')), p.scriptMode==='v2'? undefined : 6000);
+  toast(p.scriptMode==='v3'? 'Đã soạn lại — Gemini viết trọn prompt từng cảnh (cơ chế mới)' : (p.scriptMode==='ai'? 'Đã soạn lại bằng AI (đường cũ)' : ('AI lỗi: '+(lastAiError? lastAiError.slice(0,160) : 'không rõ')+' — app giữ kịch bản mẫu')), p.scriptMode==='v3'? undefined : 6000);
 }
 function ideaSubject(st){ const fm=curFmt(); switch(st.format){
   case 'drama': return (fm.plot||'Drama mới').split('\n')[0].slice(0,50) || 'Drama mới';
@@ -2056,12 +2124,12 @@ function setSegBool(id,k,v){ const p=activeProject(); if(!p) return; const s=p.s
 async function genScriptStructured(ctx, st, count){
   const sys='Bạn là biên kịch video ngắn TikTok/Reels. Chỉ trả về DUY NHẤT một JSON object, không giải thích, không markdown.';
   const usr=[ 'Chủ đề / ý tưởng: '+ctx,
-    'Mẫu kịch bản: '+TEMPLATES[st.template]+'. Số cảnh: '+count+' (mỗi cảnh ~10 giây).',
-    'Cảnh 1: hook demo trực diện, kết quả thấy ngay trong 2 giây đầu.'+((st.hookStyle&&st.hookStyle!=='ai')? ' Kiểu mở đầu: '+st.hookStyle : ''),
+    'Mẫu kịch bản: '+TEMPLATES[st.template]+'. Số cảnh: '+count+' (mỗi cảnh đúng '+(st.sceneDur||10)+' giây).',
+    'Cảnh 1: 3 giây đầu là HOOK giật gân do bạn tự sáng tác từ chủ đề/sản phẩm, đánh mạnh tâm lý người xem, demo trực diện, kết quả thấy ngay, không giới thiệu chậm.',
     'Cấu trúc: cảnh 1 mở bằng nhân vật nhìn thẳng camera nói câu hook trong 3–4 giây đầu, sau đó tập trung vào sản phẩm; các cảnh giữa XEN KẼ người nói và CẬN CẢNH demo (ít nhất một cảnh cận cảnh demo thật); cảnh cuối là kết quả + CTA bằng lời nói, nhân vật chỉ tay xuống góc dưới khung hình (camera/timeline/visual không nhắc giỏ hàng hay nút bấm — chỉ mô tả cử chỉ; chữ giỏ hàng chỉ nằm trong dialogue).',
     'Mỗi cảnh có camera (chuỗi cỡ cảnh luân chuyển: toàn – trung – cận) và timeline (mỗi mốc giây ghi rõ cỡ cảnh + hành động + nội dung thoại; thoại nói tới đâu camera cho thấy đúng thứ đó; cắt máy liên tục, không để một cỡ cảnh đứng yên quá 4 giây).',
     'Mọi cảnh ở CÙNG MỘT bối cảnh duy nhất, nhân vật mặc CÙNG một bộ trang phục; visual không đổi địa điểm, không mô tả chữ/logo in trên sản phẩm hay điện thoại.',
-    'Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh vừa đủ nói trong 10 giây với nhịp NHANH, dồn dập, năng động (khoảng 37–40 từ, tốc độ nói 3,7–4 từ/giây), văn phong review chuyên nghiệp: gãy gọn, giàu thông tin về sản phẩm, đúng trọng tâm'+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'.',
+    'Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh vừa đủ nói trong '+(st.sceneDur||10)+' giây với nhịp NHANH, dồn dập, năng động (khoảng '+Math.round((st.sceneDur||10)*4.5)+'–'+Math.round((st.sceneDur||10)*5)+' từ, tốc độ nói 4,5–5 từ/giây), văn phong review chuyên nghiệp: gãy gọn, giàu thông tin về sản phẩm, đúng trọng tâm'+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'.',
     'Trả về JSON: {"style":"một đoạn mô tả phong cách/giọng điệu chung của video, 2-3 câu","scenes":[{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại","camera":"góc máy","timeline":"0–2s: ...; 2–6s: ...; 6–10s: ..."}]} đủ '+count+' cảnh.'
   ].join('\n');
   const ask=async(extra)=>{ const data=await aiChat([{role:'system',content:sys},{role:'user',content:usr+extra}], { json:true });
@@ -2070,7 +2138,7 @@ async function genScriptStructured(ctx, st, count){
   let obj=await ask('');
   if(!obj||!Array.isArray(obj.scenes)||!obj.scenes.length) obj=await ask('\nLƯU Ý: lần trả trước bị lỗi cú pháp JSON. CHỈ trả một JSON object hợp lệ, khóa và chuỗi bọc trong dấu ngoặc kép ".');
   if(!obj||!Array.isArray(obj.scenes)||!obj.scenes.length) throw new Error('AI không trả JSON hợp lệ');
-  return { style:String(obj.style||''), scenes:obj.scenes.slice(0,count).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',45), camera:String(o.camera||''), timeline:String(o.timeline||'') })) };
+  return { style:String(obj.style||''), scenes:obj.scenes.slice(0,count).map(o=>({ visual:String(o.visual||''), dialogue:capWords(o.dialogue||'',Math.ceil((st.sceneDur||10)*5)+3), camera:String(o.camera||''), timeline:String(o.timeline||'') })) };
 }
 async function aiScript(){
   const p=activeProject(); if(!p) return; const st=S.settings;
@@ -2125,11 +2193,11 @@ async function genCover(){
 }
 async function genCaption(){
   const p=activeProject(); if(!p) return; toast('AI đang viết caption...');
-  const ctx=['Sản phẩm: '+(p.product||p.name), p.points? 'Điểm bán hàng: '+p.points : '',
+  const ctx=['Sản phẩm: '+(p.product||p.name), p.category? 'Loại sản phẩm: '+p.category : '', p.points? 'Điểm bán hàng: '+p.points : '',
     'Lời thoại các cảnh: '+p.segments.map(s=>s.dialogue).filter(Boolean).join(' / ')].filter(Boolean).join('\n');
   try{
     const data=await aiChat([
-        {role:'system',content:'Bạn viết caption đăng TikTok/Reels cho video affiliate. Trả về caption tiếng Việt ngắn gọn, câu đầu là hook, xuống dòng hợp lý, kèm 6-10 hashtag liên quan ở cuối. Chỉ trả caption, không giải thích.'},
+        {role:'system',content:'Bạn viết caption đăng TikTok/Reels cho video affiliate. CẤU TRÚC BẮT BUỘC: dòng đầu là TIÊU ĐỀ giật tít gồm ĐÚNG 5–6 từ (đánh mạnh tâm lý: tò mò, tiếc nuối, sợ bỏ lỡ), không chứa hashtag; tiếp theo 2–3 câu mô tả ngắn gọn, giàu lợi ích; cuối cùng là ĐÚNG 5 hashtag liên quan nhất tới sản phẩm và loại sản phẩm (không hơn, không kém). Chỉ trả caption, không giải thích.'},
         {role:'user',content:ctx}], { json:false });
     p.caption=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||'').trim();
     save(); renderProductionZone(); toast('Đã có caption');
