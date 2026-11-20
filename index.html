@@ -287,8 +287,8 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V9.2</span></div>
-  <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V9.4</span></div>
+  <div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="warmBtn" style="margin-left:8px" onclick="App.warmFlow()">🔥 Làm nóng Flow</button><span id="warmState" style="margin-left:4px;font-size:11px;opacity:.85"></span><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button>
 </header>
 <div id="app">
   <nav id="tabs">
@@ -502,7 +502,7 @@ async function keepAwake(on){
   }catch(e){}
 }
 async function pollFlowTask(id, kind){
-  const deadline=Date.now()+((kind==='video'?12:8)*60*1000);
+  const deadline=Date.now()+(kind==='video' ? 330*1000 : 8*60*1000); // V9.4: video Flow tối đa ~5 phút (cầu huỷ ở 300s, app chờ thêm 30s để nhận phán quyết)
   let misses=0;
   while(Date.now()<deadline){
     await sleep(5000);
@@ -510,9 +510,9 @@ async function pollFlowTask(id, kind){
     try{ t=await api('/v1/flow/tasks/'+id); misses=0; }
     catch(e){ misses++; if(misses>=10) throw new Error('Mất kết nối tới cầu khi chờ việc Flow — mở lại app để tự lấy kết quả'); continue; }
     if(t && t.status==='completed' && t.result && t.result.url) return t.result.url;
-    if(t && t.status==='failed') throw new Error('Flow báo lỗi: '+(t.error||'không rõ'));
+    if(t && t.status==='failed'){ const fe=String(t.error||'không rõ'); if(/timeout|timed out/i.test(fe)) throw new Error('Quá '+(kind==='video'?'5':'6')+' phút — lượt gen Flow đã tự huỷ, không ra kết quả. Bấm Gen lại.'); throw new Error('Flow báo lỗi: '+fe); }
   }
-  throw new Error('Việc Flow quá lâu chưa xong — có thể cầu đã khởi động lại giữa chừng; mở lại app kiểm tra hoặc bấm Gen lại');
+  throw new Error(kind==='video' ? 'Quá 5 phút chưa xong — lượt gen này coi như đã huỷ, bấm Gen lại.' : 'Việc Flow quá lâu chưa xong — có thể cầu đã khởi động lại giữa chừng; mở lại app kiểm tra hoặc bấm Gen lại');
 }
 async function flowGen(kind, prompt, images, ratio, onTaskId, dur){
   const f=flowCfg();
@@ -957,6 +957,7 @@ async function importFlowClip(proj, seg, flowUrl){
 function renderProductionZone(){ const p=activeProject(); if(p && window.__renderProduction) window.__renderProduction(p); }
 
 async function startImageTask(proj,seg){
+  if(['queued','processing'].includes(seg.kf.status)){ toast('Đoạn này đang gen keyframe rồi — chờ xong đã (chống gen trùng)'); return; }
   const cm=proj.charMode||'review';
   if(cm==='review' && !proj.refsChar.length){ toast('Thiếu ảnh nhân vật (chặng 1)'); return; }
   if(cm!=='none' && !proj.refsProd.length){ toast('Thiếu ảnh sản phẩm (chặng 1)'); return; }
@@ -980,8 +981,9 @@ async function startImageTask(proj,seg){
     seg.kf.taskId=data.id||data.task_id; seg.kf.status='processing'; save(); renderProductionZone(); pollTask('image',proj.id,seg.id);
   }catch(e){ seg.kf.status='failed'; seg.kf.error=e.message; save(); renderProductionZone(); }
 }
-async function startVideoTask(proj,seg){
+async function startVideoTask(proj,seg,fromRetry){
   if(!(seg.kf.status==='done' && seg.kf.approved)){ toast('Đoạn này chưa có keyframe được duyệt'); return; }
+  if(!fromRetry && ['queued','processing'].includes(seg.vid.status)){ toast('Đoạn này đang gen video rồi — phải chờ xong hoặc lỗi hẳn mới gen lại được (chống gen trùng)'); return; }
   seg.vid.status='queued'; seg.vid.error=''; seg.vid.progress=0; save(); renderProductionZone(); requestWake();
   try{
     const kfData=await urlToDataURI(seg.kf.url);
@@ -1016,19 +1018,22 @@ function handleVideoFailure(proj,seg){
   if(seg.vid && seg.vid.engine==='flow') return; // Flow: không tự gen lại — tránh tốn credits và bị Google gắn cờ
   const lim=(proj && typeof proj.retryLimit==='number') ? proj.retryLimit : 3;
   if(seg.vid.retries<lim){ seg.vid.retries++; seg.vid.status='queued'; seg.vid.error='Tự gen lại lần '+seg.vid.retries+'/'+lim+'...'; save(); renderProductionZone();
-    setTimeout(()=>{ if(seg.vid.status==='queued') startVideoTask(proj,seg); }, 9000); }
+    setTimeout(()=>{ if(seg.vid.status==='queued') startVideoTask(proj,seg,true); }, 9000); }
 }
 const __flowResuming=new Set();
 async function resumeFlowSlot(p, s, kind){
   const key=p.id+':'+s.id+':'+kind; if(__flowResuming.has(key)) return; __flowResuming.add(key);
   const sl = kind==='image'? s.kf : s.vid;
+  const myTaskId=sl.flowTaskId;
   try{
-    const url=await pollFlowTask(sl.flowTaskId, kind);
+    const url=await pollFlowTask(myTaskId, kind);
+    if(sl.flowTaskId!==myTaskId) return; // V9.4: đã có lượt gen mới thay thế — bỏ kết quả của lượt cũ, tránh video ma
     if(kind==='video'){ await importFlowClip(p, s, url); sl.progress=100; }
     else sl.url=url;
     sl.status='done'; sl.error=''; save(); renderProductionZone();
     toast((kind==='image'?'Keyframe':'Video')+' (Flow) đã lấy về: '+s.title);
   }catch(e){
+    if(sl.flowTaskId!==myTaskId) return; // V9.4: lượt cũ — không ghi đè trạng thái của lượt mới
     if(isPolicyError(e.message) && !sl.policyFixed){
       sl.policyFixed=true;
       try{ const np=await rewritePromptSafe(kind, (kind==='image'? s.promptKf : s.promptVid) || (kind==='image'? buildImagePrompt(p,s) : buildVideoPrompt(p,s,p.segments.indexOf(s))));
@@ -1088,7 +1093,7 @@ function updateTaskDom(seg,kind){
   if(kind==='video'){ const bar=document.getElementById('vid-prog-'+seg.id); if(bar) bar.style.width=(seg.vid.progress||0)+'%'; }
 }
 
-/* ---------------- Storyboard mode (V9.2) ---------------- */
+/* ---------------- Storyboard mode (V9.4) ---------------- */
 async function cropBoardPanels(url){
   try{
     const dataUrl = (typeof url==='string' && url.startsWith('data:'))? url : await urlToDataURI(url);
@@ -1106,6 +1111,7 @@ async function cropBoardPanels(url){
 }
 async function genBoardInternal(proj, seg){
   if(!seg.board) seg.board={status:'idle',url:'',panels:[],approved:false,error:''};
+  if(seg.board.status==='processing'){ toast('Đoạn này đang gen storyboard rồi — chờ xong đã (chống gen trùng)'); return; }
   const cm=proj.charMode||'review';
   if(cm==='review' && !proj.refsChar.length){ toast('Thiếu ảnh nhân vật (chặng 1)'); return; }
   if(cm!=='none' && !proj.refsProd.length){ toast('Thiếu ảnh sản phẩm (chặng 1)'); return; }
@@ -1326,6 +1332,32 @@ async function ping(silent){
     return true;
   }catch(e){ dot.className='dot off'; txt.textContent='Xưởng offline'; if(!silent) logTo('#cfgLog','Lỗi kết nối: '+e.message,'e'); return false; }
 }
+async function warmFlow(){
+  const btn=$('#warmBtn'); if(!btn||btn.disabled) return;
+  btn.disabled=true; btn.textContent='🔥 Đang làm nóng…';
+  try{
+    const r=await api('/v1/flow/warmup',{method:'POST', body:JSON.stringify({})});
+    if(r&&r.ok){
+      if(!S.settings) S.settings={};
+      S.settings.flowWarmAt=Date.now(); save(); btn.disabled=false; paintWarmBtn();
+      toast('Flow đã nóng'+(r.score!=null? ' — điểm captcha '+r.score : '')+(r.elapsed_ms? ' · '+Math.round(r.elapsed_ms/1000)+' giây' : '')+' · gen trong ~10 phút tới là đẹp nhất');
+    } else {
+      btn.disabled=false; btn.textContent='🔥 Làm nóng Flow';
+      toast('Làm nóng chưa đạt: '+((r&&r.message)||'flow2api chưa lấy được token captcha — thử lại sau ít phút'));
+    }
+  }catch(e){
+    btn.disabled=false; btn.textContent='🔥 Làm nóng Flow';
+    toast('Lỗi làm nóng Flow: '+e.message);
+  }
+}
+function paintWarmBtn(){
+  const btn=$('#warmBtn'); if(!btn) return;
+  const at=(S.settings&&S.settings.flowWarmAt)||0;
+  const warm=!!at && (Date.now()-at)<10*60*1000;
+  if(!btn.disabled) btn.textContent= warm? '🔥 Flow đang nóng ✓' : '🔥 Làm nóng Flow';
+  const ws=$('#warmState'); if(ws) ws.textContent= warm? ('từ '+new Date(at).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})) : '';
+}
+window.App = window.App || {}; Object.assign(window.App,{ warmFlow });
 $('#cfgSave').addEventListener('click',()=>{
   localStorage.setItem(LS_URL, $('#cfgUrl').value.trim()); localStorage.setItem(LS_KEY, '');
   logTo('#cfgLog','Đã lưu cấu hình.'); ping(); });
@@ -2425,7 +2457,7 @@ function fmtPrice(p){ const n=parseInt(String(p||'').replace(/\D/g,''),10); retu
   $('#cfgUrl').value=localStorage.getItem(LS_URL)||DEFAULT_WORKER;
   renderProjects(); if(S.activeId) renderWorkspace();
   // Resume polling for tasks that were running when the app was closed
-  sweepFlowStuck();
+  sweepFlowStuck(); paintWarmBtn();
   S.projects.forEach(p=>p.segments.forEach(s=>{
     if(s.kf.taskId && ['queued','processing'].includes(s.kf.status)) pollTask('image',p.id,s.id);
     if(s.vid.taskId && ['queued','processing'].includes(s.vid.status)) pollTask('video',p.id,s.id);
@@ -2440,7 +2472,7 @@ function fmtPrice(p){ const n=parseInt(String(p||'').replace(/\D/g,''),10); retu
       if(!Array.isArray(s2.jobs)) s2.jobs=[];
       S=s2;
       renderControl(); renderProjects(); if(S.activeId) renderWorkspace();
-      sweepFlowStuck();
+      sweepFlowStuck(); paintWarmBtn();
       S.projects.forEach(p=>p.segments.forEach(s=>{
         if(s.kf.taskId && ['queued','processing'].includes(s.kf.status)) pollTask('image',p.id,s.id);
         if(s.vid.taskId && ['queued','processing'].includes(s.vid.status)) pollTask('video',p.id,s.id);
