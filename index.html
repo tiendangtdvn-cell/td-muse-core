@@ -336,7 +336,8 @@
     .hactions .btn{flex:1; margin-left:0 !important; font-size:12px; padding:7px 3px; white-space:nowrap}
     #warmState{flex:none}
   }
-  #runBar{position:sticky; bottom:10px; z-index:45; background:rgba(10,17,30,.94); border:1px solid var(--line); border-radius:14px; padding:10px; box-shadow:0 10px 28px rgba(0,0,0,.5)}
+  #runBar{position:fixed; left:10px; right:10px; bottom:calc(88px + env(safe-area-inset-bottom)); z-index:29; max-width:920px; margin:0 auto; background:rgba(10,17,30,.96); border:1px solid var(--line); border-radius:14px; padding:10px; box-shadow:0 10px 28px rgba(0,0,0,.5)}
+  #view-control{padding-bottom:120px}
   #runBar:empty{display:none}
   #runBar .goldbtn{width:100%}
   .stage2{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px}
@@ -379,7 +380,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V9.9</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V10.0</span></div>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="warmBtn" style="margin-left:8px" onclick="App.warmFlow()">🔥 Làm nóng Flow</button><span id="warmState" style="margin-left:4px;font-size:11px;opacity:.85"></span><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -599,17 +600,17 @@ async function keepAwake(on){
   }catch(e){}
 }
 async function pollFlowTask(id, kind){
-  const deadline=Date.now()+(kind==='video' ? 330*1000 : 8*60*1000); // V9.4: video Flow tối đa ~5 phút (cầu huỷ ở 300s, app chờ thêm 30s để nhận phán quyết)
+  const deadline=Date.now()+20*60*1000; // V10: mất mạng KHÔNG giết lượt chờ nữa — chờ cầu phán quyết completed/failed, tối đa 20 phút
   let misses=0;
   while(Date.now()<deadline){
-    await sleep(5000);
+    await sleep(misses? 8000:5000);
     let t=null;
     try{ t=await api('/v1/flow/tasks/'+id); misses=0; }
-    catch(e){ misses++; if(misses>=10) throw new Error('Mất kết nối tới cầu khi chờ việc Flow — mở lại app để tự lấy kết quả'); continue; }
+    catch(e){ misses++; continue; }
     if(t && t.status==='completed' && t.result && t.result.url) return t.result.url;
     if(t && t.status==='failed'){ const fe=String(t.error||'không rõ'); if(/timeout|timed out/i.test(fe)) throw new Error('Quá '+(kind==='video'?'5':'6')+' phút — lượt gen Flow đã tự huỷ, không ra kết quả. Bấm Gen lại.'); throw new Error('Flow báo lỗi: '+fe); }
   }
-  throw new Error(kind==='video' ? 'Quá 5 phút chưa xong — lượt gen này coi như đã huỷ, bấm Gen lại.' : 'Việc Flow quá lâu chưa xong — có thể cầu đã khởi động lại giữa chừng; mở lại app kiểm tra hoặc bấm Gen lại');
+  throw new Error('Không lấy được kết quả từ cầu sau 20 phút — việc có thể đã mất khi cầu khởi động lại. Bấm Gen lại.');
 }
 async function flowGen(kind, prompt, images, ratio, onTaskId, dur){
   const f=flowCfg();
@@ -911,10 +912,6 @@ function renderWorkspace(){
     ${p.scriptMode==='fallback'?`<div class="btnrow"><span class="muted">⚠ Dự án này đang dùng kịch bản MẪU — lúc tạo, AI chưa trả lời (thường do xưởng mới khởi động, AI còn lạnh).</span><button class="btn small primary" onclick="App.rescript()">↻ Soạn lại bằng AI</button></div>`:''}
     ${p.scriptMode==='ai'?`<div class="btnrow"><span class="muted">Kịch bản này do AI viết theo kiểu cũ (chưa có continuity).</span><button class="btn small" onclick="App.rescript()">↻ Soạn lại theo schema mới</button></div>`:''}
 
-    <div class="btnrow">
-      ${p.segments.length<5?`<button class="btn small" onclick="App.addSegment()">＋ Thêm đoạn</button>`:''}
-      ${p.segments.length>2?`<button class="btn small danger" onclick="App.removeSegment()">− Bớt đoạn cuối</button>`:''}
-    </div>
     <p class="muted">Đoạn 1 áp công thức hook đã chọn ở chặng 1. Góc máy + timeline càng cụ thể, prompt gửi sang model càng chuẩn.</p>
   </div>
   <div id="productionZone"></div>`;
@@ -1070,18 +1067,23 @@ async function startVideoTask(proj,seg,fromRetry){
   try{
     const kfData=await urlToDataURI(seg.kf.url);
     const idx=proj.segments.indexOf(seg);
+    seg.vid.engine=flowCfg().engVideo;
+    const isBoardVid= proj.boardMode==='board' && seg.board && seg.board.url;
     let vimgs;
-    if(proj.boardMode==='board' && seg.board && seg.board.url){
+    if(isBoardVid && seg.vid.engine==='flow'){
+      vimgs=[await urlToDataURI(seg.board.url)]; // V10: Flow chỉ nhận ĐÚNG 1 ảnh storyboard sheet — gửi thêm ảnh đơn/ảnh SP khiến model loạn tóc & trang phục
+    } else if(isBoardVid){
       vimgs=[kfData];
       try{ vimgs.push(await urlToDataURI(seg.board.url)); }catch(e){}
       if(seg.hasProduct!==false) vimgs.push(...proj.refsProd.slice(0,1));
     } else {
       vimgs= seg.hasProduct===false ? [kfData] : [kfData, ...proj.refsProd.slice(0,2)];
     }
-    const pvV=proj.segments[idx-1]; if(pvV && pvV.endFrame){ try{ vimgs.push(await urlToDataURI(pvV.endFrame)); }catch(e){} }
-    seg.vid.engine=flowCfg().engVideo;
+    const pvV=proj.segments[idx-1]; if(pvV && pvV.endFrame && !(isBoardVid && seg.vid.engine==='flow')){ try{ vimgs.push(await urlToDataURI(pvV.endFrame)); }catch(e){} }
     let effVP=(seg.promptVid&&seg.promptVid.trim())||buildVideoPrompt(proj,seg,idx);
     if(proj.scriptMode==='v3') effVP=withFinalLock(effVP);
+    if(isBoardVid) effVP='STORYBOARD LOCK: the attached image is the storyboard sheet of this scene — a 2x3 grid of 6 panels. Animate the scene following the 6 panels in reading order (left to right, top to bottom) as the exact shot sequence. The woman\'s face, hairstyle and outfit, the product and the location must match the storyboard sheet EXACTLY in every shot — never change her hairstyle, clothes or face. Use ONLY this storyboard sheet as the visual reference. '+effVP;
+    if(seg.dialogue && seg.dialogue.trim()) effVP+=' VOICE INTEGRITY: the woman speaks the dialogue exactly once, word for word, in a natural fluent voice — never repeat any word or phrase, no stuttering, no looping, no echo.';
     if(seg.vid.engine==='flow'){
       seg.vid.status='processing'; save(); renderProductionZone();
       const furl=await flowGenGuarded('video', effVP, vimgs, proj.ratio, id=>{ seg.vid.flowTaskId=id; save(); }, seg.dur||proj.sceneDur||10, proj, seg);
@@ -1128,6 +1130,31 @@ async function resumeFlowSlot(p, s, kind){
   }
   finally{ __flowResuming.delete(key); }
 }
+const __flowRescuing=new Set();
+async function rescueFlowSlot(p, s, kind){
+  const key='rc:'+p.id+':'+s.id+':'+kind; if(__flowRescuing.has(key)) return; __flowRescuing.add(key);
+  const sl = kind==='board'? s.board : (kind==='image'? s.kf : s.vid);
+  try{
+    const t=await api('/v1/flow/tasks/'+sl.flowTaskId);
+    if(!t || t.status==='failed'){ sl.rescueTried=true; save(); return; }
+    sl.status='processing'; sl.error='Đang tự lấy lại kết quả từ Flow...'; save(); renderProductionZone();
+    if(kind==='board') resumeBoardSlot(p, s); else resumeFlowSlot(p, s, kind);
+  }catch(e){ sl.rescueTried=true; save(); }
+  finally{ __flowRescuing.delete(key); }
+}
+async function resumeBoardSlot(p, s){
+  const key=p.id+':'+s.id+':board'; if(__flowResuming.has(key)) return; __flowResuming.add(key);
+  const myTaskId=s.board.flowTaskId;
+  try{
+    const url=await pollFlowTask(myTaskId, 'image');
+    if(s.board.flowTaskId!==myTaskId) return;
+    s.board.url=url; s.board.status='done'; s.board.error='';
+    const panels=await cropBoardPanels(url); s.board.panels=panels;
+    s.kf.url= panels[0] || url; s.kf.status='done'; s.kf.error='';
+    save(); renderProductionZone(); toast('Storyboard (Flow) đã lấy về: '+s.title);
+  }catch(e){ if(s.board.flowTaskId===myTaskId){ s.board.status='failed'; s.board.error=e.message; save(); renderProductionZone(); } }
+  finally{ __flowResuming.delete(key); }
+}
 function sweepFlowStuck(){
   let changed=false;
   S.projects.forEach(p=>p.segments.forEach(s=>{
@@ -1137,10 +1164,20 @@ function sweepFlowStuck(){
         if(sl.flowTaskId){ resumeFlowSlot(p, s, kind); }
         else { sl.status='failed'; sl.error='Bị ngắt giữa chừng (việc Flow cũ không có mã việc) — bấm Gen lại'; changed=true; }
       }
+      // V10: cứu việc từng bị báo lỗi oan vì mất kết nối trong lúc chờ (bản cũ < V10) — việc trên cầu có thể đã xong
+      if(sl.engine==='flow' && sl.status==='failed' && sl.flowTaskId && !sl.rescueTried && /Mất kết nối tới cầu|Quá 5 phút chưa xong|Việc Flow quá lâu/i.test(sl.error||'')){ rescueFlowSlot(p, s, kind); }
     });
+    const bd=s.board;
+    if(bd && bd.engine==='flow' && bd.status==='processing'){
+      if(bd.flowTaskId) resumeBoardSlot(p, s);
+      else { bd.status='failed'; bd.error='Bị ngắt giữa chừng (việc Flow cũ không có mã việc) — bấm Gen lại'; changed=true; }
+    }
+    if(bd && bd.engine==='flow' && bd.status==='failed' && bd.flowTaskId && !bd.rescueTried && /Mất kết nối tới cầu|Quá 5 phút chưa xong|Việc Flow quá lâu/i.test(bd.error||'')){ rescueFlowSlot(p, s, 'board'); }
   }));
   if(changed) save();
 }
+setInterval(()=>{ try{ sweepFlowStuck(); }catch(e){} }, 30000);
+window.addEventListener('online', ()=>{ try{ sweepFlowStuck(); }catch(e){} });
 function pollTask(kind,projId,segId){
   const key=kind+':'+segId; if(pollers[key]) return; pollers[key]=true;
   const tick=async()=>{
@@ -1200,16 +1237,18 @@ async function genBoardInternal(proj, seg){
   seg.board.status='processing'; seg.board.error=''; seg.board.approved=false;
   seg.kf.status='processing'; seg.kf.error=''; seg.kf.approved=false; save(); renderProductionZone();
   try{
-    const imgs= seg.hasProduct===false ? [...proj.refsChar.slice(0,3)] : [...proj.refsChar.slice(0,2), ...proj.refsProd.slice(0,2)];
+    const useAnchor= !!proj.anchorImg;
+    const imgs= useAnchor ? [proj.anchorImg, ...proj.refsProd.slice(0,2)] : (seg.hasProduct===false ? [...proj.refsChar.slice(0,3)] : [...proj.refsChar.slice(0,2), ...proj.refsProd.slice(0,2)]);
     const idx=proj.segments.indexOf(seg); const pvB=idx>0? proj.segments[idx-1] : null;
     let chainRef='';
-    if(pvB && pvB.board){
+    if(!useAnchor && pvB && pvB.board){
       if(pvB.board.panels && pvB.board.panels[5]) chainRef=pvB.board.panels[5];
       else if(pvB.board.url){ try{ chainRef=await urlToDataURI(pvB.board.url); }catch(e){} }
     }
     if(chainRef) imgs.push(chainRef);
     let prompt=(seg.promptSb&&seg.promptSb.trim()) || ('Create ONE storyboard sheet image: an exact 2 columns x 3 rows grid of 6 equal panels with thin white dividing lines, telling this scene as 6 sequential shots in reading order. The SAME woman (identical face and hairstyle as the reference photos) in the SAME outfit and the SAME location with the SAME lighting in all 6 panels; the product exactly as in the product reference photos in every panel; panel 1 is the opening moment, the middle panels alternate between the woman speaking and close-ups of the product in use, panel 6 is the closing moment. No text, no captions, no numbers, no logos, no watermark. Scene: '+((seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg)));
     if(chainRef) prompt+=' The FIRST panel must continue exactly from the attached reference panel (the final panel of the previous scene storyboard): same moment, same positions of the woman and the objects, same background and lighting.';
+    if(useAnchor) prompt+=' The attached ANCHOR image locks the woman\'s outfit, the location, her face and her hairstyle — every panel must match the anchor image exactly.';
     seg.board.engine=flowCfg().engImage;
     let url='';
     if(seg.board.engine==='flow'){
@@ -1239,9 +1278,8 @@ function approveBoard(segId){ const p=activeProject(); const s=p&&p.segments.fin
 function boardCardHTML(p,s){
   const b=s.board||{status:'idle',url:'',panels:[],approved:false,error:''};
   const busy=['queued','processing'].includes(b.status);
-  const panels=(b.panels&&b.panels.length)? '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;margin:6px 0">'+b.panels.map((u,i)=>'<img src="'+u+'" style="width:100%;border-radius:6px" alt="Ô '+(i+1)+'">').join('')+'</div>' : '';
   const st = b.status==='done' ? (b.approved?'Storyboard đã duyệt — sẵn sàng gen video.':'Storyboard đã có — xem kỹ 6 ô (ô 1 = khung đầu, ô 6 = khung cuối) rồi bấm Duyệt.') : b.status==='failed' ? '<span class="err">Lỗi: '+esc(b.error||'không rõ')+'</span>' : b.status==='processing' ? 'Đang gen storyboard...' : 'Chưa gen. Mỗi cảnh 1 sheet 6 ô — video bám theo từng ô, cảnh sau nối từ ô cuối của cảnh trước.';
-  return panels+
+  return ''+
    '<div class="statusline">'+st+'</div>'+
    '<div class="btnrow">'+
    '<button class="btn small" onclick="App.genBoard(\''+s.id+'\')" '+(busy?'disabled':'')+'>'+(b.url?'Gen lại storyboard':'🎞 Gen storyboard')+'</button>'+
@@ -1288,7 +1326,6 @@ function sceneHTML(p,s,si){
    '<div class="scene-head"><b>'+esc(s.title)+'</b><span style="flex:1"></span>'+
    (s.kf.approved?'<span class="badge done">ĐÃ DUYỆT</span>':'')+(s.vid.status==='done'?'<span class="badge done">CÓ CLIP</span>':'')+'</div>'+
    '<div class="scene-body">'+
-   stage+
    (isBoard? boardCardHTML(p,s) : '')+
    (isBoard?'':'<div class="statusline" id="kf-status-'+s.id+'">'+kfStatusText(s)+'</div>')+
    '<div class="prog"><i id="vid-prog-'+s.id+'" style="width:'+(s.vid.progress||0)+'%"></i></div>'+
@@ -1301,6 +1338,7 @@ function sceneHTML(p,s,si){
      '<button class="btn small primary" onclick="App.genVideo(\''+s.id+'\')" '+((s.kf.approved&&!['queued','processing'].includes(s.vid.status))?'':'disabled')+'>'+(s.vid.url?'Gen lại video':'Gen video')+'</button>'+
      (s.vid.url? '<button class="btn small" onclick="App.downloadSeg(\''+s.id+'\')">⬇ Tải clip</button>' : '')+
    '</div>'+
+   stage+
    '<details class="promptbox"><summary>📝 Kịch bản của scene (xem / sửa)</summary>'+
      '<label class="fl">Mô tả hình ảnh / hành động của đoạn</label><textarea oninput="App.setSeg(\''+s.id+'\',\'visual\',this.value)" placeholder="VD: Cô gái cầm máy thổi lá, lá khô bay tung trên sân gạch...">'+esc(s.visual)+'</textarea>'+
      '<label class="fl">Lời thoại (nếu có — sẽ đưa vào prompt gen video)</label><textarea style="min-height:44px" oninput="App.setSeg(\''+s.id+'\',\'dialogue\',this.value)" placeholder="Thoại review chuyên nghiệp, ~37–40 từ cho 10 giây">'+esc(s.dialogue)+'</textarea>'+
@@ -1373,17 +1411,48 @@ async function waitSegDone(seg, kind){
   }
   return false;
 }
+async function ensureAnchor(proj){
+  if(proj.boardMode!=='board' || proj.anchorImg || proj.anchorBusy) return !!proj.anchorImg;
+  if(!proj.refsChar.length && !proj.refsProd.length) return false;
+  proj.anchorBusy=true; save();
+  uiTaskStart('anchor:'+proj.id, (proj.name||'Dự án'), 'Đang tạo ảnh chuẩn ngầm — khoá trang phục, bối cảnh, mặt & tóc...');
+  try{
+    const b2=(proj.script2&&proj.script2.bible)||proj.script2||{};
+    const prompt='Consistency anchor photo for a video series: the SAME woman as the character reference photos (identical face, identical hairstyle), wearing '+(b2.wardrobe||'the outfit she wears in the scenes')+', in '+(b2.environment||'the main location of the scenes')+', '+(b2.lighting||'soft natural light')+'. Photorealistic half-body portrait, relaxed neutral pose, looking at the camera. This single image locks her outfit, the location, her face and her hairstyle for every scene. No text, no logo, no watermark.';
+    const imgs=[...proj.refsChar.slice(0,2), ...proj.refsProd.slice(0,1)];
+    let url='';
+    if(flowCfg().engImage==='flow'){
+      url=await flowGen('image', prompt, imgs, proj.ratio, null, 10);
+    } else {
+      const data=await api('/v1/images/tasks',{method:'POST', body:JSON.stringify({ prompt, model:'muse-image', aspect_ratio:proj.ratio, response_format:'url', images:imgs })});
+      const tid=data.id||data.task_id; const t0=Date.now();
+      while(Date.now()-t0<6*60*1000){ await sleep(5000); const t=await api('/v1/images/tasks/'+tid);
+        if(t.status==='completed'){ url=(t.data&&t.data[0]&&t.data[0].url)||(t.result&&t.result.url)||t.url||''; break; }
+        if(t.status==='failed') throw new Error(t.error||'Việc ảnh chuẩn thất bại'); }
+    }
+    if(!url) throw new Error('Không tạo được ảnh chuẩn');
+    proj.anchorImg=url; save(); toast('Ảnh chuẩn đã xong — đang tạo storyboard hàng loạt cùng lúc');
+    return true;
+  }catch(e){ toast('Không tạo được ảnh chuẩn ('+e.message+') — tạo storyboard theo cách nối tiếp cũ'); return false; }
+  finally{ proj.anchorBusy=false; uiTaskDone('anchor:'+proj.id); save(); }
+}
 async function produceAllKeyframes(){
   const p=activeProject(); if(!p) return;
   if(producingAll){ batchStop=true; return; }
   batchStop=false; producingAll=true; renderProductionZone();
   try{
-    for(const seg of p.segments){
-      if(batchStop) break;
-      if(p.boardMode==='board'){ if(!(seg.board&&seg.board.status==='done')) await genBoardInternal(p, seg); }
-      else if(seg.kf.status!=='done'){ await startImageTask(p, seg); await waitSegDone(seg,'kf'); }
+    if(p.boardMode==='board'){
+      await ensureAnchor(p); // V10: tạo ảnh chuẩn ngầm trước, rồi mọi storyboard chạy CÙNG LÚC bằng ảnh chuẩn + ảnh SP
+      const jobs=[];
+      for(const seg of p.segments){ if(batchStop) break; if(!(seg.board&&seg.board.status==='done')) jobs.push(genBoardInternal(p, seg)); }
+      await Promise.allSettled(jobs);
+    } else {
+      for(const seg of p.segments){
+        if(batchStop) break;
+        if(seg.kf.status!=='done'){ await startImageTask(p, seg); await waitSegDone(seg,'kf'); }
+      }
     }
-  } finally { producingAll=false; save(); renderProductionZone(); toast('Đã tạo xong — duyệt từng đoạn bằng mắt, rồi xuống chặng 4 chạy hàng đợi render'); }
+  } finally { producingAll=false; save(); renderProductionZone(); toast('Đã tạo xong — duyệt từng đoạn bằng mắt, rồi gen video'); }
 }
 async function queueAll(){ const p=activeProject(); if(!p) return; let n=0;
   for(const s of p.segments){ if(s.kf.approved && !['done','queued','processing'].includes(s.vid.status)){ s.vid.retries=0; startVideoTask(p,s); n++; await new Promise(r=>setTimeout(r,1200)); } }
@@ -1525,8 +1594,12 @@ function renderCfgStrip(){
 function gotoSettings(){ const b=document.querySelector('#tabs button[data-view="settings"]'); if(b) b.click(); }
 const actStarts={};
 function fmtElapsed(ms){ const s=Math.max(0,Math.round(ms/1000)); const m=Math.floor(s/60); return (m? m+' phút ' : '')+(s%60)+' giây'; }
+const uiTasks={};
+function uiTaskStart(key,label,stage){ uiTasks[key]={label,stage}; try{ paintActBar(); }catch(e){} }
+function uiTaskDone(key){ delete uiTasks[key]; try{ paintActBar(); }catch(e){} }
 function collectActivity(){
   const items=[];
+  for(const k of Object.keys(uiTasks)) items.push({key:'ui:'+k, label:uiTasks[k].label, stage:uiTasks[k].stage});
   for(const p of (S.projects||[])){
     for(const s of (p.segments||[])){
       const pre=(p.name||'Dự án')+' · '+(s.title||'Đoạn');
@@ -1858,21 +1931,23 @@ async function analyzeImages(images){
   return { name:String(j.name||'').slice(0,120), category:String(j.category||'').slice(0,80), points:String(j.points||'').slice(0,1500), mixed: !!j.mixed };
 }
 async function analyzeBatch(id){ const b=S.batch.find(x=>x.id===id); if(!b) return;
+  uiTaskStart('analyze','Điều khiển','Đang phân tích sản phẩm bằng AI...');
   try{ toast('Đang phân tích ảnh sản phẩm...');
     const r=await analyzeImages(b.images);
     if(r.name) b.name=r.name;
     if(r.category) b.category=r.category;
     if(r.points) b.desc=r.points;
     save(); renderBatch(); toast(r.mixed? '⚠️ Ảnh gồm nhiều sản phẩm khác nhau — đã lấy theo ảnh đầu tiên, kiểm tra lại nhé' : 'Đã điền từ phân tích — kiểm tra lại tên & điểm bán hàng');
-  }catch(e){ toast('Phân tích lỗi: '+e.message); } }
+  }catch(e){ toast('Phân tích lỗi: '+e.message); } finally{ uiTaskDone('analyze'); } }
 async function analyzeProject(){ const p=activeProject(); if(!p) return;
+  uiTaskStart('analyze','Phân tích sản phẩm','Đang đọc ảnh sản phẩm bằng AI...');
   try{ toast('Đang phân tích ảnh sản phẩm...');
     const r=await analyzeImages(p.refsProd);
     if(r.name) p.product=r.name;
     if(r.category) p.category=r.category;
     if(r.points) p.points=r.points;
     save(); renderWorkspace(); toast(r.mixed? '⚠️ Ảnh gồm nhiều sản phẩm khác nhau — đã lấy theo ảnh đầu tiên, kiểm tra lại nhé' : 'Đã điền từ phân tích — kiểm tra lại trước khi sản xuất');
-  }catch(e){ toast('Phân tích lỗi: '+e.message); } }
+  }catch(e){ toast('Phân tích lỗi: '+e.message); } finally{ uiTaskDone('analyze'); } }
 Object.assign(window.App,{ openFormats, closeFormats, setFormat, setFmt, setFmtBool, analyzeBatch, analyzeProject });
 
 /* ---------------- Options panel ---------------- */
@@ -2440,7 +2515,7 @@ async function createScripts(){
   const prods=S.batch.filter(b=>b.name.trim());
   const useProds = prods.length>0 && (needsProd || !!curFmt().useProducts);
   if(needsProd && !prods.length){ toast('Thêm ít nhất 1 sản phẩm trước'); return; }
-  scriptRunning=true; renderBatch();
+  scriptRunning=true; renderBatch(); uiTaskStart('scripts','Điều khiển','Đang tạo kịch bản bằng AI...');
   let made=0; let firstId=null; let fallbackUsed=false;
   try{
     if(useProds){
@@ -2459,7 +2534,7 @@ async function createScripts(){
       if(!(await scriptIntoProject(proj, pseudo, st))) fallbackUsed=true;
       made=1;
     }
-  } finally { scriptRunning=false; save(); renderBatch(); renderProjects(); }
+  } finally { scriptRunning=false; uiTaskDone('scripts'); save(); renderBatch(); renderProjects(); }
   if(fallbackUsed) toast('AI lỗi ở vài dự án nên đã dùng kịch bản mẫu'+(lastAiError? ' — lỗi: '+lastAiError.slice(0,140) : '')+' — mở dự án kiểm tra lại nhé', 6000);
   if(made){ toast('Đã tạo '+made+' dự án có kịch bản — mở dự án để sản xuất'); gotoView('projects'); if(firstId) openProject(firstId); }
 }
