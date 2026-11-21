@@ -380,7 +380,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V10.3</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V10.4</span></div>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="warmBtn" style="margin-left:8px" onclick="App.warmFlow()">🔥 Làm nóng Flow</button><span id="warmState" style="margin-left:4px;font-size:11px;opacity:.85"></span><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -1097,7 +1097,7 @@ async function startVideoTask(proj,seg,fromRetry){
     if(seg.hasProduct!==false) effVP=withProductLock(proj, effVP);
     effVP=withActingLock(proj, seg, effVP);
     effVP=withActingLock(proj, seg, effVP); if(seg.hasProduct!==false) effVP=withProductLock(proj, effVP);
-    if(seg.dialogue && seg.dialogue.trim()){ const finBy=Math.max(1,(seg.dur||proj.sceneDur||10)-0.7).toFixed(1); effVP+=' VOICE COMPLETION: the woman speaks the dialogue at '+speechCfg({speechSpeed:proj.speechSpeed||S.settings.speechSpeed}).en+' and adjusts her speed so the ENTIRE dialogue is spoken completely and finishes by second '+finBy+' of this clip — the final word must be fully spoken before the clip ends. Speak every word exactly once, in order, word for word: never repeat any word or phrase, never stutter, never drop or swallow the ending of the line.'; }
+    if(seg.dialogue && seg.dialogue.trim()){ const finBy=Math.max(1,(seg.dur||proj.sceneDur||10)-0.7).toFixed(1); effVP+=' VOICE COMPLETION (mandatory): the woman starts speaking immediately at second 0 with no pause, speaks the dialogue at '+speechCfg({speechSpeed:proj.speechSpeed||S.settings.speechSpeed}).en+', keeps a steady pace with no long pauses, and paces herself so the ENTIRE dialogue is spoken completely and finishes by second '+finBy+' of this clip — the complete final sentence must be fully delivered inside this clip: never trail off, never leave a sentence unfinished, the final word must be fully spoken before the clip ends. Speak every word exactly once, in order, word for word: never repeat any word or phrase, never stutter, never drop or swallow the ending of the line.'; }
     if(seg.vid.engine==='flow'){
       seg.vid.status='processing'; save(); renderProductionZone();
       const furl=await flowGenGuarded('video', effVP, vimgs, proj.ratio, id=>{ seg.vid.flowTaskId=id; save(); }, seg.dur||proj.sceneDur||10, proj, seg);
@@ -1315,6 +1315,7 @@ function boardCardHTML(p,s){
    '<div class="btnrow">'+
    '<button class="btn small" onclick="App.genBoard(\''+s.id+'\')" '+(busy?'disabled':'')+'>'+(b.url?'Gen lại storyboard':'🎞 Gen storyboard')+'</button>'+
    '<button class="btn small ok" onclick="App.approveBoard(\''+s.id+'\')" '+((b.status==='done'&&!b.approved)?'':'disabled')+'>✓ Duyệt</button>'+
+   '<button class="btn small primary" onclick="App.genVideo(\''+s.id+'\')" '+((s.kf.approved&&!['queued','processing'].includes(s.vid.status))?'':'disabled')+'>'+(s.vid.url?'Gen lại video':'Gen video')+'</button>'+
    (b.url? '<button class="btn small" onclick="App.preview(\''+esc(resolveUrl(b.url))+'\',\'image\',\'storyboard\')">Xem sheet lớn</button>' : '')+
    '</div>'+
    '<details class="promptbox"><summary>Prompt storyboard (xem / sửa trước khi gen)</summary>'+
@@ -1343,7 +1344,7 @@ function sceneHTML(p,s,si){
   const isBoard=p.boardMode==='board';
   const busyK=['queued','processing'].includes(s.kf.status);
   const wc=(s.dialogue||'').trim().split(/\s+/).filter(Boolean).length;
-  const dur=s.dur||p.sceneDur||10; const estS=wc/speechCfg({speechSpeed:p.speechSpeed||S.settings.speechSpeed}).speak; const off=wc&&(estS>dur);
+  const dur=s.dur||p.sceneDur||10; const spM=speechCfg({speechSpeed:p.speechSpeed||S.settings.speechSpeed}); const estS=wc/spM.speak; const off=wc&&(estS>dur); const shortW=wc&&(estS<dur*0.62); const wTgt=Math.round(dur*spM.budget), wTgtMin=Math.round(wTgt*0.85);
   const b98=s.board||{status:'idle',url:'',panels:[],approved:false,error:''};
   const leftUrl= isBoard? (b98.url||s.kf.url||'') : (s.kf.url||'');
   const awaitAppr= isBoard? (b98.status==='done' && !b98.approved) : (s.kf.status==='done' && !s.kf.approved);
@@ -1360,18 +1361,16 @@ function sceneHTML(p,s,si){
    (isBoard? boardCardHTML(p,s) : '')+
    (isBoard?'':'<div class="statusline" id="kf-status-'+s.id+'">'+kfStatusText(s)+'</div>')+
    '<div class="prog"><i id="vid-prog-'+s.id+'" style="width:'+(s.vid.progress||0)+'%"></i></div>'+
-   '<div class="statusline" id="vid-status-'+s.id+'">'+vidStatusText(s)+'</div>'+
-   (wc? '<div class="statusline"'+(off?' style="color:#e0653a"':'')+'>🗣️ '+wc+' từ · nói ≈'+estS.toFixed(1)+'s / '+dur+'s của scene'+(off?' — QUÁ DÀI: model sẽ nuốt chữ/cắt cụt, hãy rút gọn thoại':'')+'</div>' : '')+
-   nextActionHTML(p,s)+
+   (vidStatusText(s)? '<div class="statusline" id="vid-status-'+s.id+'">'+vidStatusText(s)+'</div>' : '<div id="vid-status-'+s.id+'"></div>')+
    '<div class="btnrow">'+
      (isBoard?'':'<button class="btn small" onclick="App.genKeyframe(\''+s.id+'\')" '+(busyK?'disabled':'')+'>'+(s.kf.url?'Gen lại keyframe':'Gen keyframe')+'</button>')+
      (isBoard?'':'<button class="btn small ok" onclick="App.approveKeyframe(\''+s.id+'\')" '+((s.kf.status==='done'&&!s.kf.approved)?'':'disabled')+'>✓ Duyệt</button>')+
-     ((s.vid.status==='done'&&s.vid.url)? '' : '<button class="btn small primary" onclick="App.genVideo(\''+s.id+'\')" '+((s.kf.approved&&!['queued','processing'].includes(s.vid.status))?'':'disabled')+'>'+(s.vid.status==='failed'?'Gen lại video':'Gen video')+'</button>')+
+     (isBoard? '' : '<button class="btn small primary" onclick="App.genVideo(\''+s.id+'\')" '+((s.kf.approved&&!['queued','processing'].includes(s.vid.status))?'':'disabled')+'>'+(s.vid.url?'Gen lại video':'Gen video')+'</button>')+
    '</div>'+
    '<details class="promptbox"><summary>📝 Kịch bản của scene (xem / sửa)</summary>'+
      '<label class="fl">Mô tả hình ảnh / hành động của đoạn</label><textarea oninput="App.setSeg(\''+s.id+'\',\'visual\',this.value)" placeholder="VD: Cô gái cầm máy thổi lá, lá khô bay tung trên sân gạch...">'+esc(s.visual)+'</textarea>'+
-     '<label class="fl">Lời thoại (nếu có — sẽ đưa vào prompt gen video)</label><textarea style="min-height:44px" oninput="App.setSeg(\''+s.id+'\',\'dialogue\',this.value)" placeholder="Thoại review chuyên nghiệp, tối đa ~30 từ cho 10 giây để nói hết trọn câu">'+esc(s.dialogue)+'</textarea>'+
-     '<div class="muted">Độ dài lời thoại: <span id="wc-'+s.id+'">'+wordCount(s.dialogue)+'</span> từ — tối đa ~30 từ mỗi đoạn 10s để nói hết trọn câu, không bị cắt cụt</div>'+
+     '<label class="fl">Lời thoại (nếu có — sẽ đưa vào prompt gen video)</label><textarea style="min-height:44px" oninput="App.setSeg(\''+s.id+'\',\'dialogue\',this.value)" placeholder="Thoại review chuyên nghiệp, viết đủ ý theo tốc độ đã chọn">'+esc(s.dialogue)+'</textarea>'+
+     '<div class="muted">Độ dài lời thoại: <span id="wc-'+s.id+'">'+wordCount(s.dialogue)+'</span> từ — nên viết khoảng '+wTgtMin+'–'+wTgt+' từ cho đoạn '+dur+'s (tốc độ '+spM.label+') để giới thiệu đủ ý mà vẫn nói hết trọn câu</div>'+
      '<label class="fl">Góc máy</label><textarea style="min-height:36px" oninput="App.setSeg(\''+s.id+'\',\'camera\',this.value)" placeholder="VD: Cận cảnh ngang tầm mắt, máy tĩnh">'+esc(s.camera||'')+'</textarea>'+
      '<label class="fl">Timeline trong đoạn (theo mốc giây)</label><textarea style="min-height:44px" oninput="App.setSeg(\''+s.id+'\',\'timeline\',this.value)" placeholder="VD: 0–2s: ...; 2–6s: ...; 6–10s: ...">'+esc(s.timeline||'')+'</textarea>'+
      '<div style="display:flex; gap:18px; flex-wrap:wrap"><label class="checkrow"><input type="checkbox" '+(s.hasProduct!==false?'checked':'')+' onchange="App.setSegBool(\''+s.id+'\',\'hasProduct\',this.checked)"> Có sản phẩm trong cảnh</label>'+
@@ -1381,7 +1380,6 @@ function sceneHTML(p,s,si){
    (isBoard?'':'<details class="promptbox"><summary>Prompt ảnh (xem / sửa trước khi gen)</summary><textarea style="min-height:90px" onchange="App.setSegPrompt(\''+s.id+'\',\'kf\',this.value)">'+esc(s.promptKf||buildImagePrompt(p,s))+'</textarea><div class="btnrow"><button class="btn small" onclick="App.regenSegPrompts(\''+s.id+'\')">✨ Gemini soạn lại prompt</button><button class="btn small" onclick="App.resetSegPrompt(\''+s.id+'\',\'kf\')">↺ Về prompt gốc</button></div></details>')+
    '<details class="promptbox"><summary>Prompt video (xem / sửa trước khi gen)</summary><textarea style="min-height:90px" onchange="App.setSegPrompt(\''+s.id+'\',\'vid\',this.value)">'+esc(s.promptVid||buildVideoPrompt(p,s,si))+'</textarea><div class="btnrow"><button class="btn small" onclick="App.regenSegPrompts(\''+s.id+'\')">✨ Gemini soạn lại prompt</button><button class="btn small" onclick="App.resetSegPrompt(\''+s.id+'\',\'vid\')">↺ Về prompt gốc</button></div></details>'+
    stage+
-   ((s.vid.status==='done'&&s.vid.url)? '<div class="btnrow"><button class="btn small" onclick="App.genVideo(\''+s.id+'\')">↻ Gen lại video</button></div>' : '')+
    '</div></div>';
 }
 window.__renderProduction=function(p){
@@ -1425,7 +1423,7 @@ function vidStatusText(s){
   if(s.vid.status==='failed') return '<span class="err">Lỗi: '+esc(s.vid.error||'không rõ')+'</span>';
   if(s.vid.status==='queued') return esc(s.vid.error||'Đang chờ trong hàng đợi...');
   if(s.vid.status==='processing') return 'Đang gen video... '+(s.vid.progress||0)+'%';
-  return s.kf.approved ? 'Sẵn sàng gen.' : 'Cần keyframe được duyệt trước.';
+  return s.kf.approved ? 'Sẵn sàng gen.' : '';
 }
 function genKeyframe(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(s) startImageTask(p,s); }
 function approveKeyframe(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(!s) return; s.kf.approved=true; save(); renderProductionZone(); toast('Đã duyệt keyframe'); }
@@ -1737,7 +1735,7 @@ Object.assign(window.App,{ runAll, sceneNav, gotoLibrary });
 setInterval(()=>{ try{ driveAutoRun(); }catch(e){} try{ sweepAutoRetry(); }catch(e){} }, 1500);
 
 /* ===== V9.8: mặc định storyboard + tắt tự tạo lại khi Muse báo sai ===== */
-const SPEECH={ cham:{label:'Chậm', budget:2.2, speak:2.6, vi:'nhịp CHẬM, thong thả, rõ ràng từng chữ', en:'a calm, unhurried pace'}, vua:{label:'Vừa', budget:2.6, speak:3.0, vi:'nhịp VỪA, tự nhiên như trò chuyện', en:'a natural, conversational pace'}, nhanh:{label:'Nhanh', budget:3.0, speak:3.4, vi:'nhịp NHANH, dồn dập, năng động kiểu review bán hàng', en:'a brisk, energetic sales-review pace'} };
+const SPEECH={ cham:{label:'Chậm', budget:2.6, speak:2.9, vi:'nhịp CHẬM, thong thả, rõ ràng từng chữ', en:'a calm, unhurried pace'}, vua:{label:'Vừa', budget:3.0, speak:3.3, vi:'nhịp VỪA, tự nhiên như trò chuyện', en:'a natural, conversational pace'}, nhanh:{label:'Nhanh', budget:4.0, speak:4.2, vi:'nhịp NHANH, dồn dập, năng động kiểu review bán hàng', en:'a brisk, energetic sales-review pace'} };
 function speechCfg(st){ return SPEECH[(st&&st.speechSpeed)||'nhanh']||SPEECH.nhanh; }
 function applyV103Defaults(){ if(S && S.settings && !S.settings.v103spd){ S.settings.speechSpeed='nhanh'; S.settings.v103spd=1; save(); } }
 function applyV98Defaults(){
@@ -2251,7 +2249,7 @@ async function genScriptAI(prod, st){
     'Cấu trúc bắt buộc: 3 GIÂY ĐẦU của cảnh 1 là HOOK giật gân do bạn tự sáng tác từ sản phẩm theo một công thức tâm lý (câu hỏi khơi tò mò / tuyên bố gây sốc rồi chứng minh ngay / tình huống hài hước, trớ trêu / đánh trúng nỗi đau người xem / giấu kết quả gây tò mò) — cụ thể, có chi tiết lạ, cấm hook chung chung; nói ngay từ giây 0, không chào hỏi; sau đó tập trung vào sản phẩm; các cảnh giữa XEN KẼ người nói và CẬN CẢNH demo tay/sản phẩm (ít nhất một cảnh cận cảnh demo thật); cảnh cuối là kết quả + CTA ở 3 GIÂY CUỐI bằng lời nói, nhân vật chỉ tay xuống góc dưới khung hình. Trong camera/timeline/visual TUYỆT ĐỐI không nhắc giỏ hàng, nút bấm hay giao diện ứng dụng — chỉ mô tả cử chỉ; chữ giỏ hàng chỉ được xuất hiện trong dialogue. Toàn bộ nội dung xoay quanh sản phẩm: công năng, lợi ích, tiện lợi, hiệu quả, chất liệu.',
     'Mỗi cảnh phải có camera (chuỗi cỡ cảnh luân chuyển trong cảnh, VD: "Trung cảnh → Cận cảnh → Toàn cảnh") và timeline (diễn biến theo mốc giây trong đúng '+(st.sceneDur||10)+' giây, mỗi mốc ghi rõ CỠ CẢNH + hành động + nội dung thoại lúc đó). Quy tắc khớp hình–tiếng: thoại nói tới đâu, camera cho thấy đúng thứ đó — nói về chất liệu thì cận vào chất liệu, nói về hiệu quả thì cận kết quả, nói về tiện lợi thì toàn/trung cảnh thao tác. Cắt máy liên tục giữa các cỡ cảnh để giữ nhịp, không để một cỡ cảnh đứng yên quá 4 giây.',
     'Mọi cảnh quay ở CÙNG MỘT bối cảnh duy nhất và nhân vật mặc CÙNG một bộ trang phục; trường visual không đổi địa điểm, không mô tả chữ hay logo in trên sản phẩm/điện thoại.',
-    st.dialogue===false ? 'KHÔNG có lời thoại: trường dialogue của mọi cảnh để trống "".' : ('Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh TỐI ĐA '+Math.round((st.sceneDur||10)*speechCfg(st).budget)+' từ cho '+(st.sceneDur||10)+' giây, viết theo '+speechCfg(st).vi+' — đủ để nói HẾT trọn vẹn các câu hoàn chỉnh và chừa ~1 giây cuối cảnh; TUYỆT ĐỐI không viết dài hơn (model sẽ nuốt chữ, lặp từ và cắt cụt cuối câu), văn phong review chuyên nghiệp: gãy gọn, giàu thông tin về sản phẩm, đúng trọng tâm điểm bán, không lan man, không mở đầu chậm, '+(st.noPrice?'TUYỆT ĐỐI không nhắc giá tiền':'có thể nhắc ưu đãi')+'.'),
+    st.dialogue===false ? 'KHÔNG có lời thoại: trường dialogue của mọi cảnh để trống "".' : ('Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh viết khoảng '+Math.round((st.sceneDur||10)*speechCfg(st).budget*0.85)+'–'+Math.round((st.sceneDur||10)*speechCfg(st).budget)+' từ cho '+(st.sceneDur||10)+' giây (viết ĐỦ Ý lấp đầy thời lượng để giới thiệu sản phẩm cho ra trò, không viết cụt), viết theo '+speechCfg(st).vi+' — đủ để nói HẾT trọn vẹn các câu hoàn chỉnh và chừa ~1 giây cuối cảnh; TUYỆT ĐỐI không viết dài hơn (model sẽ nuốt chữ, lặp từ và cắt cụt cuối câu), văn phong review chuyên nghiệp: gãy gọn, giàu thông tin về sản phẩm, đúng trọng tâm điểm bán, không lan man, không mở đầu chậm, '+(st.noPrice?'TUYỆT ĐỐI không nhắc giá tiền':'có thể nhắc ưu đãi')+'.'),
     'Trả về JSON: [{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại","camera":"góc máy","timeline":"0–2s: ...; 2–6s: ...; 6–10s: ..."}] đủ '+st.scenes+' cảnh.'
   ].filter(Boolean).join('\n');
   const ask=async(extra)=>{ const data=await aiChat([{role:'system',content:sys},{role:'user',content:usr+extra}], { json:true });
@@ -2332,7 +2330,7 @@ async function genScenePrompts(prod, st, profile, scA, idx, total, prevEnd){
 async function genScriptV2(prod, st){
   const sys='Bạn là đạo diễn video ngắn TikTok/Reels. Chỉ trả về DUY NHẤT một JSON object, không giải thích, không markdown.';
   const isRev = st.format==='review'||st.format==='pov';
-  const dur=st.sceneDur||10, spA=speechCfg(st), wMax=Math.round(dur*spA.budget), cap=wMax;
+  const dur=st.sceneDur||10, spA=speechCfg(st), wMax=Math.round(dur*spA.budget), wMin=Math.round(wMax*0.85), cap=wMax;
   const usrA=[ (isRev?'Sản phẩm: ':'Chủ đề video: ')+prod.name,
     prod.category? 'Loại sản phẩm: '+prod.category : '',
     prod.desc? 'DANH SÁCH ĐIỂM BÁN — NGUỒN SỰ THẬT DUY NHẤT về sản phẩm (mọi ý trong kịch bản và lời thoại CHỈ được lấy từ danh sách này; tính năng, công nghệ, chất liệu, con số nào không có trong danh sách thì TUYỆT ĐỐI không được nhắc tới, dù nghe có vẻ hợp lý): '+prod.desc : '',
@@ -2342,7 +2340,7 @@ async function genScriptV2(prod, st){
          : 'CẤU TRÚC BẮT BUỘC: (1) 3 GIÂY ĐẦU của cảnh 1 = mở đầu giật gân, gây tò mò mạnh ngay lập tức, không giới thiệu chậm. (2) Các cảnh giữa phát triển nội dung bằng hành động cụ thể, cảm xúc tăng dần. (3) 3 GIÂY CUỐI của cảnh cuối = câu kết có điểm nhấn đọng lại trong đầu người xem.',
     'Nhiệm vụ 1 — MASTER PROFILE khoá cứng cho cả video: product_lock = mô tả ngoại hình sản phẩm đúng như ảnh tham chiếu (hình dáng, màu sắc, chất liệu nhìn thấy, TỪNG bộ phận nhìn thấy được: núm vặn/mặt số kèm ĐÚNG các ký hiệu, số, chữ in trên đó, nút bấm, tay cầm, nắp, khoá nếu có, chữ/logo in sẵn — giữ nguyên, không thêm bớt, không thiết kế lại). Chỉ khóa đúng màu sắc và biến thể nhìn thấy trong ảnh tham chiếu, không liệt kê các màu/biến thể khác của listing; wardrobe = MỘT bộ trang phục cụ thể, CHỌN PHÙ HỢP với loại sản phẩm và tình huống sử dụng sản phẩm; environment = MỘT địa điểm cụ thể duy nhất — chính là nơi sản phẩm này thực sự được dùng (mô tả vị trí các đồ vật chính); lighting = hướng và chất lượng ánh sáng; style = phong cách hình ảnh (chân thực như quay bằng điện thoại xịn, UGC TikTok). TUYỆT ĐỐI không mô tả ngoại hình nhân vật (mặt, tóc, vóc dáng) — nhân vật lấy từ ảnh tham chiếu.',
     st.dialogue===false ? 'KHÔNG có lời thoại: dialogue của mọi cảnh để trống "".' :
-      ('Nhiệm vụ 2 — dialogue từng cảnh bằng '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh TỐI ĐA '+wMax+' từ cho '+dur+' giây — viết thoại theo '+spA.vi+' (đây là tốc độ nói TD đã chọn; ngân sách từ đã tính theo tốc độ này để nhân vật nói HẾT trọn vẹn mọi câu trong cảnh và còn chừa ~1 giây cuối cảnh không nói; thoại dài hơn ngân sách sẽ bị model nói dồn, nuốt chữ và cắt cụt cuối câu — thà ít ý mà trọn câu), câu ngắn dễ khớp khẩu hình, giàu thông tin đúng điểm bán'+(isRev?', nhịp review nhanh, gãy gọn, dồn dập':'')+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'. LUẬT CHỐNG BỊA: mỗi câu thoại chỉ nói về các điểm có trong DANH SÁCH ĐIỂM BÁN; hết điểm mới thì nhắc lại lợi ích và trải nghiệm của điểm đã có — TUYỆT ĐỐI không phát minh thêm tính năng, công nghệ, chất liệu, phụ kiện hay con số mới, và các cảnh không được tự mâu thuẫn nhau. LUẬT CÂU TRÒN NGHĨA: mỗi cảnh gồm các câu HOÀN CHỈNH, kết thúc trọn ý ngay trong cảnh đó — TUYỆT ĐỐI không để câu nói dở dang tràn sang cảnh sau (các cảnh quay và ghép riêng, câu đứt giữa chừng khiến người xem khó chịu); dùng từ nối tự nhiên ở đầu cảnh (tiếp theo, đặc biệt, và đây nữa...) để toàn bộ lời thoại ghép lại thành một mạch liền mạch, mượt mà từ hook đến CTA. Chữ "giỏ hàng" chỉ được xuất hiện trong dialogue của cảnh cuối.'),
+      ('Nhiệm vụ 2 — dialogue từng cảnh bằng '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh viết KHOẢNG '+wMin+'–'+wMax+' từ cho '+dur+' giây (không vượt TỐI ĐA '+wMax+' từ) — viết thoại theo '+spA.vi+' (đây là tốc độ nói TD đã chọn; khoảng từ này đã tính để nhân vật nói HẾT trọn vẹn mọi câu và chừa ~1 giây cuối cảnh). QUAN TRỌNG: phải viết ĐỦ Ý, lấp gần hết khoảng từ trên để giới thiệu sản phẩm cho ra trò — thoại cụt, lèo tèo vài ý là video nghèo thông tin, người xem không hiểu sản phẩm thì không mua; chỉ khi viết dài HƠN mức trên mới bị nuốt chữ/cắt cụt. PHÂN BỔ ĐIỂM BÁN: mỗi cảnh chỉ gánh TỐI ĐA 2 điểm bán — chia đều TẤT CẢ điểm bán cho các cảnh, cấm dồn 3–4 điểm vào một cảnh rồi nói lướt, cấm để cảnh nào cũng nói chung chung mà không xoáy sâu điểm nào. NỘI DUNG THOẠI phải tập trung review sản phẩm: công năng, tiện ích, lợi ích khi dùng thật, chất liệu/cấu tạo — nói như người đã dùng thật đang giới thiệu cho bạn bè, không đọc thông số khô khan, không lan man ngoài sản phẩm. Câu ngắn dễ khớp khẩu hình, giàu thông tin đúng điểm bán'+(isRev?', nhịp review nhanh, gãy gọn, dồn dập':'')+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'. LUẬT CHỐNG BỊA: mỗi câu thoại chỉ nói về các điểm có trong DANH SÁCH ĐIỂM BÁN; hết điểm mới thì nhắc lại lợi ích và trải nghiệm của điểm đã có — TUYỆT ĐỐI không phát minh thêm tính năng, công nghệ, chất liệu, phụ kiện hay con số mới, và các cảnh không được tự mâu thuẫn nhau. LUẬT CÂU TRÒN NGHĨA: mỗi cảnh gồm các câu HOÀN CHỈNH, và câu CUỐI của mỗi cảnh phải là một câu kết trọn vẹn, có nghĩa đầy đủ, đứng một mình cũng hiểu — TUYỆT ĐỐI không để câu nói dở dang, không kết thúc cảnh bằng từ nối hay ý lửng lơ tràn sang cảnh sau (các cảnh quay và ghép riêng, câu đứt giữa chừng khiến người xem khó chịu); dùng từ nối tự nhiên ở đầu cảnh (tiếp theo, đặc biệt, và đây nữa...) để toàn bộ lời thoại ghép lại thành một mạch liền mạch, mượt mà từ hook đến CTA. Chữ "giỏ hàng" chỉ được xuất hiện trong dialogue của cảnh cuối.'),
     'Trả về JSON: {"profile":{"product_lock":"...","wardrobe":"...","environment":"...","lighting":"...","style":"..."},"scenes":[{"purpose":"mục đích cảnh, ngắn gọn","dialogue":"..."}]} đủ '+st.scenes+' cảnh. CẤU TRÚC BẮT BUỘC: "scenes" là một MẢNG — mở bằng ký tự [ và đóng bằng ký tự ], mọi cảnh nằm TRONG mảng, ngăn nhau bằng dấu phẩy.'
   ].filter(Boolean).join('\n');
   const a = (prod.images&&prod.images.length)? await askChatJSONImg(sys, usrA, prod.images) : await askChatJSON(sys, usrA);
@@ -2661,7 +2659,7 @@ async function genScriptStructured(ctx, st, count){
     'Cấu trúc: cảnh 1 mở bằng nhân vật nhìn thẳng camera nói câu hook trong 3–4 giây đầu, sau đó tập trung vào sản phẩm; các cảnh giữa XEN KẼ người nói và CẬN CẢNH demo (ít nhất một cảnh cận cảnh demo thật); cảnh cuối là kết quả + CTA bằng lời nói, nhân vật chỉ tay xuống góc dưới khung hình (camera/timeline/visual không nhắc giỏ hàng hay nút bấm — chỉ mô tả cử chỉ; chữ giỏ hàng chỉ nằm trong dialogue).',
     'Mỗi cảnh có camera (chuỗi cỡ cảnh luân chuyển: toàn – trung – cận) và timeline (mỗi mốc giây ghi rõ cỡ cảnh + hành động + nội dung thoại; thoại nói tới đâu camera cho thấy đúng thứ đó; cắt máy liên tục, không để một cỡ cảnh đứng yên quá 4 giây).',
     'Mọi cảnh ở CÙNG MỘT bối cảnh duy nhất, nhân vật mặc CÙNG một bộ trang phục; visual không đổi địa điểm, không mô tả chữ/logo in trên sản phẩm hay điện thoại.',
-    'Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh TỐI ĐA '+Math.round((st.sceneDur||10)*speechCfg(st).budget)+' từ cho '+(st.sceneDur||10)+' giây, viết theo '+speechCfg(st).vi+' — đủ để nói HẾT trọn vẹn các câu hoàn chỉnh, chừa ~1 giây cuối cảnh; viết dài hơn là model nuốt chữ, lặp từ, cắt cụt cuối câu. Văn phong review chuyên nghiệp: gãy gọn, giàu thông tin về sản phẩm, đúng trọng tâm'+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'.',
+    'Lời thoại '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh viết khoảng '+Math.round((st.sceneDur||10)*speechCfg(st).budget*0.85)+'–'+Math.round((st.sceneDur||10)*speechCfg(st).budget)+' từ cho '+(st.sceneDur||10)+' giây (viết ĐỦ Ý lấp đầy thời lượng, không viết cụt), viết theo '+speechCfg(st).vi+' — đủ để nói HẾT trọn vẹn các câu hoàn chỉnh, chừa ~1 giây cuối cảnh; viết dài hơn là model nuốt chữ, lặp từ, cắt cụt cuối câu. Văn phong review chuyên nghiệp: gãy gọn, giàu thông tin về sản phẩm, đúng trọng tâm'+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'.',
     'Trả về JSON: {"style":"một đoạn mô tả phong cách/giọng điệu chung của video, 2-3 câu","scenes":[{"visual":"mô tả hình ảnh/hành động của cảnh","dialogue":"lời thoại","camera":"góc máy","timeline":"0–2s: ...; 2–6s: ...; 6–10s: ..."}]} đủ '+count+' cảnh.'
   ].join('\n');
   const ask=async(extra)=>{ const data=await aiChat([{role:'system',content:sys},{role:'user',content:usr+extra}], { json:true });
