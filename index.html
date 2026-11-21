@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.10</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.11</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -1513,7 +1513,7 @@ async function ping(silent){
   const dot=$('#statusDot'), txt=$('#statusText');
   try{
     const data=await api('/v1/models'); const n=(data.data||[]).length;
-    dot.className='dot on'; txt.textContent='Xưởng online'; pwOnline=true; paintPower();
+    dot.className='dot on'; txt.textContent='Xưởng online'; pwOnline=true; paintPower(); hidePwFallback();
     if(!silent) logTo('#cfgLog','Kết nối OK. Model: '+((data.data||[]).map(m=>m.id).join(', ')||'—'),'g');
     return true;
   }catch(e){
@@ -1564,6 +1564,22 @@ function paintPower(){
   if(pwBusy==='stop'){ b.disabled=true; b.textContent='⏻ Đang tắt…'; return; }
   b.disabled=false; b.textContent= pwOnline? '⏻ Tắt xưởng' : '⏻ Bật xưởng';
 }
+/* V10.11: khi Safari chặn mất tab editor (không có handle cửa sổ) thì hiện link mở editor để TD chạm tay;
+   link tự biến mất ở lần ping thành công kế tiếp (ping gọi hidePwFallback). */
+function showPwFallback(url){
+  hidePwFallback();
+  const h=document.querySelector('header'); if(!h) return;
+  const d=document.createElement('div');
+  d.id='pwOpenBar';
+  d.style.cssText='padding:10px 12px; background:#123524; border-bottom:1px solid #0e8a3e; text-align:center';
+  const a=document.createElement('a');
+  a.href=url; a.target='_blank'; a.rel='noopener';
+  a.textContent='Bấm để mở editor — bước cuối để xưởng chạy';
+  a.style.cssText='color:#7be495; font-weight:700; font-size:14px; text-decoration:underline';
+  d.appendChild(a);
+  h.after(d);
+}
+function hidePwFallback(){ const d=document.getElementById('pwOpenBar'); if(d) d.remove(); }
 async function togglePower(){
   if(pwBusy) return;
   if(pwOnline){
@@ -1576,6 +1592,11 @@ async function togglePower(){
     pwBusy=''; paintPower();
     return;
   }
+  /* V10.11: mở sẵn 1 tab trắng NGAY trong cú chạm — Safari chỉ cho mở popup khi còn ngữ cảnh người dùng chạm;
+     chờ xong các bước await mới window.open như trước là bị Safari chặn im lặng, không tab nào hiện ra.
+     Có địa chỉ editor thì điều hướng chính tab này đi tiếp. */
+  let ew=null; try{ ew=window.open('about:blank','_blank'); }catch(e){}
+  let ewNav=false;
   pwBusy='start'; paintPower();
   try{
     let st=await powerApi('/codespace/status');
@@ -1598,7 +1619,10 @@ async function togglePower(){
       }
       if(state!=='Available') throw new Error('Máy chưa lên sau 3 phút — thử Bật lại sau');
     }
-    if(webUrl){ try{ window.open(webUrl,'_blank'); }catch(e){} }
+    if(webUrl){
+      if(ew){ try{ ew.location.href=webUrl; ewNav=true; }catch(e){ showPwFallback(webUrl); } }
+      else showPwFallback(webUrl);
+    }
     toast('Đã mở tab editor để xưởng tự khởi động — quay lại app và chờ một chút', 5000);
     const t1=Date.now(); let on=false;
     while((Date.now()-t1)<180000){
@@ -1608,7 +1632,10 @@ async function togglePower(){
     }
     if(on) toast('Xưởng đã bật, sẵn sàng gen ✓', 4000);
     else toast('Máy đã lên nhưng cầu chưa trả lời — chờ thêm rồi bấm Làm mới', 6000);
-  }catch(e){ toast(e.message, 5000); }
+  }catch(e){
+    if(ew && !ewNav){ try{ ew.close(); }catch(e2){} }
+    toast(e.message, 5000);
+  }
   pwBusy=''; paintPower();
 }
 window.App = window.App || {}; Object.assign(window.App,{ togglePower, paintPower });
