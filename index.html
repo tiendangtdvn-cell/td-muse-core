@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.9</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.10</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -1508,20 +1508,16 @@ async function loadLibrary(){
 $('#libRefresh').addEventListener('click',loadLibrary);
 
 /* ---------------- Settings & connection ---------------- */
-let pingFails=0, pingTimer=null;
 let pwBusy='', pwOnline=false;
 async function ping(silent){
   const dot=$('#statusDot'), txt=$('#statusText');
   try{
     const data=await api('/v1/models'); const n=(data.data||[]).length;
-    pingFails=0; if(pingTimer){ clearTimeout(pingTimer); pingTimer=null; }
     dot.className='dot on'; txt.textContent='Xưởng online'; pwOnline=true; paintPower();
     if(!silent) logTo('#cfgLog','Kết nối OK. Model: '+((data.data||[]).map(m=>m.id).join(', ')||'—'),'g');
     return true;
   }catch(e){
-    pingFails++;
-    if(pingFails<3){ txt.textContent='Mất kết nối — đang thử lại...'; if(!pingTimer) pingTimer=setTimeout(()=>{ pingTimer=null; ping(true); }, 6000); }
-    else { dot.className='dot off'; txt.textContent='Xưởng offline'; pwOnline=false; paintPower(); if(!pingTimer) pingTimer=setTimeout(()=>{ pingTimer=null; ping(true); }, 20000); }
+    dot.className='dot off'; txt.textContent='Xưởng offline'; pwOnline=false; paintPower();
     if(!silent) logTo('#cfgLog','Lỗi kết nối: '+e.message,'e');
     return false; }
 }
@@ -1584,6 +1580,14 @@ async function togglePower(){
   try{
     let st=await powerApi('/codespace/status');
     let state=st && st.state, webUrl=st && st.web_url;
+    if(state && /shutting/i.test(state)){
+      const tw0=Date.now();
+      while(state && /shutting/i.test(state) && (Date.now()-tw0)<120000){
+        await sleep(8000);
+        const sw=await powerApi('/codespace/status');
+        state=sw && sw.state; if(sw && sw.web_url) webUrl=sw.web_url;
+      }
+    }
     if(state!=='Available'){
       await powerApi('/codespace/start','POST');
       const t0=Date.now();
