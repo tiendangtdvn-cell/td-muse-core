@@ -376,8 +376,8 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.8</span></div><span class="lanemini" id="laneMini"></span>
-  <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" id="warmBtn" style="margin-left:8px" onclick="App.warmFlow()">🔥 Làm nóng Flow</button><span id="warmState" style="margin-left:4px;font-size:11px;opacity:.85"></span><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.9</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
 <div id="actBar" class="hidden"></div>
@@ -438,7 +438,7 @@
         <select id="flowVidModel"><option value="omni11">Omni 1.1 Flash — đã test chạy được, Google bỏ sau 5/12</option><option value="omni12">Omni 1.2 Flash — dùng lâu dài</option></select>
         <label class="fl">API key của cổng Flow</label>
         <input type="password" id="flowKey" placeholder="Key của cổng Flow (flow2api)">
-        <div class="btnrow"><button class="btn" id="flowTest">Kiểm tra kết nối</button></div>
+        <div class="btnrow"><button class="btn" id="flowTest">Kiểm tra kết nối</button><button class="btn" id="warmBtn" onclick="App.warmFlow()">🔥 Làm nóng Flow</button><span id="warmState" style="margin-left:4px;font-size:11px;opacity:.85"></span></div>
         <div class="log" id="flowLog" style="margin-top:8px">Chưa kiểm tra.</div>
       </div>
       <details class="card foldcard">
@@ -2335,7 +2335,7 @@ async function genScenePrompts(prod, st, profile, scA, idx, total, prevEnd){
   const usr=[ 'MASTER PROFILE (khoá cứng của cả video): '+JSON.stringify(profile),
     'Sản phẩm: '+prod.name+(prod.category? ' — loại sản phẩm: '+prod.category : ''),
     'Cảnh '+(idx+1)+'/'+total+', thời lượng đúng '+dur+' giây, tỉ lệ khung '+(st.ratio||'9:16')+'. Mục đích cảnh: '+scA.purpose,
-    'Lời thoại của cảnh (giữ nguyên văn, không sửa một chữ): "'+scA.dialogue+'"',
+    'Lời thoại của cảnh (giữ nguyên văn, không sửa một chữ; thoại chỉ gọi sản phẩm bằng tên loại chung, tuyệt đối không chứa tên hãng hay mã model): "'+scA.dialogue+'"',
     prevEnd? ('Trạng thái kết thúc của cảnh trước — cảnh này phải mở đầu tiếp nối đúng trạng thái đó: '+prevEnd) : 'Đây là cảnh đầu tiên của video.',
     'NHIỆM VỤ: viết 2 prompt TIẾNG ANH hoàn chỉnh, sẵn sàng gửi thẳng cho model tạo ảnh/video. KHÔNG viết mô tả trung gian, KHÔNG chia ô trạng thái — prompt phải là câu văn hoàn chỉnh, giàu chi tiết vật lý.',
     board? 'SB_PROMPT (prompt tạo ẢNH STORYBOARD — MỘT sheet gồm đúng 6 ô kể trọn diễn biến cảnh này): viết prompt TIẾNG ANH yêu cầu tạo MỘT ảnh storyboard duy nhất, lưới đúng 2 cột × 3 hàng = 6 ô bằng nhau, viền trắng mỏng ngăn ô, thứ tự đọc trái sang phải, trên xuống dưới. Cả 6 ô: CÙNG nhân vật (giữ nguyên khuôn mặt và kiểu tóc như ảnh tham chiếu — TUYỆT ĐỐI không mô tả chi tiết gương mặt), CÙNG trang phục trong MASTER PROFILE, CÙNG bối cảnh trong MASTER PROFILE, CÙNG ánh sáng, sản phẩm đúng hệt product_lock trong mọi ô. 6 ô là 6 shot nối tiếp của cảnh này: ô 1 = khoảnh khắc mở đầu cảnh, các ô giữa = các shot demo và cận cảnh sản phẩm đan xen nhân vật đang nói, ô 6 = khoảnh khắc kết thúc cảnh. '+(prevEnd? 'QUAN TRỌNG: ô 1 phải tiếp nối đúng trạng thái kết thúc của cảnh trước — khi gen sẽ có ảnh ô cuối của storyboard cảnh trước đính kèm, ô 1 bám theo ảnh đó (cùng khoảnh khắc, cùng vị trí nhân vật và đồ vật, cùng bối cảnh).' : 'Ô 1 là hook: khoảnh khắc bắt mắt nhất của cảnh.')+' Không chữ, không số thứ tự ô, không chú thích, không logo mới, không watermark, TUYỆT ĐỐI không hiệu ứng lấp lánh/ngôi sao (sparkle) hay trang trí phát sáng trong bất kỳ ô nào — sheet phải sạch như ảnh chụp thật.'
@@ -2357,6 +2357,21 @@ async function genScenePrompts(prod, st, profile, scA, idx, total, prevEnd){
   if(!b || !b.kf_prompt || !b.vid_prompt) return null;
   return { kf_prompt:String(b.kf_prompt), vid_prompt:String(b.vid_prompt), end_state:String(b.end_state||'') };
 }
+/* V10.9 — LUẬT GỌI TÊN SẢN PHẨM TRONG THOẠI (TD chốt 21/11): thoại chỉ gọi SP bằng tên loại chung. */
+const DIALOGUE_NAME_LAW='LUẬT GỌI TÊN SẢN PHẨM TRONG THOẠI: lời thoại CHỈ được gọi sản phẩm bằng TÊN LOẠI CHUNG đúng loại của sản phẩm (ví dụ: máy xay, máy khoan, máy sấy, nồi lẩu), TUYỆT ĐỐI không đọc tên thương hiệu hay hãng, không đọc mã model, không đọc bất kỳ chữ nào in trên nhãn sản phẩm trong lời thoại.';
+/* V10.9 — kiểm tra thoại TRỌN CÂU bằng code (chống Gemini xẻ 1 câu qua 2 cảnh):
+   dialogueComplete(t): thoại (đã trim, bỏ dấu đóng ngoặc/kết ", ', ), ] ở cuối) là TRỌN khi ký tự cuối thuộc . ! ? … — mọi trường hợp còn lại là CỤT (kết thúc bằng , ; : , từ nối lửng, hoặc không có dấu kết câu).
+   dialogueStartsFragment(t): cảnh bị coi là MẢNH NỐI khi ký tự chữ đầu tiên là chữ thường — dấu hiệu câu của cảnh trước tràn sang. */
+function dialogueComplete(t){
+  let s=String(t||'').trim(); if(!s) return true;
+  s=s.replace(/["'”’)\]]+$/,'').trim(); if(!s) return true;
+  return /[.!?…]$/.test(s);
+}
+function dialogueStartsFragment(t){
+  const s=String(t||'').trim(); if(!s) return false;
+  const ch=s.charAt(0);
+  return ch===ch.toLowerCase() && ch!==ch.toUpperCase();
+}
 async function genScriptV2(prod, st){
   const sys='Bạn là đạo diễn video ngắn TikTok/Reels. Chỉ trả về DUY NHẤT một JSON object, không giải thích, không markdown.';
   const isRev = st.format==='review'||st.format==='pov';
@@ -2370,7 +2385,7 @@ async function genScriptV2(prod, st){
          : 'CẤU TRÚC BẮT BUỘC: (1) 3 GIÂY ĐẦU của cảnh 1 = mở đầu giật gân, gây tò mò mạnh ngay lập tức, không giới thiệu chậm. (2) Các cảnh giữa phát triển nội dung bằng hành động cụ thể, cảm xúc tăng dần. (3) 3 GIÂY CUỐI của cảnh cuối = câu kết có điểm nhấn đọng lại trong đầu người xem.',
     'Nhiệm vụ 1 — MASTER PROFILE khoá cứng cho cả video: product_lock = mô tả ngoại hình sản phẩm đúng như ảnh tham chiếu (hình dáng, màu sắc, chất liệu nhìn thấy, TỪNG bộ phận nhìn thấy được: núm vặn/mặt số kèm ĐÚNG các ký hiệu, số, chữ in trên đó, nút bấm, tay cầm, nắp, khoá nếu có, chữ/logo in sẵn — giữ nguyên, không thêm bớt, không thiết kế lại). Chỉ khóa đúng màu sắc và biến thể nhìn thấy trong ảnh tham chiếu, không liệt kê các màu/biến thể khác của listing; wardrobe = MỘT bộ trang phục cụ thể, CHỌN PHÙ HỢP với loại sản phẩm và tình huống sử dụng sản phẩm; environment = MỘT địa điểm cụ thể duy nhất — chính là nơi sản phẩm này thực sự được dùng (mô tả vị trí các đồ vật chính); lighting = hướng và chất lượng ánh sáng; style = phong cách hình ảnh (chân thực như quay bằng điện thoại xịn, UGC TikTok). TUYỆT ĐỐI không mô tả ngoại hình nhân vật (mặt, tóc, vóc dáng) — nhân vật lấy từ ảnh tham chiếu.',
     st.dialogue===false ? 'KHÔNG có lời thoại: dialogue của mọi cảnh để trống "".' :
-      ('Nhiệm vụ 2 — dialogue từng cảnh bằng '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh viết KHOẢNG '+wMin+'–'+wMax+' từ cho '+dur+' giây (không vượt TỐI ĐA '+wMax+' từ) — viết thoại theo '+spA.vi+' (đây là tốc độ nói TD đã chọn; khoảng từ này đã tính để nhân vật nói HẾT trọn vẹn mọi câu và chừa ~1 giây cuối cảnh). QUAN TRỌNG: phải viết ĐỦ Ý, lấp gần hết khoảng từ trên để giới thiệu sản phẩm cho ra trò — thoại cụt, lèo tèo vài ý là video nghèo thông tin, người xem không hiểu sản phẩm thì không mua; chỉ khi viết dài HƠN mức trên mới bị nuốt chữ/cắt cụt. PHÂN BỔ ĐIỂM BÁN: mỗi cảnh chỉ gánh TỐI ĐA 2 điểm bán — chia đều TẤT CẢ điểm bán cho các cảnh, cấm dồn 3–4 điểm vào một cảnh rồi nói lướt, cấm để cảnh nào cũng nói chung chung mà không xoáy sâu điểm nào. NỘI DUNG THOẠI phải tập trung review sản phẩm: công năng, tiện ích, lợi ích khi dùng thật, chất liệu/cấu tạo — nói như người đã dùng thật đang giới thiệu cho bạn bè, không đọc thông số khô khan, không lan man ngoài sản phẩm. Câu ngắn dễ khớp khẩu hình, giàu thông tin đúng điểm bán'+(isRev?', nhịp review nhanh, gãy gọn, dồn dập':'')+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'. LUẬT CHỐNG BỊA: mỗi câu thoại chỉ nói về các điểm có trong DANH SÁCH ĐIỂM BÁN; hết điểm mới thì nhắc lại lợi ích và trải nghiệm của điểm đã có — TUYỆT ĐỐI không phát minh thêm tính năng, công nghệ, chất liệu, phụ kiện hay con số mới, và các cảnh không được tự mâu thuẫn nhau. LUẬT CÂU TRÒN NGHĨA: mỗi cảnh gồm các câu HOÀN CHỈNH, và câu CUỐI của mỗi cảnh phải là một câu kết trọn vẹn, có nghĩa đầy đủ, đứng một mình cũng hiểu — TUYỆT ĐỐI không để câu nói dở dang, không kết thúc cảnh bằng từ nối hay ý lửng lơ tràn sang cảnh sau (các cảnh quay và ghép riêng, câu đứt giữa chừng khiến người xem khó chịu); dùng từ nối tự nhiên ở đầu cảnh (tiếp theo, đặc biệt, và đây nữa...) để toàn bộ lời thoại ghép lại thành một mạch liền mạch, mượt mà từ hook đến CTA. Chữ "giỏ hàng" chỉ được xuất hiện trong dialogue của cảnh cuối.'),
+      ('Nhiệm vụ 2 — dialogue từng cảnh bằng '+(LANGS[st.language]||'tiếng Việt')+': mỗi cảnh viết KHOẢNG '+wMin+'–'+wMax+' từ cho '+dur+' giây (không vượt TỐI ĐA '+wMax+' từ) — viết thoại theo '+spA.vi+' (đây là tốc độ nói TD đã chọn; khoảng từ này đã tính để nhân vật nói HẾT trọn vẹn mọi câu và chừa ~1 giây cuối cảnh). QUAN TRỌNG: phải viết ĐỦ Ý, lấp gần hết khoảng từ trên để giới thiệu sản phẩm cho ra trò — thoại cụt, lèo tèo vài ý là video nghèo thông tin, người xem không hiểu sản phẩm thì không mua; chỉ khi viết dài HƠN mức trên mới bị nuốt chữ/cắt cụt. PHÂN BỔ ĐIỂM BÁN: mỗi cảnh chỉ gánh TỐI ĐA 2 điểm bán — chia đều TẤT CẢ điểm bán cho các cảnh, cấm dồn 3–4 điểm vào một cảnh rồi nói lướt, cấm để cảnh nào cũng nói chung chung mà không xoáy sâu điểm nào. NỘI DUNG THOẠI phải tập trung review sản phẩm: công năng, tiện ích, lợi ích khi dùng thật, chất liệu/cấu tạo — nói như người đã dùng thật đang giới thiệu cho bạn bè, không đọc thông số khô khan, không lan man ngoài sản phẩm. Câu ngắn dễ khớp khẩu hình, giàu thông tin đúng điểm bán'+(isRev?', nhịp review nhanh, gãy gọn, dồn dập':'')+(st.noPrice?', TUYỆT ĐỐI không nhắc giá tiền':'')+'. LUẬT CHỐNG BỊA: mỗi câu thoại chỉ nói về các điểm có trong DANH SÁCH ĐIỂM BÁN; hết điểm mới thì nhắc lại lợi ích và trải nghiệm của điểm đã có — TUYỆT ĐỐI không phát minh thêm tính năng, công nghệ, chất liệu, phụ kiện hay con số mới, và các cảnh không được tự mâu thuẫn nhau. LUẬT CÂU TRÒN NGHĨA: mỗi cảnh gồm các câu HOÀN CHỈNH, và câu CUỐI của mỗi cảnh phải là một câu kết trọn vẹn, có nghĩa đầy đủ, đứng một mình cũng hiểu — TUYỆT ĐỐI không để câu nói dở dang, không kết thúc cảnh bằng từ nối hay ý lửng lơ tràn sang cảnh sau (các cảnh quay và ghép riêng, câu đứt giữa chừng khiến người xem khó chịu); dùng từ nối tự nhiên ở đầu cảnh (tiếp theo, đặc biệt, và đây nữa...) để toàn bộ lời thoại ghép lại thành một mạch liền mạch, mượt mà từ hook đến CTA. Chữ "giỏ hàng" chỉ được xuất hiện trong dialogue của cảnh cuối. '+DIALOGUE_NAME_LAW),
     'Trả về JSON: {"profile":{"product_lock":"...","wardrobe":"...","environment":"...","lighting":"...","style":"..."},"scenes":[{"purpose":"mục đích cảnh, ngắn gọn","dialogue":"..."}]} đủ '+st.scenes+' cảnh. CẤU TRÚC BẮT BUỘC: "scenes" là một MẢNG — mở bằng ký tự [ và đóng bằng ký tự ], mọi cảnh nằm TRONG mảng, ngăn nhau bằng dấu phẩy.'
   ].filter(Boolean).join('\n');
   const a = (prod.images&&prod.images.length)? await askChatJSONImg(sys, usrA, prod.images) : await askChatJSON(sys, usrA);
@@ -2380,13 +2395,23 @@ async function genScriptV2(prod, st){
   const scenesA=a.scenes.slice(0, st.scenes).map(o=>({ purpose:String(o.purpose||'').replace(/\[(a|b|c|d|e|f)\]\s*/gi,''), dialogue: st.dialogue===false? '' : capWords(o.dialogue||'',cap) }));
   while(scenesA.length<st.scenes) scenesA.push({ purpose:'', dialogue:'' });
   if(st.dialogue!==false){
+    /* V10.9: sửa thoại khi (a) quá ngắn <80% wMin (luật cũ) HOẶC (b) CỤT câu theo dialogueComplete HOẶC (c) cảnh này mở đầu bằng mảnh nối trong khi cảnh trước đã trọn câu (câu bị xẻ nằm ở cảnh này). Tối đa 1 lượt sửa/cảnh. */
     for(let i=0;i<scenesA.length;i++){
-      const wc0=(scenesA[i].dialogue||'').trim().split(/\s+/).filter(Boolean).length;
-      if(wc0 >= Math.round(wMin*0.8)) continue;
+      const d0=(scenesA[i].dialogue||'').trim();
+      const wc0=d0.split(/\s+/).filter(Boolean).length;
+      const tooShort = wc0 < Math.round(wMin*0.8);
+      const incomplete = !dialogueComplete(d0);
+      const fragStart = dialogueStartsFragment(d0) && i>0 && dialogueComplete(scenesA[i-1].dialogue);
+      if(!tooShort && !incomplete && !fragStart) continue;
       try{
-        const r=await askChatJSON(sys, 'Viết lại lời thoại cho cảnh '+(i+1)+' của video review sản phẩm "'+prod.name+'". Mục đích cảnh: '+(scenesA[i].purpose||'giới thiệu sản phẩm')+'. Lời thoại hiện tại quá ngắn, chỉ '+wc0+' từ: "'+scenesA[i].dialogue+'". Hãy viết lại thành '+wMin+'–'+wMax+' từ: đủ ý, tập trung review sản phẩm (công năng, tiện ích, lợi ích, chất liệu), gồm các câu HOÀN CHỈNH và câu cuối là câu kết trọn vẹn có nghĩa. Chỉ trả về JSON {"dialogue":"..."} — không giải thích.');
-        const nd=String((r&&r.dialogue)||'').trim(); const wcN=nd.split(/\s+/).filter(Boolean).length;
-        if(nd && wcN>wc0) scenesA[i].dialogue=capWords(nd, cap);
+        const r=await askChatJSON(sys, 'Viết lại lời thoại cho cảnh '+(i+1)+' của video review sản phẩm "'+prod.name+'". Mục đích cảnh: '+(scenesA[i].purpose||'giới thiệu sản phẩm')+'. Lời thoại hiện tại '+(tooShort? ('quá ngắn, chỉ '+wc0+' từ') : 'bị CỤT hoặc bị xẻ dở giữa câu')+': "'+d0+'". Hãy viết lại thành '+wMin+'–'+wMax+' từ: đủ ý, tập trung review sản phẩm (công năng, tiện ích, lợi ích, chất liệu). YÊU CẦU TRỌN CÂU: chỉ gồm các câu hoàn chỉnh, đứng độc lập được; câu CUỐI phải là một câu kết NGẮN, trọn nghĩa, kết thúc bằng dấu chấm; TUYỆT ĐỐI không để ý hay câu tràn sang cảnh sau, không kết thúc bằng dấu phẩy, dấu hai chấm hay từ nối lửng. '+DIALOGUE_NAME_LAW+' Chỉ trả về JSON {"dialogue":"..."} — không giải thích.');
+        const ndRaw=String((r&&r.dialogue)||'').trim();
+        if(ndRaw){
+          const nd=capWords(ndRaw, cap); const wcN=ndRaw.split(/\s+/).filter(Boolean).length;
+          /* thoại gốc CỤT/mảnh nối: bản sửa TRỌN câu thì nhận ngay dù ngắn hơn đôi chút; còn lại giữ luật cũ — chỉ nhận khi dài hơn bản gốc */
+          if((incomplete||fragStart) && dialogueComplete(nd)) scenesA[i].dialogue=nd;
+          else if(wcN>wc0) scenesA[i].dialogue=nd;
+        }
       }catch(e){}
     }
   }
