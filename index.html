@@ -336,8 +336,8 @@
     .hactions .btn{flex:1; margin-left:0 !important; font-size:12px; padding:7px 3px; white-space:nowrap}
     #warmState{flex:none}
   }
-  #runBar{position:fixed; left:10px; right:10px; bottom:calc(88px + env(safe-area-inset-bottom)); z-index:29; max-width:920px; margin:0 auto; background:rgba(10,17,30,.96); border:1px solid var(--line); border-radius:14px; padding:10px; box-shadow:0 10px 28px rgba(0,0,0,.5)}
-  #view-control{padding-bottom:120px}
+  #runBar{background:rgba(10,17,30,.96); border:1px solid var(--line); border-radius:14px; padding:10px}
+  #view-control{padding-bottom:24px}
   #runBar:empty{display:none}
   #runBar .goldbtn{width:100%}
   .stage2{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px}
@@ -380,7 +380,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V10.0</span></div>
+  <div class="logo"><span class="mark">🎬</span><div>TD MUSE <span>STUDIO</span></div><span class="ver">V10.2</span></div>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="warmBtn" style="margin-left:8px" onclick="App.warmFlow()">🔥 Làm nóng Flow</button><span id="warmState" style="margin-left:4px;font-size:11px;opacity:.85"></span><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -907,12 +907,10 @@ function renderWorkspace(){
   </div>
 
   <div class="steptitle" id="sec2">2 · Kịch bản &amp; sản xuất — ${p.segments.length} scene</div>
-  <div class="card">
-    <p class="muted">Kịch bản do AI tạo ở tab Điều khiển khi bấm TẠO KỊCH BẢN. Mỗi scene là một khối ngay bên dưới — trong khối có đủ kịch bản, preview sản xuất và nút thao tác của chính scene đó, làm tới đâu xong tới đó.</p>
+  <div class="card ${(p.scriptMode==='fallback'||p.scriptMode==='ai')?'':'hidden'}">
     ${p.scriptMode==='fallback'?`<div class="btnrow"><span class="muted">⚠ Dự án này đang dùng kịch bản MẪU — lúc tạo, AI chưa trả lời (thường do xưởng mới khởi động, AI còn lạnh).</span><button class="btn small primary" onclick="App.rescript()">↻ Soạn lại bằng AI</button></div>`:''}
     ${p.scriptMode==='ai'?`<div class="btnrow"><span class="muted">Kịch bản này do AI viết theo kiểu cũ (chưa có continuity).</span><button class="btn small" onclick="App.rescript()">↻ Soạn lại theo schema mới</button></div>`:''}
 
-    <p class="muted">Đoạn 1 áp công thức hook đã chọn ở chặng 1. Góc máy + timeline càng cụ thể, prompt gửi sang model càng chuẩn.</p>
   </div>
   <div id="productionZone"></div>`;
   if(window.__renderProduction) window.__renderProduction(p);
@@ -1306,7 +1304,7 @@ function nextActionHTML(p,s){
     if(!s.kf.approved) return '<button class="btn ok nextbtn" data-next="'+s.id+'" onclick="App.approveKeyframe(\''+s.id+'\')">✓ Bước tiếp: Duyệt keyframe</button>';
   }
   if(s.vid.status!=='done') return '<button class="btn primary nextbtn" data-next="'+s.id+'" onclick="App.genVideo(\''+s.id+'\')" '+((s.kf.approved&&!busyV)?'':'disabled')+'>▶ Bước tiếp: Gen video</button>';
-  return '<button class="btn nextbtn" data-next="'+s.id+'" onclick="document.getElementById(\'sec3\').scrollIntoView({behavior:\'smooth\'})">🎬 Scene đã đủ clip — xuống mục Ghép nối ↓</button>';
+  return '';
 }
 function sceneHTML(p,s,si){
   const isBoard=p.boardMode==='board';
@@ -1338,7 +1336,6 @@ function sceneHTML(p,s,si){
      '<button class="btn small primary" onclick="App.genVideo(\''+s.id+'\')" '+((s.kf.approved&&!['queued','processing'].includes(s.vid.status))?'':'disabled')+'>'+(s.vid.url?'Gen lại video':'Gen video')+'</button>'+
      (s.vid.url? '<button class="btn small" onclick="App.downloadSeg(\''+s.id+'\')">⬇ Tải clip</button>' : '')+
    '</div>'+
-   stage+
    '<details class="promptbox"><summary>📝 Kịch bản của scene (xem / sửa)</summary>'+
      '<label class="fl">Mô tả hình ảnh / hành động của đoạn</label><textarea oninput="App.setSeg(\''+s.id+'\',\'visual\',this.value)" placeholder="VD: Cô gái cầm máy thổi lá, lá khô bay tung trên sân gạch...">'+esc(s.visual)+'</textarea>'+
      '<label class="fl">Lời thoại (nếu có — sẽ đưa vào prompt gen video)</label><textarea style="min-height:44px" oninput="App.setSeg(\''+s.id+'\',\'dialogue\',this.value)" placeholder="Thoại review chuyên nghiệp, ~37–40 từ cho 10 giây">'+esc(s.dialogue)+'</textarea>'+
@@ -1351,6 +1348,7 @@ function sceneHTML(p,s,si){
    '</details>'+
    (isBoard?'':'<details class="promptbox"><summary>Prompt ảnh (xem / sửa trước khi gen)</summary><textarea style="min-height:90px" onchange="App.setSegPrompt(\''+s.id+'\',\'kf\',this.value)">'+esc(s.promptKf||buildImagePrompt(p,s))+'</textarea><div class="btnrow"><button class="btn small" onclick="App.regenSegPrompts(\''+s.id+'\')">✨ Gemini soạn lại prompt</button><button class="btn small" onclick="App.resetSegPrompt(\''+s.id+'\',\'kf\')">↺ Về prompt gốc</button></div></details>')+
    '<details class="promptbox"><summary>Prompt video (xem / sửa trước khi gen)</summary><textarea style="min-height:90px" onchange="App.setSegPrompt(\''+s.id+'\',\'vid\',this.value)">'+esc(s.promptVid||buildVideoPrompt(p,s,si))+'</textarea><div class="btnrow"><button class="btn small" onclick="App.regenSegPrompts(\''+s.id+'\')">✨ Gemini soạn lại prompt</button><button class="btn small" onclick="App.resetSegPrompt(\''+s.id+'\',\'vid\')">↺ Về prompt gốc</button></div></details>'+
+   stage+
    '</div></div>';
 }
 window.__renderProduction=function(p){
@@ -1361,8 +1359,8 @@ window.__renderProduction=function(p){
     <button class="btn primary" id="runAllBtn" onclick="App.runAll()">🚀 Chạy hết dự án — 1 chạm</button>
     <button class="btn primary" onclick="App.produceAllKeyframes()">${producingAll? '■ Đang tạo — bấm để dừng' : (p.boardMode==='board'?'⚡ Tạo tất cả storyboard':'⚡ Tạo tất cả keyframe')}</button>
     <button class="btn primary" onclick="App.queueAll()">▶ Chạy hàng đợi: gen video mọi đoạn đã duyệt</button></div>
-    <p class="muted">"Chạy hết dự án": t tự gen hình → dừng chờ m duyệt → duyệt xong tự gen video → đủ clip tự ghép. Hoặc làm tay từng scene bằng nút "Bước tiếp" trong khối của scene đó.</p></div>
-  <div class="scenenav"><b>Các scene</b><span class="sdots">${p.segments.map((s,si)=>{ const b=s.board||{}; const err=s.kf.status==='error'||s.vid.status==='error'||b.status==='error'; const doneV=s.vid.status==='done'; const appr=(p.boardMode==='board')? b.approved : s.kf.approved; const doneK=(p.boardMode==='board')? b.status==='done' : s.kf.status==='done'; const cls= err?'err': doneV?'done': (doneK&&appr)?'mid': doneK?'wait':''; const tip= err?'Có lỗi': doneV?'Đã có clip': (doneK&&appr)?'Đã duyệt — chờ gen video': doneK?'Chờ duyệt':'Chưa gen'; return '<button class="sdot '+cls+'" title="'+esc(s.title)+' — '+tip+'" onclick="App.sceneGo(\''+s.id+'\')">'+(si+1)+'</button>'; }).join('')}</span><span style="flex:1"></span><button class="btn small" onclick="App.sceneNav(-1)">◀</button><button class="btn small" onclick="App.sceneNav(1)">▶</button></div>
+</div>
+  <div class="scenenav"><b>Các scene</b><span class="sdots">${p.segments.map((s,si)=>{ const b=s.board||{}; const err=s.kf.status==='error'||s.vid.status==='error'||b.status==='error'; const doneV=s.vid.status==='done'; const appr=(p.boardMode==='board')? b.approved : s.kf.approved; const doneK=(p.boardMode==='board')? b.status==='done' : s.kf.status==='done'; const cls= err?'err': doneV?'done': (doneK&&appr)?'mid': doneK?'wait':''; const tip= err?'Có lỗi': doneV?'Đã có clip': (doneK&&appr)?'Đã duyệt — chờ gen video': doneK?'Chờ duyệt':'Chưa gen'; return '<button class="sdot '+cls+'" title="'+esc(s.title)+' — '+tip+'" onclick="App.sceneGo(\''+s.id+'\')">'+(si+1)+'</button>'; }).join('')}</span><button class="btn small" onclick="document.getElementById('sec3').scrollIntoView({behavior:'smooth'})">${p.segments.filter(x=>x.vid.status==='done').length}/${p.segments.length} Clip - Ghép Nối</button><span style="flex:1"></span><button class="btn small" onclick="App.sceneNav(-1)">◀</button><button class="btn small" onclick="App.sceneNav(1)">▶</button></div>
   <div class="scenestrip" id="sceneStrip">${p.segments.map((s,si)=>sceneHTML(p,s,si)).join('')}</div>
   <div class="steptitle" id="sec3">3 · Ghép nối</div>
   <div class="card"><h3>Ghép phim ngay trong app</h3>
@@ -1378,7 +1376,7 @@ window.__renderProduction=function(p){
   <div class="card"><h3>Caption đăng bài</h3>
     <div class="btnrow" style="margin-top:0"><button class="btn" onclick="App.genCaption()">✨ Viết caption + hashtag</button>
     ${p.caption?'<button class="btn" onclick="App.copyCaption()">Copy caption</button>':''}</div>
-    ${p.caption?`<textarea style="min-height:90px" oninput="App.setP('caption',this.value)">${esc(p.caption)}</textarea>`:'<p class="muted">Chưa có caption. AI viết sẵn caption đăng TikTok / Reels kèm 6–10 hashtag theo nội dung video.</p>'}
+    ${p.caption?`<textarea style="min-height:90px" oninput="App.setP('caption',this.value)">${esc(p.caption)}</textarea>`:'<p class="muted">Chưa có caption. AI gợi ý caption gồm tiêu đề giật tít ~5 từ + đúng 5 hashtag.</p>'}
   </div>`;
 };
 
@@ -1601,15 +1599,13 @@ function collectActivity(){
   const items=[];
   for(const k of Object.keys(uiTasks)) items.push({key:'ui:'+k, label:uiTasks[k].label, stage:uiTasks[k].stage});
   for(const p of (S.projects||[])){
-    for(const s of (p.segments||[])){
-      const pre=(p.name||'Dự án')+' · '+(s.title||'Đoạn');
-      if(s.board && ['queued','processing'].includes(s.board.status)) items.push({key:p.id+':'+s.id+':board', label:pre, stage: s.board.status==='queued'?'Đang chờ gen storyboard':'Đang gen storyboard...'});
-      if(['queued','processing'].includes(s.kf.status)) items.push({key:p.id+':'+s.id+':kf', label:pre, stage: s.kf.status==='queued'?'Đang chờ gen keyframe':'Đang gen keyframe...'});
-      if(['queued','processing'].includes(s.vid.status)) items.push({key:p.id+':'+s.id+':vid', label:pre, stage:'Đang gen video... '+(s.vid.progress||0)+'%'});
-    }
+    const segs=p.segments||[]; const total=segs.length;
+    const vidRun=segs.filter(s=>['queued','processing'].includes(s.vid.status)).length;
+    const imgRun=segs.filter(s=> (s.board&&['queued','processing'].includes(s.board.status)) || ['queued','processing'].includes(s.kf.status)).length;
+    if(vidRun){ const dn=segs.filter(s=>s.vid.status==='done').length; items.push({key:p.id+':genvid', label:'', stage:'Đang tạo video '+Math.min(total,dn+vidRun)+'/'+total}); }
+    else if(imgRun){ const dn=segs.filter(s=> p.boardMode==='board'? (s.board&&s.board.status==='done') : s.kf.status==='done').length; items.push({key:p.id+':genimg', label:'', stage:'Đang tạo ảnh '+Math.min(total,dn+imgRun)+'/'+total}); }
     if(p.asmResult && p.asmResult.status==='processing') items.push({key:p.id+':asm', label:(p.name||'Dự án'), stage:'Đang ghép video... '+(p.asmResult.progress||0)+'%'});
   }
-  if(producingAll) items.push({key:'prodall', label:'Hàng loạt', stage:'Đang tạo keyframe/storyboard tất cả các đoạn...'});
   for(const j of (S.jobs||[])){ if(j && (j.status==='running'||j.status==='processing')) items.push({key:'job:'+j.id, label:'Điều khiển', stage:'Đang tạo kịch bản...'}); }
   return items;
 }
@@ -1622,7 +1618,7 @@ function paintActBar(){
   if(!items.length){ bar.classList.add('hidden'); bar.innerHTML=''; return; }
   bar.classList.remove('hidden');
   const show=items.slice(0,3);
-  bar.innerHTML=show.map(it=>'<div class="actitem"><span class="spin"></span><span class="actstage">'+esc(it.label)+' — '+esc(it.stage)+'</span><span class="acttime">đã chờ '+fmtElapsed(now-actStarts[it.key])+'</span></div>').join('')
+  bar.innerHTML=show.map(it=>'<div class="actitem"><span class="spin"></span><span class="actstage">'+(it.label? esc(it.label)+' — ':'')+esc(it.stage)+'</span><span class="acttime">đã chờ '+fmtElapsed(now-actStarts[it.key])+'</span></div>').join('')
     +(items.length>3? '<div class="actitem"><span class="actstage">… và '+(items.length-3)+' việc nữa đang chạy</span></div>' : '');
 }
 setInterval(()=>{ paintActBar(); }, 1000);
@@ -2689,9 +2685,13 @@ async function genCaption(){
     'Lời thoại các cảnh: '+p.segments.map(s=>s.dialogue).filter(Boolean).join(' / ')].filter(Boolean).join('\n');
   try{
     const data=await aiChat([
-        {role:'system',content:'Bạn viết caption đăng TikTok/Reels cho video affiliate. CẤU TRÚC BẮT BUỘC: dòng đầu là TIÊU ĐỀ giật tít gồm ĐÚNG 5–6 từ (đánh mạnh tâm lý: tò mò, tiếc nuối, sợ bỏ lỡ), không chứa hashtag; tiếp theo 2–3 câu mô tả ngắn gọn, giàu lợi ích; cuối cùng là ĐÚNG 5 hashtag liên quan nhất tới sản phẩm và loại sản phẩm (không hơn, không kém). Chỉ trả caption, không giải thích.'},
+        {role:'system',content:'Bạn viết caption đăng TikTok/Reels cho video affiliate. CẤU TRÚC BẮT BUỘC — CHỈ 2 DÒNG: dòng 1 là TIÊU ĐỀ giật tít khoảng 5 từ (4–6 từ) liên quan trực tiếp tới sản phẩm, đánh mạnh tâm lý tò mò / sợ bỏ lỡ, không chứa hashtag; dòng 2 là ĐÚNG 5 hashtag liên quan nhất tới sản phẩm và loại sản phẩm. KHÔNG viết thêm bất kỳ câu mô tả nào khác. Chỉ trả caption, không giải thích.'},
         {role:'user',content:ctx}], { json:false });
-    p.caption=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||'').trim();
+    const rawCap=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||'').trim();
+    const capTags=(rawCap.match(/#[\p{L}\p{N}_]+/gu)||[]).slice(0,5);
+    let capTitle=rawCap.split('\n').map(x=>x.trim()).filter(x=>x && !x.startsWith('#'))[0]||'';
+    capTitle=capTitle.replace(/^["'“”]+|["'“”]+$/g,'').trim();
+    p.caption= capTitle + (capTags.length? '\n'+capTags.join(' ') : '');
     save(); renderProductionZone(); toast('Đã có caption');
   }catch(e){ toast('Viết caption lỗi: '+e.message); }
 }
@@ -2719,8 +2719,11 @@ let asmBusy=false;
 function asmResultHTML(p){ const r=p.asmResult; if(!r) return '';
   if(r.status==='processing') return `<p class="muted">⏳ Đang ghép trên xưởng... ${r.progress||0}%</p>`;
   if(r.status==='failed') return `<p class="muted">❌ Ghép lỗi: ${esc(r.error||'không rõ')} — thử lại, hoặc dùng gói ghép dự phòng bên dưới.</p>`;
-  if(r.status==='done'&&r.url) return `<video src="${esc(resolveUrl(r.url))}" controls playsinline style="width:100%; border-radius:12px; margin-top:6px"></video>
-  <div class="btnrow"><button class="btn primary" onclick="App.downloadFinal()">⬇️ Tải video hoàn chỉnh</button></div>`;
+  if(r.status==='done'&&r.url){ const tr=r.trims||[]; const hc2=tr.reduce((x,t)=>x+(t.start||0),0), tc2=tr.reduce((x,t)=>x+Math.max(0,(t.dur||0)-(t.end||0)),0);
+    return `<div style="max-width:230px; margin:8px auto 0"><video src="${esc(resolveUrl(r.url))}" controls playsinline style="width:100%; border-radius:12px"></video></div>
+  ${(hc2>0.05||tc2>0.05)?`<p class="muted" style="text-align:center">✂️ Đã cắt khoảng lặng: đầu ≈${hc2.toFixed(1)}s · cuối ≈${tc2.toFixed(1)}s</p>`:''}
+  ${r.subtitles? (r.subtitles.burned? `<p class="muted" style="text-align:center">🔤 Đã cháy phụ đề: ${r.subtitles.cues||0} dòng thoại</p>` : `<p class="muted" style="text-align:center; color:var(--warn)">⚠️ Chưa cháy được phụ đề vào video này — ghép lại hoặc báo t kiểm tra cầu</p>`) : ''}
+  <div class="btnrow" style="justify-content:center"><button class="btn primary" onclick="App.downloadFinal()">⬇️ Tải video hoàn chỉnh</button></div>`; }
   return ''; }
 function renderProductionZoneKeepScroll(){
   const appEl=document.getElementById('app'); const st=appEl? appEl.scrollTop : 0;
@@ -2737,8 +2740,12 @@ async function assembleNow(){
   const done=p.segments.filter(s=>s.vid&&s.vid.status==='done'&&s.vid.url);
   if(!done.length){ toast('Chưa có đoạn video nào hoàn thành để ghép'); return; }
   const fname=u=>{ const m=String(u||'').split('/v1/media/'); if(m.length<2) return ''; try{ return decodeURIComponent(m[1].split(/[?#]/)[0]); }catch(e){ return ''; } };
-  const a=ensureAsm(p); const hc=parseFloat(a.headCut)||0;
-  const clips=done.map(s=>{ const c={file:fname(s.vid.url)}; if(hc>0) c.start=hc; return c; }).filter(c=>c.file);
+  const a=ensureAsm(p);
+  const clips=[]; const cues=[];
+  done.forEach(s=>{ const f=fname(s.vid.url); if(!f) return; const ci=clips.length; clips.push({file:f});
+    if(a.subOn){ const dlg=String(s.dialogue||'').replace(/\s+/g,' ').trim(); if(dlg){ const words=dlg.split(' '); const segDur=Number(s.dur)||10; const chunks=[]; for(let i=0;i<words.length;i+=6) chunks.push(words.slice(i,i+6)); const totalW=words.length; let acc=0;
+      chunks.forEach(ch=>{ const st=segDur*acc/totalW; acc+=ch.length; const en=segDur*acc/totalW; cues.push({seg:ci, start:Math.round(st*100)/100, end:Math.round(en*100)/100, text:ch.join(' ')}); }); } }
+  });
   const flowN=done.length-clips.length;
   if(!clips.length){ toast(flowN? 'Tất cả clip đã xong đều chưa nằm trong kho trên xưởng — hãy tải từng clip về rồi ghép ở CapCut' : 'Không đọc được tên file clip trên xưởng'); return; }
   if(flowN) toast('Có '+flowN+' đoạn chưa nhập kho nên không ghép trong app được — tải các đoạn đó về ghép thêm ở CapCut', 6000);
@@ -2746,13 +2753,15 @@ async function assembleNow(){
   if(p.asmResult && p.asmResult.status==='done' && p.asmResult.url){ p.asmPrev={url:p.asmResult.url, at:p.asmResult.at}; }
   asmBusy=true; p.asmResult={status:'processing', progress:0}; save(); renderProductionZoneKeepScroll();
   try{
-    const data=await api('/v1/assemble',{method:'POST', body:JSON.stringify({ clips, trim_silence: a.trimSilence!==false, speed: parseFloat(a.speed)||1 })});
+    const payload={ clips, trim_silence: a.trimSilence!==false, speed: 1 };
+    if(a.subOn && cues.length) payload.subtitles={ enabled:true, size:a.subSize||'vua', position:a.subPos||'duoi', style:a.subStyle||'tiktok', cues };
+    const data=await api('/v1/assemble',{method:'POST', body:JSON.stringify(payload)});
     const tid=data.id||data.task_id; if(!tid) throw new Error('Xưởng không trả mã ghép');
     const t0=Date.now();
     while(Date.now()-t0 < 12*60*1000){
       await new Promise(r=>setTimeout(r,4000));
       const t=await api('/v1/assemble/'+tid);
-      if(t.status==='completed'){ const url=(t.result&&t.result.url)||t.url||''; p.asmResult={status:'done', url, at:Date.now()}; save(); renderProductionZoneKeepScroll(); toast('Đã ghép xong video 🎬'); asmBusy=false; return; }
+      if(t.status==='completed'){ const url=(t.result&&t.result.url)||t.url||''; p.asmResult={status:'done', url, at:Date.now(), trims:(t.result&&t.result.trims)||null, subtitles:(t.result&&t.result.subtitles)||null}; save(); renderProductionZoneKeepScroll(); toast('Đã ghép xong video 🎬'); asmBusy=false; return; }
       if(t.status==='failed'){ throw new Error(t.error||'ffmpeg lỗi'); }
       p.asmResult={status:'processing', progress:t.progress||0}; save(); renderProductionZoneKeepScroll();
     }
@@ -2765,28 +2774,20 @@ function asmHTML(p){
   return `
   <label class="fl">Tự cắt khoảng lặng đầu/cuối mỗi cảnh</label>
   <div class="segbtn"><button class="${!a.trimSilence?'active':''}" onclick="App.setAsmBoolRender('trimSilence',false)">Tắt</button><button class="${a.trimSilence?'active':''}" onclick="App.setAsmBoolRender('trimSilence',true)">Bật</button></div>
-  <label class="fl">Cắt cố định đầu mỗi đoạn (bỏ đoạn chờ trước khi nhân vật nói)</label>
-  <div class="segbtn">${['0','1','1.5','2'].map(v=>`<button class="${String(a.headCut||'0')===v?'active':''}" onclick="App.setAsmRender('headCut','${v}')">${v==='0'?'Không cắt':v+' giây'}</button>`).join('')}</div>
-  <label class="fl">Phụ đề chạy theo lời thoại</label>
+
+  <label class="fl">Phụ đề cháy vào video (tự lấy thoại từng scene)</label>
   <div class="segbtn"><button class="${!a.subOn?'active':''}" onclick="App.setAsmBoolRender('subOn',false)">Tắt</button><button class="${a.subOn?'active':''}" onclick="App.setAsmBoolRender('subOn',true)">Bật</button></div>
-  ${a.subOn?`<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
-    <div><label class="fl">Cỡ chữ</label><select onchange="App.setAsm('subSize',this.value)">${selOpts({nho:'Nhỏ',vua:'Vừa',lon:'Lớn'},a.subSize)}</select></div>
-    <div><label class="fl">Vị trí</label><select onchange="App.setAsm('subPos',this.value)">${selOpts({tren:'Trên',giua:'Giữa',duoi:'Dưới'},a.subPos)}</select></div>
-    <div><label class="fl">Kiểu phụ đề</label><select onchange="App.setAsm('subStyle',this.value)">${selOpts({tiktok:'TikTok',codien:'Cổ điển',nenden:'Nền đen'},a.subStyle)}</select></div>
-    <div><label class="fl">Màu chữ</label><select onchange="App.setAsm('subColor',this.value)">${selOpts({trang:'Trắng',vang:'Vàng'},a.subColor)}</select></div>
+  ${a.subOn?`<div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:8px">
+    <div><label>Cỡ chữ</label><select onchange="App.setAsmRender('subSize',this.value)"><option value="nho" ${a.subSize==='nho'?'selected':''}>Nhỏ</option><option value="vua" ${a.subSize==='vua'?'selected':''}>Vừa</option><option value="lon" ${a.subSize==='lon'?'selected':''}>Lớn</option></select></div>
+    <div><label>Vị trí</label><select onchange="App.setAsmRender('subPos',this.value)"><option value="duoi" ${a.subPos==='duoi'?'selected':''}>Dưới</option><option value="giua" ${a.subPos==='giua'?'selected':''}>Giữa</option><option value="tren" ${a.subPos==='tren'?'selected':''}>Trên</option></select></div>
+    <div><label>Kiểu chữ</label><select onchange="App.setAsmRender('subStyle',this.value)"><option value="tiktok" ${a.subStyle==='tiktok'?'selected':''}>TikTok (trắng đậm, viền đen)</option><option value="phim" ${a.subStyle==='phim'?'selected':''}>Phim (trắng mảnh)</option><option value="vang" ${a.subStyle==='vang'?'selected':''}>Vàng đậm</option></select></div>
   </div>`:''}
-  <label class="checkrow"><input type="checkbox" ${a.ctaEnd?'checked':''} onchange="App.setAsmBool('ctaEnd',this.checked)"> Thêm cảnh kết kêu gọi mua (+2,5 giây)</label>
-  <label class="fl">Tốc độ phát</label>
-  <div class="segbtn">${['1','1.15','1.25'].map(v=>`<button class="${a.speed===v?'active':''}" onclick="App.setAsmRender('speed','${v}')">${v}x</button>`).join('')}</div>
-  <label class="fl">Logo shop ở góc video (PNG)</label>
-  <div class="refs">${a.logo?`<div class="refbox"><img src="${a.logo}"><button onclick="App.delLogo()">×</button></div>`
-    :`<button class="addref" onclick="document.getElementById('asmLogoFile').click()">＋</button>`}
-    <input type="file" id="asmLogoFile" accept="image/*" class="hiddenfile" onchange="App.addLogo(this)"></div>
+
   <div class="btnrow"><button class="btn primary" onclick="App.assembleNow()" ${asmBusy?'disabled':''}>${asmBusy?'⏳ ĐANG GHÉP — chờ xưởng nối xong…':'🎬 GHÉP VIDEO NGAY TRONG APP'}</button></div>
   ${asmResultHTML(p)}${asmPrevHTML(p)}
-  <p class="muted">Ghép ngay: xưởng tự nối các đoạn theo đúng thứ tự cảnh + cắt khoảng lặng + tốc độ đã chọn → xem và tải video hoàn chỉnh ngay tại đây. Phụ đề/logo: dùng gói ghép dự phòng bên dưới.</p>
+  <p class="muted">Ghép ngay: xưởng tự nối các đoạn theo đúng thứ tự cảnh + cắt khoảng lặng đầu/cuối mỗi cảnh (khi bật) → xem và tải video hoàn chỉnh ngay tại đây.</p>
   <div class="btnrow"><button class="btn" onclick="App.exportPackage()">📦 Xuất gói ghép + tải clip (dự phòng)</button></div>
-  <p class="muted">Gửi cho t: các clip đã tải + file goi-ghep.json (+ logo nếu có) → t ghép bằng ffmpeg: cắt khoảng lặng, cháy phụ đề theo lời thoại, logo, cảnh kết → trả video hoàn chỉnh.</p>`;
+  <p class="muted">Gửi cho t: các clip đã tải + file goi-ghep.json → t ghép bằng ffmpeg: cắt khoảng lặng → trả video hoàn chỉnh.</p>`;
 }
 Object.assign(window.App,{ setSegBool, aiScript, setAsm, setAsmBool, setAsmRender, setAsmBoolRender,
   addLogo, delLogo, setMusic, genCover, genCaption, copyCaption, exportPackage, assembleNow, downloadFinal, downloadPrev });
