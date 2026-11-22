@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.14</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.15</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -960,6 +960,10 @@ const FINAL_LOCK=' No on-screen text, no subtitles, no captions, no banners, no 
 function withFinalLock(p){ p=String(p||''); return /no on-screen text/i.test(p)? p : (p+FINAL_LOCK); }
 function withActingLock(proj, seg, txt){ if(/ACTING DIRECTION/.test(txt)) return txt; const idx=(proj&&proj.segments)? proj.segments.indexOf(seg) : -1; let t=txt+' ACTING DIRECTION: the woman performs like a real human TikTok creator, not a mannequin — her facial expressions change naturally with every line: raised eyebrows, widening eyes, genuine smiles and real laughter, playful surprise, convinced nods; natural head tilts, shrugs and illustrating hand gestures; warm eye contact with the camera. Never a blank stare, never a frozen face, never one single expression for the whole clip, never a plastic AI look.'; if(idx===0) t+=' HOOK PERFORMANCE: the first 3 seconds are the hook — open with a big, scroll-stopping reaction: an exaggerated amazed or delighted expression, the product thrust toward the camera, maximum energy and a playful hint of humor, then settle into the review.'; return t; }
 function productLockText(proj){ try{ const b=(proj.script2&&(proj.script2.bible||proj.script2))||{}; return String(b.product_lock||'').slice(0,500); }catch(e){ return ''; } }
+/* V10.15: bible của dự án v3 nằm ở script2.profile (scriptIntoProject lưu vậy) — đọc chịu cả 3 dạng bible/profile/phẳng như productLockText */
+function bibleOf(proj){ try{ const s2=(proj&&proj.script2)||{}; return s2.bible||s2.profile||s2||{}; }catch(e){ return {}; } }
+function outfitLockText(proj){ const w=String(bibleOf(proj).wardrobe||'').trim(); return w? ' OUTFIT LOCK: in every panel she wears EXACTLY this outfit: '+w+' — nothing added, nothing removed, no color changes.' : ''; }
+const KF_REF_LOCK=' REFERENCE LOCK (mandatory): IMAGE 1 is the ANCHOR — copy her FACE, HAIRSTYLE, OUTFIT and the BACKGROUND from IMAGE 1 EXACTLY, 100 percent identical; the ONLY differences from the anchor are her POSE, ACTION and expression, which follow this scene exactly as described. The remaining images show the product only.';
 function withProductLock(proj, txt){ if(!proj || /PRODUCT FIDELITY LOCK/.test(txt)) return txt; const pl=productLockText(proj); return txt+' PRODUCT FIDELITY LOCK: the product must look EXACTLY like the reference images in every single frame — same overall shape, same proportions, same layout of parts (which part is on top, which is at the bottom), same colors and materials.'+(pl? ' Locked product facts: '+pl : '')+' Never redesign the product, never move any part (motor, blade, display, button, lid) to a different position, never turn it into a different type of product, never add or remove parts. If a detail is not clearly visible, keep it plain and unchanged instead of inventing a new design.'; }
 function isPolicyError(msg){ return /child|minor|underage|teen|celebrity|famous|public figure|real person|policy|violat|safety|trẻ em|người nổi tiếng|chính sách/i.test(String(msg||'')); }
 async function rewritePromptSafe(kind, prompt){
@@ -1025,11 +1029,17 @@ async function startImageTask(proj,seg){
   if(cm!=='none' && !proj.refsProd.length){ toast('Thiếu ảnh sản phẩm (chặng 1)'); return; }
   seg.kf.status='queued'; seg.kf.error=''; seg.kf.approved=false; save(); renderProductionZone();
   try{
-    const imgs= seg.hasProduct===false ? [...proj.refsChar] : [...proj.refsChar, ...proj.refsProd];
-    const pvI=prevSeg(proj,seg); if(pvI && pvI.endFrame){ try{ imgs.push(await urlToDataURI(pvI.endFrame)); }catch(e){} }
-    let kfPrompt=(seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg);
-    const firstSeg=proj.segments[0];
-    if(firstSeg && firstSeg!==seg && firstSeg.kf && firstSeg.kf.status==='done' && firstSeg.kf.url){ try{ imgs.push(await urlToDataURI(firstSeg.kf.url)); kfPrompt+=' IMPORTANT: one attached reference image is the approved keyframe of scene 1 — match its background, room layout, furniture positions, lighting and color palette EXACTLY, so every scene shares one consistent location.'; }catch(e){} }
+    /* V10.15 (TD chốt): có ẢNH CHUẨN thì keyframe chỉ bám [ảnh chuẩn + ảnh SP] — khoá 100% mặt/tóc/trang phục/bối cảnh, chỉ đổi tư thế/hành động/biểu cảm theo cảnh. Chưa có ảnh chuẩn thì giữ đường cũ (ảnh nhân vật + SP + nối khung cuối + neo keyframe cảnh 1). */
+    let imgs, kfPrompt=(seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg);
+    if(proj.anchorImg){
+      imgs=[proj.anchorImg, ...proj.refsProd.slice(0,2)];
+      kfPrompt+=KF_REF_LOCK+outfitLockText(proj);
+    } else {
+      imgs= seg.hasProduct===false ? [...proj.refsChar] : [...proj.refsChar, ...proj.refsProd];
+      const pvI=prevSeg(proj,seg); if(pvI && pvI.endFrame){ try{ imgs.push(await urlToDataURI(pvI.endFrame)); }catch(e){} }
+      const firstSeg=proj.segments[0];
+      if(firstSeg && firstSeg!==seg && firstSeg.kf && firstSeg.kf.status==='done' && firstSeg.kf.url){ try{ imgs.push(await urlToDataURI(firstSeg.kf.url)); kfPrompt+=' IMPORTANT: one attached reference image is the approved keyframe of scene 1 — match its background, room layout, furniture positions, lighting and color palette EXACTLY, so every scene shares one consistent location.'; }catch(e){} }
+    }
     seg.kf.engine=flowCfg().engImage;
     if(seg.kf.engine==='flow'){
       seg.kf.status='processing'; save(); renderProductionZone();
@@ -1064,7 +1074,8 @@ async function startVideoTask(proj,seg,fromRetry){
     } else {
       vimgs= seg.hasProduct===false ? [kfData] : [kfData, ...proj.refsProd.slice(0,2)];
     }
-    const pvV=proj.segments[idx-1]; if(pvV && pvV.endFrame && !(isBoardVid && seg.vid.engine==='flow')){ try{ vimgs.push(await urlToDataURI(pvV.endFrame)); }catch(e){} }
+    /* V10.15 (TD chốt): đường Flow KHÔNG nối khung cuối đoạn trước nữa (board vốn đã vậy; keyframe thường giờ dùng đúng keyframe + ảnh SP). Đường Muse giữ nối khung như cũ. */
+    const pvV=proj.segments[idx-1]; if(pvV && pvV.endFrame && seg.vid.engine!=='flow'){ try{ vimgs.push(await urlToDataURI(pvV.endFrame)); }catch(e){} }
     let effVP=(seg.promptVid&&seg.promptVid.trim())||buildVideoPrompt(proj,seg,idx);
     if(proj.scriptMode==='v3') effVP=withFinalLock(effVP);
     if(isBoardVid && seg.vid.engine==='flow'){
@@ -1078,8 +1089,8 @@ async function startVideoTask(proj,seg,fromRetry){
     else if(isBoardVid) effVP=(vimgs.length>1
       ? 'REFERENCE ROLES — IMAGE 1 is the storyboard sheet of this scene (a 2x3 grid of 6 panels): follow its 6 panels in reading order (left to right, top to bottom) as the exact shot sequence and follow the panel-by-panel timeline in the prompt below. The woman\'s face, hairstyle, outfit and the location come from IMAGE 1 and must match it EXACTLY in every shot. IMAGE 2 is a photo of the REAL product: the product in the video must match IMAGE 2 exactly — same shape, proportions, parts and colors — in every frame. '
       : 'STORYBOARD LOCK: the attached image is the storyboard sheet of this scene — a 2x3 grid of 6 panels. Animate the scene following the 6 panels in reading order (left to right, top to bottom) as the exact shot sequence. The woman\'s face, hairstyle and outfit, the product and the location must match the storyboard sheet EXACTLY in every shot — never change her hairstyle, clothes or face. ')+effVP;
-    /* V10.14 (TD chốt): chế độ keyframe — video PHẢI multi-shot, xen kẽ nhân vật nói và cận cảnh sản phẩm/chức năng, cấm 1 shot tĩnh suốt clip. Chỉ áp cho NON-board (board đã có timeline theo ô). */
-    if(!isBoardVid) effVP='MULTI-SHOT EDITING (mandatory): this clip is NOT one continuous shot — it must contain at least 3 hard jump cuts alternating between (1) medium shots of the woman speaking to the camera and (2) close-up shots of the product and the exact part or function the dialogue mentions at that moment; cut on the dialogue beats; never hold one static shot for the whole clip. '+effVP;
+    /* V10.15 (TD chốt): chế độ keyframe — video dựng từ 4–5 shot cắt cứng, xen kẽ nhân vật nói (đứng sau bàn) và cận cảnh SP bám đúng nội dung thoại từng giây, camera có chủ đích hút mắt. Chỉ áp cho NON-board (board đã có timeline theo ô). */
+    if(!isBoardVid) effVP='MULTI-SHOT EDITING (mandatory): build this clip from 4 to 5 quick shots with hard jump cuts — alternate (1) medium shots of the woman speaking to the camera (standing behind the table, product on the table in front of her) with (2) close-up shots of the product; every close-up must show the exact part, function, benefit or real-use moment the dialogue is describing at that second — use the attached product photos as the reference for those close-ups. Direct the camera deliberately: push in on the single most important detail of each beat, change angle or framing at every cut, cut exactly ON the dialogue beats so each cut lands the viewer\'s eye on what matters and keeps the pace fast and engaging. This clip must NEVER be one continuous static shot. '+effVP;
     if(seg.hasProduct!==false) effVP=withProductLock(proj, effVP);
     effVP=withActingLock(proj, seg, effVP);
     effVP=withActingLock(proj, seg, effVP); if(seg.hasProduct!==false) effVP=withProductLock(proj, effVP);
@@ -1290,7 +1301,7 @@ function gridStateOf(g){ return g? {cols:g.cols, rows:g.rows, ok:(g.cols===2&&g.
 /* V10.14: gom việc dựng prompt + ảnh ref của 1 lượt gen sheet vào một chỗ — gen thẳng và resume dùng chung */
 async function buildBoardGen(proj, seg){
   const useAnchor= !!proj.anchorImg;
-  const imgs= useAnchor ? [proj.anchorImg, ...proj.refsChar.slice(0,1), ...proj.refsProd.slice(0,2)] : (seg.hasProduct===false ? [...proj.refsChar.slice(0,3)] : [...proj.refsChar.slice(0,2), ...proj.refsProd.slice(0,2)]);
+  const imgs= useAnchor ? [proj.anchorImg, ...proj.refsProd.slice(0,2)] : (seg.hasProduct===false ? [...proj.refsChar.slice(0,3)] : [...proj.refsChar.slice(0,2), ...proj.refsProd.slice(0,2)]);
   const idx=proj.segments.indexOf(seg); const pvB=idx>0? proj.segments[idx-1] : null;
   let chainRef='';
   if(!useAnchor && pvB && pvB.board){
@@ -1300,7 +1311,7 @@ async function buildBoardGen(proj, seg){
   if(chainRef) imgs.push(chainRef);
   let prompt=(seg.promptSb&&seg.promptSb.trim()) || ('Create ONE storyboard sheet image: an exact 2 columns x 3 rows grid of 6 equal panels with thin white dividing lines, telling this scene as 6 sequential shots in reading order. The SAME woman (identical face and hairstyle as the reference photos) in the SAME outfit and the SAME location with the SAME lighting in all 6 panels; the product exactly as in the product reference photos in every panel; panel 1 is the opening moment, the middle panels alternate between the woman speaking and close-ups of the product in use, panel 6 is the closing moment. No text, no captions, no numbers, no logos, no watermark. Scene: '+((seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg)));
   if(chainRef) prompt+=' The FIRST panel must continue exactly from the attached reference panel (the final panel of the previous scene storyboard): same moment, same positions of the woman and the objects, same background and lighting.';
-  if(useAnchor) prompt+=' IMAGE ROLES: IMAGE 1 is the ANCHOR — it locks the woman\'s OUTFIT and the LOCATION (every panel must use the anchor outfit and location exactly). IMAGE 2 is the REAL character reference photo — the woman\'s FACE and HAIRSTYLE in every panel must match IMAGE 2 exactly, never a reinterpretation. The remaining images are the real product.';
+  if(useAnchor) prompt+=' REFERENCE LOCK (mandatory): IMAGE 1 is the ANCHOR and the ONLY source for the woman and the location — her FACE, HAIRSTYLE, OUTFIT and the BACKGROUND in every panel must match IMAGE 1 EXACTLY, 100 percent identical: no reinterpretation, no outfit changes, no added or removed garments, no background changes. The remaining images show the product only, for product fidelity.'+outfitLockText(proj);
   return {prompt:prompt, imgs:imgs, useAnchor:useAnchor};
 }
 /* V10.14: một lượt gọi engine tạo sheet (Flow hoặc Muse) — dùng cho gen chính và lượt gen lại khi QC lưới sai */
@@ -1475,7 +1486,13 @@ function vidStatusText(s){
   if(s.vid.status==='processing') return 'Đang gen video... '+(s.vid.progress||0)+'%';
   return s.kf.approved ? 'Sẵn sàng gen.' : '';
 }
-function genKeyframe(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(s) startImageTask(p,s); }
+async function genKeyframe(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(!s) return;
+  /* V10.15 (TD chốt): keyframe thường cũng bám ẢNH CHUẨN — chưa có thì tạo trước, chưa duyệt thì chặn gen. Dự án không nhân vật (charMode 'none') bỏ qua: không có người để khoá. */
+  if((p.charMode||'review')!=='none'){
+    if(!p.anchorImg && !p.anchorBusy){ toast('Đang tạo ảnh chuẩn ngầm để keyframe khớp mặt, tóc, trang phục và bối cảnh...'); await ensureAnchor(p); }
+    if(p.anchorImg && !p.anchorApproved){ toast('Ảnh chuẩn chưa được duyệt — xem ảnh chuẩn ở đầu mục Xưởng rồi bấm ✓ Duyệt ảnh chuẩn trước khi gen keyframe.'); return; }
+  }
+  startImageTask(p,s); }
 function approveKeyframe(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(!s) return; s.kf.approved=true; save(); renderProductionZone(); toast('Đã duyệt keyframe'); }
 function genVideo(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(s){ s.vid.retries=0; startVideoTask(p,s); } }
 let producingAll=false;
@@ -1491,14 +1508,15 @@ async function waitSegDone(seg, kind){
   return false;
 }
 async function ensureAnchor(proj){
-  if(proj.boardMode!=='board' || proj.anchorImg || proj.anchorBusy) return !!proj.anchorImg;
+  if(proj.anchorImg || proj.anchorBusy) return !!proj.anchorImg;
   if(!proj.refsChar.length && !proj.refsProd.length) return false;
   proj.anchorBusy=true; save();
   uiTaskStart('anchor:'+proj.id, (proj.name||'Dự án'), 'Đang tạo ảnh chuẩn ngầm — khoá trang phục, bối cảnh, mặt & tóc...');
   try{
-    const b2=(proj.script2&&proj.script2.bible)||proj.script2||{};
-    const prompt='Consistency anchor photo for a video series: the SAME woman as the character reference photos (identical face, identical hairstyle), wearing '+(b2.wardrobe||'the outfit she wears in the scenes')+', in '+(b2.environment||'the main location of the scenes')+', '+(b2.lighting||'soft natural light')+'. Photorealistic half-body shot of her STANDING BEHIND A TABLE — the canonical product-review setup: the product placed on the table in front of her, her hands resting lightly on the table near the product, upright presenting posture, looking at the camera with a relaxed, friendly presenting expression. This single image locks her outfit, the location, the behind-the-table staging, her face and her hairstyle for every scene. No text, no logo, no watermark.';
-    const imgs=[...proj.refsChar.slice(0,2), ...proj.refsProd.slice(0,1)];
+    const b2=bibleOf(proj);
+    /* V10.15 (TD chốt): ảnh chuẩn chỉ lấy ĐÚNG 1 ảnh nhân vật (nguồn mặt/tóc duy nhất) + tối đa 3 ảnh SP đủ góc; prompt chỉ mô tả trang phục MỚI + bối cảnh hợp SP + staging đứng sau bàn */
+    const prompt='Consistency anchor photo for a video series. The FIRST attached image is a CHARACTER photo and the ONLY identity source: copy that woman\'s face and hairstyle from it EXACTLY, identical in every detail — never describe, reinvent or beautify her face or hair. Create for her a NEW outfit fitting this product: '+(b2.wardrobe||'an outfit fitting the product and its real use context')+', in '+(b2.environment||'the main location of the scenes')+', '+(b2.lighting||'soft natural light')+'. The remaining attached images show the product from several angles — reproduce the product exactly as in them. Photorealistic half-body shot of her STANDING BEHIND A TABLE — the canonical product-review setup: the product placed on the table in front of her, her hands resting lightly on the table near the product, upright presenting posture, looking at the camera with a relaxed, friendly presenting expression. This single image locks her outfit, the location, the behind-the-table staging, her face and her hairstyle for every scene. No text, no logo, no watermark.';
+    const imgs=[...proj.refsChar.slice(0,1), ...proj.refsProd.slice(0,3)];
     let url='';
     if(flowCfg().engImage==='flow'){
       url=await flowGen('image', prompt, imgs, proj.ratio, null, 10);
@@ -1517,13 +1535,13 @@ async function ensureAnchor(proj){
 }
 /* V10.12: hiện ảnh chuẩn để TD duyệt 1 lần trước khi gen storyboard — sai người là chặn ngay tại đó */
 function anchorCardHTML(p){
-  if(p.boardMode!=='board') return '';
+  /* V10.15: thẻ ảnh chuẩn hiện ở CẢ chế độ keyframe thường (trước đây chỉ storyboard) */
   if(p.anchorBusy) return '<div class="card"><h3>\uD83D\uDDBC Ảnh chuẩn</h3><p class="muted">Đang tạo ảnh chuẩn ngầm — khoá trang phục, bối cảnh, mặt &amp; tóc...</p></div>';
   if(!p.anchorImg) return '';
   const ok=!!p.anchorApproved;
   return '<div class="card"><h3>\uD83D\uDDBC Ảnh chuẩn '+(ok?'— đã duyệt \u2713':'— CHƯA DUYỆT, xem kỹ trước khi gen storyboard')+'</h3>'+
    '<div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap"><img src="'+esc(resolveUrl(p.anchorImg))+'" style="width:120px;border-radius:12px;border:1px solid var(--line)" onclick="App.preview(\''+esc(resolveUrl(p.anchorImg))+'\',\'image\',\'anh-chuan\')">'+
-   '<div style="flex:1;min-width:200px"><p class="muted" style="margin-top:0">Tấm này khoá <b>trang phục + bối cảnh + staging đứng sau bàn</b> cho mọi storyboard; mặt &amp; tóc đối chiếu theo <b>ảnh nhân vật thật</b> (đính kèm cùng lúc khi gen sheet). Sai người ở đây là cả loạt sai theo — bấm Duyệt chỉ khi mặt/tóc/trang phục đúng với ảnh nhân vật của m.</p>'+
+   '<div style="flex:1;min-width:200px"><p class="muted" style="margin-top:0">Tấm này là <b>nguồn tham chiếu duy nhất</b> cho mọi storyboard và keyframe: mặt, kiểu tóc, trang phục, bối cảnh và staging đứng sau bàn đều phải khớp tấm này 100%. Sai người ở đây là cả loạt sai theo — bấm Duyệt chỉ khi mặt/tóc/trang phục đúng với ảnh nhân vật của m.</p>'+
    '<div class="btnrow" style="margin-top:0"><button class="btn small" onclick="App.preview(\''+esc(resolveUrl(p.anchorImg))+'\',\'image\',\'anh-chuan\')">\u26F6 Xem lớn</button>'+
    (ok?'':'<button class="btn small ok" onclick="App.approveAnchor()">\u2713 Duyệt ảnh chuẩn</button>')+
    '<button class="btn small" onclick="App.regenAnchor()">\uD83D\uDD04 Gen lại ảnh chuẩn</button></div></div></div></div>';
@@ -1534,7 +1552,7 @@ async function produceAllKeyframes(){
   const p=activeProject(); if(!p) return;
   if(producingAll){ batchStop=true; return; }
   batchStop=false; producingAll=true; renderProductionZone();
-  if(p.boardMode==='board'){ await ensureAnchor(p); if(p.anchorImg && !p.anchorApproved){ producingAll=false; save(); renderProductionZone(); toast('Ảnh chuẩn chưa được duyệt — xem ở đầu mục Xưởng, bấm ✓ Duyệt ảnh chuẩn rồi bấm lại nút tạo storyboard.'); return; } }
+  if((p.charMode||'review')!=='none'){ await ensureAnchor(p); if(p.anchorImg && !p.anchorApproved){ producingAll=false; save(); renderProductionZone(); toast('Ảnh chuẩn chưa được duyệt — xem ở đầu mục Xưởng, bấm ✓ Duyệt ảnh chuẩn rồi bấm lại nút tạo.'); return; } }
   try{
     if(p.boardMode==='board'){
       await ensureAnchor(p); // V10.12: ảnh chuẩn đã có (và đã duyệt) thì storyboard chạy CÙNG LÚC bằng ảnh chuẩn + ảnh nhân vật thật + ảnh SP
@@ -2470,9 +2488,9 @@ async function genScenePrompts(prod, st, profile, scA, idx, total, prevEnd){
     'Lời thoại của cảnh (giữ nguyên văn, không sửa một chữ; thoại chỉ gọi sản phẩm bằng tên loại chung, tuyệt đối không chứa tên hãng hay mã model): "'+scA.dialogue+'"',
     prevEnd? ('Trạng thái kết thúc của cảnh trước — cảnh này phải mở đầu tiếp nối đúng trạng thái đó: '+prevEnd) : 'Đây là cảnh đầu tiên của video.',
     'NHIỆM VỤ: viết 2 prompt TIẾNG ANH hoàn chỉnh, sẵn sàng gửi thẳng cho model tạo ảnh/video. KHÔNG viết mô tả trung gian, KHÔNG chia ô trạng thái — prompt phải là câu văn hoàn chỉnh, giàu chi tiết vật lý.',
-    board? 'SB_PROMPT (prompt tạo ẢNH STORYBOARD — MỘT sheet gồm đúng 6 ô kể trọn diễn biến cảnh này): viết prompt TIẾNG ANH yêu cầu tạo MỘT ảnh storyboard duy nhất, lưới đúng 2 cột × 3 hàng = 6 ô bằng nhau, viền trắng mỏng ngăn ô, thứ tự đọc trái sang phải, trên xuống dưới. Cả 6 ô: CÙNG nhân vật (giữ nguyên khuôn mặt và kiểu tóc như ảnh tham chiếu — TUYỆT ĐỐI không mô tả chi tiết gương mặt), CÙNG trang phục trong MASTER PROFILE (TUYỆT ĐỐI không mô tả lại trang phục bằng lời riêng từng cảnh — trang phục lấy đúng từ ảnh chuẩn và ảnh tham chiếu đính kèm, chỉ ghi "same outfit as the reference images"), CÙNG bối cảnh trong MASTER PROFILE, CÙNG ánh sáng, sản phẩm đúng hệt product_lock trong mọi ô. 6 ô là 6 shot nối tiếp của cảnh này, XEN KẼ nhau theo STAGING CHUẨN REVIEW: ô giới thiệu/nói chuyện — nhân vật ĐỨNG SAU BÀN, sản phẩm đặt trên bàn ngay trước mặt cô ấy (đúng staging của ảnh chuẩn); ô đặc tả — CẬN CẢNH sản phẩm, bộ phận hoặc chức năng đang hoạt động. Cụ thể: ô 1 = khoảnh khắc mở đầu cảnh, các ô giữa = các shot demo và cận cảnh sản phẩm đan xen nhân vật đang nói sau bàn, ô 6 = khoảnh khắc kết thúc cảnh. TUYỆT ĐỐI không vẽ nhân vật đứng giữa phòng không có bàn trong các ô nói chuyện. '+(prevEnd? 'QUAN TRỌNG: ô 1 phải tiếp nối đúng trạng thái kết thúc của cảnh trước — khi gen sẽ có ảnh ô cuối của storyboard cảnh trước đính kèm, ô 1 bám theo ảnh đó (cùng khoảnh khắc, cùng vị trí nhân vật và đồ vật, cùng bối cảnh).' : 'Ô 1 là hook: khoảnh khắc bắt mắt nhất của cảnh.')+' Không chữ, không số thứ tự ô (số thứ tự ô sẽ do app tự đánh dấu lên sheet sau khi tạo — model ảnh TUYỆT ĐỐI không tự vẽ bất kỳ số hay chữ nào lên sheet), không chú thích, không logo mới, không watermark, TUYỆT ĐỐI không hiệu ứng lấp lánh/ngôi sao (sparkle) hay trang trí phát sáng trong bất kỳ ô nào — sheet phải sạch như ảnh chụp thật.'
-    : 'KF_PROMPT (prompt tạo ảnh keyframe — khung hình MỞ ĐẦU của cảnh): mô tả MỘT khung hình tĩnh bằng tiếng Anh: người phụ nữ giống hệt ảnh tham chiếu (giữ nguyên khuôn mặt và kiểu tóc — TUYỆT ĐỐI không mô tả chi tiết gương mặt cô ấy), mặc đúng trang phục trong MASTER PROFILE, ở đúng bối cảnh trong MASTER PROFILE, sản phẩm đúng hệt product_lock (hình dáng, màu sắc, chất liệu, các bộ phận chính), tư thế và hành động là khoảnh khắc mở đầu của cảnh, ánh sáng theo MASTER PROFILE, phong cách ảnh UGC chụp bằng điện thoại, chân thực. STAGING: nếu khung mở đầu là shot nhân vật giới thiệu/nói thì nhân vật ĐỨNG SAU BÀN với sản phẩm đặt trên bàn trước mặt (chuẩn review); nếu là shot đặc tả thì cận cảnh sản phẩm. Không chữ, không logo mới, không watermark.',
-    (board? 'VID_PROMPT (prompt tạo video): viết bằng tiếng Anh theo TIMELINE TỪNG Ô STORYBOARD: mở đầu prompt PHẢI là lịch trình 6 shot ghi rõ khoảng giây theo đúng 6 ô ĐÃ ĐÁNH SỐ — khi gửi cho model video, sheet storyboard sẽ có số 1–6 hiện rõ ở góc trên-trái từng ô (app tự đánh số lên sheet sau khi tạo), nên lịch trình phải map Shot k vào đúng ô mang số k và ghi rõ theo mẫu: Shot 1 (0–'+(dur/6).toFixed(1)+'s) = ô số 1 (đánh dấu "1"), Shot 2 ('+(dur/6).toFixed(1)+'–'+(dur*2/6).toFixed(1)+'s) = ô số 2 (đánh dấu "2"), Shot 3 = ô số 3, Shot 4 = ô số 4, Shot 5 = ô số 5, Shot 6 (…–'+dur+'s) = ô số 6 (các khoảng giây nối tiếp nhau, phủ kín 0–'+dur+'s, mỗi shot ghi đúng nội dung/hành động/cỡ cảnh của ô tương ứng trong SB_PROMPT), CẮT CỨNG jump cut giữa các shot; mở đầu prompt phải dặn model: bám theo ảnh storyboard đính kèm theo đúng thứ tự các ô đã đánh số 1–6, khung hình đầu khớp ô số 1, TUYỆT ĐỐI không hiện lưới storyboard, viền ô, số đánh dấu ô hay bất kỳ chữ nào của sheet lên video. STAGING TRONG VIDEO bám đúng sheet: shot nói chuyện = nhân vật ĐỨNG SAU BÀN với sản phẩm đặt trên bàn trước mặt; nhịp tính năng/chi tiết = CẬN CẢNH sản phẩm. Các shot đan xen: (a)' : 'VID_PROMPT (prompt tạo video): viết bằng tiếng Anh theo TIMELINE TỪNG GIÂY từ 0 đến '+dur+' giây, chia 4–6 shot với CẮT CỨNG (jump cut) đan xen — BẮT BUỘC ít nhất 3 lần cắt cứng, clip TUYỆT ĐỐI không được là một shot tĩnh duy nhất từ đầu tới cuối: (a)') + 'trung cảnh nhân vật nói thẳng vào camera (nhân vật ĐỨNG SAU BÀN, sản phẩm đặt trên bàn trước mặt — staging chuẩn review), (b) cận cảnh sản phẩm — chức năng đang hoạt động, chất liệu bề mặt, chi tiết cấu tạo, kết quả/lợi ích thấy rõ. Mỗi shot ghi rõ khoảng giây, cỡ cảnh, hành động, và phần lời thoại tương ứng: thoại nói tới đâu, hình cho thấy đúng thứ đó. TUYỆT ĐỐI không dùng zoom in/zoom out hay lia máy chậm làm ngôn ngữ camera chính — phải cắt shot thật giữa các cỡ cảnh.',
+    board? 'SB_PROMPT (prompt tạo ẢNH STORYBOARD — MỘT sheet gồm đúng 6 ô kể trọn diễn biến cảnh này): viết prompt TIẾNG ANH yêu cầu tạo MỘT ảnh storyboard duy nhất, lưới đúng 2 cột × 3 hàng = 6 ô bằng nhau, viền trắng mỏng ngăn ô, thứ tự đọc trái sang phải, trên xuống dưới. Cả 6 ô: CÙNG nhân vật (giữ nguyên khuôn mặt và kiểu tóc như ảnh tham chiếu — TUYỆT ĐỐI không mô tả chi tiết gương mặt), CÙNG trang phục trong MASTER PROFILE (TUYỆT ĐỐI không mô tả lại trang phục bằng lời riêng từng cảnh — sheet được tạo CHỈ từ ẢNH CHUẨN và ảnh sản phẩm, KHÔNG kèm ảnh nhân vật riêng; SB_PROMPT phải ghi rõ: khuôn mặt, kiểu tóc, trang phục và bối cảnh trong mọi ô khớp ẢNH CHUẨN đúng 100%, không diễn giải lại, không thay đổi bất cứ chi tiết nào — trong prompt chỉ ghi "same face, hairstyle, outfit and background as the anchor reference image, 100% identical"), CÙNG bối cảnh trong MASTER PROFILE, CÙNG ánh sáng, sản phẩm đúng hệt product_lock trong mọi ô. 6 ô là 6 shot nối tiếp của cảnh này, XEN KẼ nhau theo STAGING CHUẨN REVIEW: ô giới thiệu/nói chuyện — nhân vật ĐỨNG SAU BÀN, sản phẩm đặt trên bàn ngay trước mặt cô ấy (đúng staging của ảnh chuẩn); ô đặc tả — CẬN CẢNH sản phẩm, bộ phận hoặc chức năng đang hoạt động. Cụ thể: ô 1 = khoảnh khắc mở đầu cảnh, các ô giữa = các shot demo và cận cảnh sản phẩm đan xen nhân vật đang nói sau bàn, ô 6 = khoảnh khắc kết thúc cảnh. TUYỆT ĐỐI không vẽ nhân vật đứng giữa phòng không có bàn trong các ô nói chuyện. '+(prevEnd? 'QUAN TRỌNG: ô 1 phải tiếp nối đúng trạng thái kết thúc của cảnh trước — khi gen sẽ có ảnh ô cuối của storyboard cảnh trước đính kèm, ô 1 bám theo ảnh đó (cùng khoảnh khắc, cùng vị trí nhân vật và đồ vật, cùng bối cảnh).' : 'Ô 1 là hook: khoảnh khắc bắt mắt nhất của cảnh.')+' Không chữ, không số thứ tự ô (số thứ tự ô sẽ do app tự đánh dấu lên sheet sau khi tạo — model ảnh TUYỆT ĐỐI không tự vẽ bất kỳ số hay chữ nào lên sheet), không chú thích, không logo mới, không watermark, TUYỆT ĐỐI không hiệu ứng lấp lánh/ngôi sao (sparkle) hay trang trí phát sáng trong bất kỳ ô nào — sheet phải sạch như ảnh chụp thật.'
+    : 'KF_PROMPT (prompt tạo ảnh keyframe — khung hình MỞ ĐẦU của cảnh): mô tả MỘT khung hình tĩnh bằng tiếng Anh. Keyframe được tạo từ ẢNH CHUẨN của dự án và ảnh sản phẩm: người phụ nữ phải giống hệt ẢNH CHUẨN — khuôn mặt, kiểu tóc, trang phục và bối cảnh khớp ẢNH CHUẨN đúng 100% (TUYỆT ĐỐI không mô tả chi tiết gương mặt cô ấy, không mô tả lại trang phục hay bối cảnh bằng lời riêng); so với ảnh chuẩn, CHỈ thay đổi tư thế, hành động và biểu cảm theo đúng khoảnh khắc mở đầu của cảnh này. Sản phẩm đúng hệt product_lock (hình dáng, màu sắc, chất liệu, các bộ phận chính), ánh sáng theo MASTER PROFILE, phong cách ảnh UGC chụp bằng điện thoại, chân thực. STAGING: nếu khung mở đầu là shot nhân vật giới thiệu/nói thì nhân vật ĐỨNG SAU BÀN với sản phẩm đặt trên bàn trước mặt (chuẩn review); nếu là shot đặc tả thì cận cảnh sản phẩm. Không chữ, không logo mới, không watermark.',
+    (board? 'VID_PROMPT (prompt tạo video): viết bằng tiếng Anh theo TIMELINE TỪNG Ô STORYBOARD: mở đầu prompt PHẢI là lịch trình 6 shot ghi rõ khoảng giây theo đúng 6 ô ĐÃ ĐÁNH SỐ — khi gửi cho model video, sheet storyboard sẽ có số 1–6 hiện rõ ở góc trên-trái từng ô (app tự đánh số lên sheet sau khi tạo), nên lịch trình phải map Shot k vào đúng ô mang số k và ghi rõ theo mẫu: Shot 1 (0–'+(dur/6).toFixed(1)+'s) = ô số 1 (đánh dấu "1"), Shot 2 ('+(dur/6).toFixed(1)+'–'+(dur*2/6).toFixed(1)+'s) = ô số 2 (đánh dấu "2"), Shot 3 = ô số 3, Shot 4 = ô số 4, Shot 5 = ô số 5, Shot 6 (…–'+dur+'s) = ô số 6 (các khoảng giây nối tiếp nhau, phủ kín 0–'+dur+'s, mỗi shot ghi đúng nội dung/hành động/cỡ cảnh của ô tương ứng trong SB_PROMPT), CẮT CỨNG jump cut giữa các shot; mở đầu prompt phải dặn model: bám theo ảnh storyboard đính kèm theo đúng thứ tự các ô đã đánh số 1–6, khung hình đầu khớp ô số 1, TUYỆT ĐỐI không hiện lưới storyboard, viền ô, số đánh dấu ô hay bất kỳ chữ nào của sheet lên video. STAGING TRONG VIDEO bám đúng sheet: shot nói chuyện = nhân vật ĐỨNG SAU BÀN với sản phẩm đặt trên bàn trước mặt; nhịp tính năng/chi tiết = CẬN CẢNH sản phẩm. Các shot đan xen: (a)' : 'VID_PROMPT (prompt tạo video): viết bằng tiếng Anh theo TIMELINE TỪNG GIÂY từ 0 đến '+dur+' giây, với KẾ HOẠCH 4–5 SHOT cắt cứng (jump cut) đan xen nhau — clip TUYỆT ĐỐI không được là một shot tĩnh duy nhất từ đầu tới cuối. Mỗi shot trong kế hoạch phải ghi rõ: khoảng giây, cỡ cảnh, hướng camera và điểm focus (camera đẩy vào chi tiết nào, mắt người xem bị hút vào đâu), hành động, và nhịp lời thoại mà shot đó phục vụ. Các shot xen kẽ nhau: shot nhân vật nói (trung cảnh, nhân vật đứng sau bàn) và shot CẬN CẢNH sản phẩm — mỗi shot cận cảnh phải cho thấy đúng bộ phận, chức năng, lợi ích hoặc khoảnh khắc sử dụng thật mà lời thoại đang nhắc tới đúng giây đó (ảnh sản phẩm đính kèm là chuẩn để đối chiếu các cận cảnh này); cắt shot đúng trên nhịp thoại để dẫn nhịp người xem thật nhanh và cuốn. Cụ thể: (a)') + 'trung cảnh nhân vật nói thẳng vào camera (nhân vật ĐỨNG SAU BÀN, sản phẩm đặt trên bàn trước mặt — staging chuẩn review), (b) cận cảnh sản phẩm — chức năng đang hoạt động, chất liệu bề mặt, chi tiết cấu tạo, kết quả/lợi ích thấy rõ. Mỗi shot ghi rõ khoảng giây, cỡ cảnh, hành động, và phần lời thoại tương ứng: thoại nói tới đâu, hình cho thấy đúng thứ đó. TUYỆT ĐỐI không dùng zoom in/zoom out hay lia máy chậm làm ngôn ngữ camera chính — phải cắt shot thật giữa các cỡ cảnh.',
     isFirst? 'HOOK 3 GIÂY ĐẦU: shot đầu tiên (0–3s) là hook — hình ảnh demo hoặc kết quả mạnh nhất, bắt mắt nhất của sản phẩm + nhân vật nói ngay phần hook mở đầu của lời thoại, nhìn thẳng camera, không chào hỏi, không giới thiệu vòng vo. Diễn hook THẬT MẠNH trong prompt video và ô 1 của sheet storyboard: biểu cảm cường điệu gây chú ý (mắt mở to, miệng há ngạc nhiên hoặc cười lớn thích thú), đẩy sản phẩm về phía camera, năng lượng cao nhất của cả video; nếu hook mang tính hài hước thì staging phải gây cười bằng tình huống/hành động cụ thể.' : '',
     isLast? 'CTA 3 GIÂY CUỐI: các shot cuối ('+(dur-3)+'–'+dur+'s) là CTA — nhân vật nhìn thẳng camera nói phần kêu gọi ở cuối lời thoại và chỉ tay xuống góc dưới khung hình.' : '',
     st.dialogue===false ? 'Video này KHÔNG có lời thoại: timeline chỉ gồm hành động và demo sản phẩm.' :
@@ -2645,11 +2663,17 @@ function createAutoProject(prod, st, version){
 async function batchStartKF(proj,seg){
   seg.kf.status='queued'; seg.kf.error=''; seg.kf.approved=false; save();
   try{
-    const imgs= seg.hasProduct===false ? [...proj.refsChar] : [...proj.refsChar, ...proj.refsProd];
-    if(S.settings.bgImage) imgs.push(S.settings.bgImage);
-    let kfPromptB=(seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg);
-    const firstSegB=proj.segments[0];
-    if(firstSegB && firstSegB!==seg && firstSegB.kf && firstSegB.kf.status==='done' && firstSegB.kf.url){ try{ imgs.push(await urlToDataURI(firstSegB.kf.url)); kfPromptB+=' IMPORTANT: one attached reference image is the approved keyframe of scene 1 — match its background, room layout, furniture positions, lighting and color palette EXACTLY, so every scene shares one consistent location.'; }catch(e){} }
+    /* V10.15: đường keyframe hàng loạt (batchStartKF) cũng bám ảnh chuẩn khi dự án đã có — cùng luật với startImageTask */
+    let imgs, kfPromptB=(seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg);
+    if(proj.anchorImg){
+      imgs=[proj.anchorImg, ...proj.refsProd.slice(0,2)];
+      kfPromptB+=KF_REF_LOCK+outfitLockText(proj);
+    } else {
+      imgs= seg.hasProduct===false ? [...proj.refsChar] : [...proj.refsChar, ...proj.refsProd];
+      if(S.settings.bgImage) imgs.push(S.settings.bgImage);
+      const firstSegB=proj.segments[0];
+      if(firstSegB && firstSegB!==seg && firstSegB.kf && firstSegB.kf.status==='done' && firstSegB.kf.url){ try{ imgs.push(await urlToDataURI(firstSegB.kf.url)); kfPromptB+=' IMPORTANT: one attached reference image is the approved keyframe of scene 1 — match its background, room layout, furniture positions, lighting and color palette EXACTLY, so every scene shares one consistent location.'; }catch(e){} }
+    }
     seg.kf.engine=flowCfg().engImage;
     if(seg.kf.engine==='flow'){
       seg.kf.status='processing'; save();
@@ -3002,7 +3026,7 @@ async function assembleNow(){
   if(p.asmResult && p.asmResult.status==='done' && p.asmResult.url){ p.asmPrev={url:p.asmResult.url, at:p.asmResult.at}; }
   asmBusy=true; p.asmResult={status:'processing', progress:0}; save(); renderProductionZoneKeepScroll();
   try{
-    const payload={ clips, trim_silence: a.trimSilence!==false, speed: 1 };
+    const payload={ clips, trim_silence: a.trimSilence!==false, speed: 1, upscale: S.settings.asmUpscale!==false };
     if(a.subOn && cues.length) payload.subtitles={ enabled:true, size:a.subSize||'vua', position:a.subPos||'duoi', style:a.subStyle||'tiktok', cues };
     const data=await api('/v1/assemble',{method:'POST', body:JSON.stringify(payload)});
     const tid=data.id||data.task_id; if(!tid) throw new Error('Xưởng không trả mã ghép');
@@ -3018,6 +3042,8 @@ async function assembleNow(){
   }catch(e){ p.asmResult={status:'failed', error:e.message}; save(); renderProductionZoneKeepScroll(); toast('Ghép lỗi: '+e.message); }
   asmBusy=false;
 }
+/* V10.15: công tắc upscale khi ghép — lưu ở settings dùng chung, chưa đặt = BẬT */
+function setAsmUpscale(v){ S.settings.asmUpscale=!!v; save(); }
 function asmHTML(p){
   const a=ensureAsm(p);
   return `
@@ -3032,13 +3058,15 @@ function asmHTML(p){
     <div><label>Kiểu chữ</label><select onchange="App.setAsmRender('subStyle',this.value)"><option value="tiktok" ${a.subStyle==='tiktok'?'selected':''}>TikTok (trắng đậm, viền đen)</option><option value="phim" ${a.subStyle==='phim'?'selected':''}>Phim (trắng mảnh)</option><option value="vang" ${a.subStyle==='vang'?'selected':''}>Vàng đậm</option></select></div>
   </div>`:''}
 
+  <div class="switchrow"><span style="flex:1; font-weight:700">Upscale 1080p — nét hơn, ghép lâu hơn khoảng 1–2 phút</span><span class="switch"><input type="checkbox" ${S.settings.asmUpscale!==false?'checked':''} onchange="App.setAsmUpscale(this.checked)"><i></i></span></div>
+
   <div class="btnrow"><button class="btn primary" onclick="App.assembleNow()" ${asmBusy?'disabled':''}>${asmBusy?'⏳ ĐANG GHÉP — chờ xưởng nối xong…':'🎬 GHÉP VIDEO NGAY TRONG APP'}</button></div>
   ${asmResultHTML(p)}${asmPrevHTML(p)}
   <p class="muted">Ghép ngay: xưởng tự nối các đoạn theo đúng thứ tự cảnh + cắt khoảng lặng đầu/cuối mỗi cảnh (khi bật) → xem và tải video hoàn chỉnh ngay tại đây.</p>
   <div class="btnrow"><button class="btn" onclick="App.exportPackage()">📦 Xuất gói ghép + tải clip (dự phòng)</button></div>
   <p class="muted">Gửi cho t: các clip đã tải + file goi-ghep.json → t ghép bằng ffmpeg: cắt khoảng lặng → trả video hoàn chỉnh.</p>`;
 }
-Object.assign(window.App,{ setSegBool, aiScript, setAsm, setAsmBool, setAsmRender, setAsmBoolRender,
+Object.assign(window.App,{ setSegBool, aiScript, setAsm, setAsmBool, setAsmRender, setAsmBoolRender, setAsmUpscale,
   addLogo, delLogo, setMusic, genCover, genCaption, copyCaption, exportPackage, assembleNow, downloadFinal, downloadPrev });
 
 /* ---------------- V5: Lấy thông tin SP từ link (qua Worker) ---------------- */
