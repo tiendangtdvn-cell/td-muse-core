@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.17</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.18</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -416,7 +416,7 @@
       <div class="card">
         <h3>🎬 Đạo diễn — viết kịch bản & phân tích sản phẩm</h3>
         <label class="fl">Đạo diễn chính</label>
-        <select id="gemEngine"><option value="gemini">Gemini (đạo diễn chính)</option><option value="muse">Muse (như cũ)</option></select>
+        <select id="gemEngine"><option value="gemini">Gemini (đạo diễn chính)</option><option value="gemini-web">Gemini Web — nick Pro qua cầu (Hydrogen)</option><option value="muse">Muse (như cũ)</option></select>
         <label class="fl">Model Gemini</label>
         <select id="gemModel"><option value="gemini-4-hydrogen">Gemini 4 Hydrogen — mạnh nhất, trần free thấp (5 lượt/phút)</option><option value="gemini-3.8-flash">Gemini 3.8 Flash — mạnh, trần free 5 lượt/phút · tối đa 20 lượt/ngày</option><option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite — nhanh nhất, ít quá tải (khuyên dùng)</option></select>
         <label class="fl" style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="gemRotate" checked> Xoay tua 3 model Gemini (cao → thấp khi lỗi)</label>
@@ -427,6 +427,13 @@
         </details>
         <label class="fl">API key Gemini</label>
         <input type="password" id="gemKey" placeholder="Key lấy miễn phí tại aistudio.google.com/apikey">
+        <div id="gemWebCfg" style="display:none">
+          <label class="fl">API key cầu Gemini Web</label>
+          <input type="password" id="gemWebKey" placeholder="Key của cầu (xem trong panel quản trị cầu)">
+          <label class="fl">Địa chỉ cầu Gemini Web</label>
+          <input type="text" id="gemWebUrl" placeholder="https://...-8083.app.github.dev">
+          <p class="muted" style="margin:0 0 6px">Đạo diễn chạy bằng nick Gemini Pro qua cầu — model cố định Gemini 4 Hydrogen, không trần free, không xoay tua. Xưởng phải đang bật thì cầu mới sống.</p>
+        </div>
         <div class="btnrow"><button class="btn" id="gemTest">Kiểm tra kết nối</button></div>
         <div class="log" id="gemLog" style="margin-top:8px">Chưa kiểm tra.</div>
       </div>
@@ -499,7 +506,7 @@ const DEFAULT_SETTINGS={ charMode:'review', bgImage:'', charRefs:[], template:'r
   expression:'tnhien', animalTalk:false, retry:0, boardMode:'board', charLib:[], activeChar:'', char2:'', useChar2:false,
   dialogue:true, format:'review', fmtStore:{},
   flow:{ engImage:'muse', engVideo:'muse', url:'', key:'', vidModel:'omni11' },
-  gemini:{ engine:'gemini', key:'', model:'gemini-3.5-flash-lite', modelCustom:'', rotate:true } };
+  gemini:{ engine:'gemini', key:'', model:'gemini-3.5-flash-lite', modelCustom:'', rotate:true, webKey:'', webUrl:'' } };
 const ASM_DEFAULTS={ trimSilence:true, subOn:true, subSize:'vua', subPos:'duoi', subStyle:'tiktok',
   subColor:'trang', coverTitle:'', ctaEnd:false, logo:'', speed:'1', musicName:'', headCut:'0' };
 let S = loadState();
@@ -522,6 +529,7 @@ function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(async ()=>{ const
   if(!okIdb && !okLs && !quotaWarned){ quotaWarned=true; toast('Bộ nhớ trình duyệt đầy — hãy xuất JSON dự phòng!', 5000); }
 },250); }
 const DEFAULT_WORKER='https://tdstudio.tiendang-tdvn.workers.dev';
+const DEFAULT_GEMWEB_URL='https://expert-xylophone-gx79jj6ww5wwcpv9x-8083.app.github.dev';
 function cfg(){ return { url:((localStorage.getItem(LS_URL)||'').trim()||DEFAULT_WORKER).replace(/\/+$/,''), key:'' }; }
 function activeProject(){ return S.projects.find(p=>p.id===S.activeId) || null; }
 
@@ -627,7 +635,8 @@ function gemCfg(){ const g=(typeof S!=='undefined' && S.settings && S.settings.g
   if(GEM_CHAIN.indexOf(sel)<0) sel='gemini-3.5-flash-lite';
   return { engine:g.engine||'gemini', key:(g.key||'').trim(),
     model:(g.modelCustom||'').trim() || sel,
-    modelSel:sel, modelCustom:(g.modelCustom||''), rotate:g.rotate!==false }; }
+    modelSel:sel, modelCustom:(g.modelCustom||''), rotate:g.rotate!==false,
+    webKey:(g.webKey||'').trim(), webUrl:((g.webUrl||'').trim()||DEFAULT_GEMWEB_URL).replace(/\/+$/,'') }; }
 let lastGemToastAt=0;
 const __dsCache=new Map();
 async function downscaleDataURI(u, maxDim){
@@ -725,8 +734,42 @@ async function geminiChatRotated(messages, jsonMode){
   }
   throw lastErr || new Error('Gemini: cả 3 model trong chuỗi xoay tua đều đang bị bỏ qua (lỗi 404 trước đó hoặc hết lượt ngày)');
 }
+/* V10.18: làn đạo diễn Gemini Web — nick Pro qua cầu gw2api (OpenAI-compatible), model cố định gemini-4-hydrogen (TD chốt 24/11). */
+async function gemWebChat(messages){
+  const g=gemCfg();
+  if(!g.webKey) throw new Error('Chưa nhập API key cầu Gemini Web — vào Cài đặt, mục Đạo diễn, dán key của cầu.');
+  let lastErr=null;
+  const waits=[8000,20000];
+  for(let att=0; att<3; att++){
+    try{
+      const res=await fetch(g.webUrl+'/v1/chat/completions',{ method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+g.webKey },
+        body:JSON.stringify({ model:'gemini-4-hydrogen', stream:false, temperature:0.7, messages }) });
+      const data=await res.json().catch(()=>null);
+      if(!res.ok || !data || (data&&data.error)){
+        const em=(data&&data.error&&data.error.message)||('HTTP '+res.status);
+        const er=new Error('Cầu Gemini Web: '+em); er.gwStatus=res.status; throw er;
+      }
+      const content=(((data.choices||[])[0]||{}).message||{}).content||'';
+      if(!content) throw new Error('Cầu Gemini Web trả lời rỗng');
+      window.__lastGemModel='gemini-4-hydrogen (web)';
+      return content;
+    }catch(e){ lastErr=e; const st=e&&e.gwStatus;
+      const retryable = !st || st===429 || st===502 || st===503;
+      if(att<2 && retryable){ await gemSleep(waits[att]); continue; }
+      throw e; }
+  }
+  throw lastErr || new Error('Cầu Gemini Web không trả lời');
+}
 async function aiChat(messages, opts){
   opts=opts||{}; const g=gemCfg();
+  if(g.engine==='gemini-web'){
+    try{ const t=await gemWebChat(messages); return { choices:[{ message:{ content:t } }] }; }
+    catch(err){ const msg=String((err&&err.message)||err); const now=Date.now();
+      if(now-lastGemToastAt>60000){ lastGemToastAt=now;
+        toast('Gemini Web lỗi: '+msg.slice(0,120)+' — kiểm tra xưởng đã bật chưa và key cầu trong Cài đặt', 7000); }
+      throw err; }
+  }
   if(g.engine==='gemini' && g.key){
     if(g.rotate){
       try{ const t=await geminiChatRotated(messages, !!opts.json); return { choices:[{ message:{ content:t } }] }; }
@@ -758,7 +801,14 @@ function renderGemCfg(){
   const g=gemCfg();
   const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
   set('gemEngine', g.engine); set('gemKey', g.key); set('gemModel', g.modelSel); set('gemModelCustom', g.modelCustom);
+  set('gemWebKey', g.webKey); set('gemWebUrl', (S.settings.gemini&&S.settings.gemini.webUrl)||'');
   const rotEl=document.getElementById('gemRotate'); if(rotEl) rotEl.checked=!!g.rotate;
+  updGemWebVis();
+}
+function updGemWebVis(){
+  const box=document.getElementById('gemWebCfg'); if(!box) return;
+  const sel=document.getElementById('gemEngine');
+  box.style.display=(sel && sel.value==='gemini-web') ? '' : 'none';
 }
 async function geminiPingOnce(model, key){
   let res;
@@ -772,6 +822,14 @@ async function geminiPingOnce(model, key){
 }
 async function testGemConn(){
   const lg=$('#gemLog'); const g=gemCfg();
+  if(g.engine==='gemini-web'){
+    if(!g.webKey){ if(lg) lg.textContent='Chưa nhập API key cầu Gemini Web.'; return; }
+    if(lg) lg.textContent='Đang gọi thử cầu Gemini Web một câu thật (lượt lạnh có thể ~40 giây)...';
+    try{ const out=await gemWebChat([{role:'user',content:'Trả lời đúng một chữ: OK'}]);
+      if(lg) lg.textContent = out ? '✅ Cầu Gemini Web trả lời thật — đạo diễn Hydrogen (nick Pro) dùng được.' : '⚠️ Cầu trả lời rỗng — thử lại sau.';
+    }catch(e){ if(lg) lg.textContent='❌ Cầu Gemini Web chưa dùng được: '+String((e&&e.message)||e)+' — kiểm tra xưởng đã bật chưa.'; }
+    return;
+  }
   if(!g.key){ if(lg) lg.textContent='Chưa nhập API key Gemini.'; return; }
   if(lg) lg.textContent='Đang gọi thử Gemini một câu thật...';
   if(g.rotate){
@@ -1841,7 +1899,7 @@ async function togglePower(){
 window.App = window.App || {}; Object.assign(window.App,{ togglePower, paintPower });
 function flashSaved(){ const n=$('#saveNote'); if(n){ n.textContent='Đã lưu ✓'; clearTimeout(flashSaved._t); flashSaved._t=setTimeout(()=>{ n.textContent=''; },1600); } }
 function paintSetSummary(){ const el=$('#setSummary'); if(!el) return; const g=gemCfg(), f=flowCfg();
-  el.textContent='Đạo diễn: '+(g.engine==='muse'?'Muse':('Gemini · '+g.model))+' · Ảnh: '+(f.engImage==='flow'?'Flow':'Muse')+' · Video: '+(f.engVideo==='flow'?('Flow '+(f.vidModel==='omni12'?'Omni 1.2':'Omni 1.1')):'Muse'); }
+  el.textContent='Đạo diễn: '+(g.engine==='muse'?'Muse':(g.engine==='gemini-web'?'Gemini Web · Hydrogen (Pro)':('Gemini · '+g.model)))+' · Ảnh: '+(f.engImage==='flow'?'Flow':'Muse')+' · Video: '+(f.engVideo==='flow'?('Flow '+(f.vidModel==='omni12'?'Omni 1.2':'Omni 1.1')):'Muse'); }
 $('#cfgUrl').addEventListener('change',()=>{ localStorage.setItem(LS_URL, $('#cfgUrl').value.trim()); localStorage.setItem(LS_KEY, ''); flashSaved(); });
 $('#cfgTest').addEventListener('click',async()=>{ logTo('#cfgLog','Đang kiểm tra...'); await ping(); });
 function toCookieDict(text){
@@ -1876,7 +1934,7 @@ async function fetchFlowLanes(){
 function renderCfgStrip(){
   const el=document.getElementById('cfgStrip'); if(!el) return;
   const st=S.settings||{}; const g=st.gemini||{}; const f=st.flow||{};
-  const dirTxt= g.engine==='muse' ? 'Muse' : 'Gemini';
+  const dirTxt= g.engine==='muse' ? 'Muse' : (g.engine==='gemini-web' ? 'Gemini Web' : 'Gemini');
   const imgTxt= f.engImage==='flow' ? 'Flow' : 'Muse';
   const vidTxt= f.engVideo==='flow' ? (f.vidModel==='omni12'?'Omni 1.2':'Omni 1.1') : 'Muse';
   el.innerHTML='Đạo diễn: <b>'+dirTxt+'</b> · Ảnh: <b>'+imgTxt+'</b> · Video: <b>'+vidTxt+'</b>';
@@ -2071,7 +2129,10 @@ function saveFlowCfgAuto(){ if(!S.settings.flow) S.settings.flow={};
 function saveGemCfgAuto(){ if(!S.settings.gemini) S.settings.gemini={};
   S.settings.gemini.engine=$('#gemEngine').value; S.settings.gemini.key=$('#gemKey').value.trim();
   S.settings.gemini.model=$('#gemModel').value; S.settings.gemini.modelCustom=$('#gemModelCustom').value.trim();
+  const wk=$('#gemWebKey'); if(wk) S.settings.gemini.webKey=wk.value.trim();
+  const wu=$('#gemWebUrl'); if(wu) S.settings.gemini.webUrl=wu.value.trim();
   const rotEl2=$('#gemRotate'); if(rotEl2) S.settings.gemini.rotate=!!rotEl2.checked;
+  updGemWebVis();
   save(); renderCfgStrip(); flashSaved(); }
 ['#flowEngImage','#flowEngVideo','#flowVidModel'].forEach(sel=>$(sel).addEventListener('change', saveFlowCfgAuto));
 ['#gemEngine','#gemModel'].forEach(sel=>$(sel).addEventListener('change', saveGemCfgAuto));
@@ -2080,6 +2141,8 @@ let _svT=null; const _svDeb=f=>{ clearTimeout(_svT); _svT=setTimeout(f,600); };
 $('#flowKey').addEventListener('input', ()=>_svDeb(saveFlowCfgAuto));
 $('#gemKey').addEventListener('input', ()=>_svDeb(saveGemCfgAuto));
 $('#gemModelCustom').addEventListener('input', ()=>_svDeb(saveGemCfgAuto));
+const gwkEl=$('#gemWebKey'); if(gwkEl) gwkEl.addEventListener('input', ()=>_svDeb(saveGemCfgAuto));
+const gwuEl=$('#gemWebUrl'); if(gwuEl) gwuEl.addEventListener('input', ()=>_svDeb(saveGemCfgAuto));
 $('#flowTest').addEventListener('click', testFlowConn);
 /* gemSave đã bỏ — cấu hình Gemini tự lưu qua saveGemCfgAuto */
 $('#gemTest').addEventListener('click', testGemConn);
