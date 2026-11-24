@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.24</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.25</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -2761,6 +2761,8 @@ async function genScriptV2(prod, st){
   const dur=st.sceneDur||10, bandA=dialogueBand(dur), wMax=bandA.wMax, wMin=bandA.wMin, cap=wMax;
   const board = st.boardMode==='board';
   const vc=voiceProfile(st);
+  const n = Math.max(1, Math.min(8, st.scenes||3));
+  const hookOf = p => { const m=String(p||'').match(/^\s*\[([a-f])\]/i); return m? m[1].toLowerCase() : ''; };
   const usr=[ 'Đọc dữ liệu sau và tạo trọn gói kịch bản video '+(isRev?'review sản phẩm':'ngắn')+' trong MỘT lần trả lời.',
     (isRev?'Sản phẩm: ':'Chủ đề video: ')+prod.name+(prod.category? ' — Loại: '+prod.category : ''),
     prod.desc? 'ĐIỂM BÁN — NGUỒN SỰ THẬT DUY NHẤT (mọi nội dung chỉ lấy từ đây, cấm bịa thêm tính năng, công nghệ, chất liệu, con số): '+prod.desc : '',
@@ -2773,25 +2775,49 @@ async function genScriptV2(prod, st){
          : '2. Cảnh 1 mở đầu giật gân, gây tò mò ngay 3 giây đầu, không giới thiệu chậm. Cảnh cuối kết bằng câu kết có điểm nhấn.',
     '3. Mỗi cảnh gánh tối đa 2 điểm bán — chia đều TẤT CẢ điểm bán cho các cảnh, mỗi cảnh xoáy sâu điểm của nó.',
     '4. Staging bắt buộc: shot giới thiệu/nói chuyện = nhân vật ĐỨNG SAU BÀN, sản phẩm đặt trên bàn ngay trước mặt; shot tính năng/chi tiết = CẬN CẢNH sản phẩm. scene_script của mỗi cảnh phải nói rõ shot nào sau bàn, shot nào cận cảnh; cảnh 1 mô tả khoảnh khắc hook, cảnh cuối mô tả khoảnh khắc CTA.',
+    'TRẢ VỀ JSON THUẦN (không markdown, không giải thích): {"profile":{"product_lock":"mô tả khoá sản phẩm tiếng Anh","wardrobe":"trang phục tiếng Anh","environment":"bối cảnh","lighting":"ánh sáng","style":"phong cách"},"anchor_prompt":"prompt tiếng Anh tạo ẢNH CHUẨN: nhân vật đúng ảnh tham chiếu đứng sau bàn tại bối cảnh, trên bàn là sản phẩm, khung hình mở đầu sạch để các cảnh bám theo","scenes":[{"purpose":"[mã] nhãn ngắn","scene_script":"kịch bản cảnh tiếng Việt","dialogue":"thoại nguyên văn","end_state":"trạng thái cuối cảnh"}]} — đúng '+n+' cảnh.'
+  ].filter(Boolean).join('\n');
+  const a = await askChatJSON(sys, usr);
+  if(!a || !a.profile || !Array.isArray(a.scenes) || !a.scenes.length) return null;
+  const scenes=[];
+  let prevEnd='';
+  for(let i=0;i<n;i++){
+    const s=a.scenes[i]||{};
+    scenes.push({ purpose:String(s.purpose||('Cảnh '+(i+1))), hookFormula:hookOf(s.purpose), scene_script:String(s.scene_script||''), dialogue:String(s.dialogue||''), end_state:String(s.end_state||''), prev_end_state:prevEnd, kf_prompt:'', sb_prompt:'', vid_prompt:'' });
+    prevEnd=String(s.end_state||'');
+  }
+  /* Lệnh 2: viết prompt cho các cảnh vừa chốt — lỗi lệnh này KHÔNG làm mất kịch bản */
+  let pr = await genPromptsV2(prod, st, a.profile, scenes);
+  if(!pr) pr = await genPromptsV2(prod, st, a.profile, scenes);
+  let filled=0;
+  if(pr && Array.isArray(pr.prompts)){
+    pr.prompts.forEach((pp,i)=>{ if(scenes[i] && pp){ if(pp.sb_prompt) scenes[i].sb_prompt=String(pp.sb_prompt); if(pp.kf_prompt) scenes[i].kf_prompt=String(pp.kf_prompt); if(pp.vid_prompt) scenes[i].vid_prompt=String(pp.vid_prompt); if(scenes[i].sb_prompt||scenes[i].kf_prompt||scenes[i].vid_prompt) filled++; } });
+  }
+  return { profile:a.profile, scenes, anchor_prompt:String(a.anchor_prompt||''), promptsOk: filled===n };
+}
+
+/* V10.25 lệnh 2 của đạo diễn: nhận profile + kịch bản/thoại ĐÃ CHỐT từ lệnh 1, chỉ viết prompt hình/video cho từng cảnh */
+async function genPromptsV2(prod, st, profile, scenes){
+  const board = (st.boardMode||'board')!=='kf';
+  const dur = +st.sceneDur||10;
+  const data = scenes.map((s,i)=> 'CẢNH '+(i+1)+':\n- Mục đích: '+s.purpose+'\n- Kịch bản cảnh: '+s.scene_script+'\n- Lời thoại (nhúng NGUYÊN VĂN vào vid_prompt, không sửa một chữ): '+s.dialogue+'\n- Trạng thái cuối cảnh: '+s.end_state+(s.prev_end_state? '\n- Trạng thái cuối cảnh trước (cảnh này phải tiếp nối): '+s.prev_end_state : '')).join('\n');
+  const usr=[
+    'Bạn là đạo diễn hình ảnh của app làm video affiliate TikTok. Dưới đây là PROFILE và KỊCH BẢN ĐÃ CHỐT của một video. Việc của bạn: viết prompt tạo '+(board? 'storyboard + video' : 'keyframe + video')+' cho TỪNG cảnh, bám đúng kịch bản và lời thoại đã cho — KHÔNG viết lại kịch bản, KHÔNG sửa lời thoại.',
+    'Sản phẩm: '+prod.name+' | Ngành: '+(prod.category||''),
+    'Điểm bán (nguồn sự thật duy nhất): '+(prod.desc||''),
+    'PROFILE đã chốt: '+JSON.stringify(profile||{}),
+    'KỊCH BẢN ĐÃ CHỐT:\n'+data,
+    'LUẬT VIẾT PROMPT:',
     '5. KHOÁ CỨNG — Gemini phải TỰ VIẾT các khối khoá tiếng Anh dưới đây vào trong từng prompt (app sẽ dùng prompt nguyên văn, không chèn thêm gì): (a) vào kf_prompt và sb_prompt: "REFERENCE LOCK: IMAGE 1 is the ANCHOR — copy her FACE, HAIRSTYLE, OUTFIT and the BACKGROUND from IMAGE 1 EXACTLY, 100 percent identical; the ONLY differences from the anchor are her POSE, ACTION and expression, which follow this scene. The remaining images show the product only." + "OUTFIT LOCK: she wears EXACTLY this outfit: <điền đúng wardrobe ở profile> — nothing added, nothing removed, no color changes." (b) vào MỌI prompt hình và video: "PRODUCT FIDELITY LOCK: the product must look EXACTLY like the reference images in every single frame — same overall shape, same proportions, same layout of parts, same colors and materials. Locked product facts: <điền đúng product_lock ở profile>. Never redesign the product, never move any part to a different position, never add or remove parts. If a detail is not clearly visible, keep it plain and unchanged instead of inventing a new design." + "No on-screen text, no subtitles, no captions, no banners, no buttons, no shopping-cart icons, no app interface, no new logos, no watermarks, no TikTok logo, no username text, no sparkle or star effects anywhere in the frame, and no bright or glowing phone screens — any phone in the frame must have a dark, switched-off screen or show its back to the camera." (c) vào MỌI vid_prompt: "ACTING DIRECTION: the woman performs like a real human TikTok creator, not a mannequin — facial expressions change naturally with every line: raised eyebrows, widening eyes, genuine smiles and real laughter, playful surprise, convinced nods; natural head tilts, shrugs and illustrating hand gestures; warm eye contact with the camera. Never a blank stare, never a frozen face, never one single expression for the whole clip, never a plastic AI look." (riêng cảnh 1 thêm: "HOOK PERFORMANCE: the first 3 seconds are the hook — open with a big, scroll-stopping reaction: an exaggerated amazed or delighted expression, the product thrust toward the camera, maximum energy and a playful hint of humor, then settle into the review.") + khối VOICE COMPLETION ở luật 7.',
     board? '6. sb_prompt: prompt tạo MỘT ảnh storyboard lưới đúng 2 cột × 3 hàng = 6 ô — 6 shot nối tiếp của cảnh này, xen kẽ shot sau bàn và cận cảnh sản phẩm; ô 1 là khoảnh khắc mở đầu cảnh (từ cảnh 2 trở đi ô 1 phải TIẾP NỐI CHÍNH XÁC trạng thái end_state của cảnh trước: cùng khoảnh khắc, cùng vị trí nhân vật và đồ vật, cùng bối cảnh và ánh sáng), ô 6 là khoảnh khắc kết thúc cảnh; không chữ, không số trên sheet. vid_prompt phải chứa thêm khối: "NUMBERED STORYBOARD LOCK: the attached image is this scene\'s storyboard sheet — a 2x3 grid of 6 panels, each panel visibly NUMBERED in its top-left corner 1-6 in reading order (left to right, top to bottom). Animate following the numbered panels in order: Shot k matches panel k exactly, following the panel-by-panel timeline in this prompt. The woman\'s face, hairstyle, outfit, the product and the location must match the storyboard sheet EXACTLY in every shot. NEVER render the storyboard grid, the panel borders or the panel numbers into the video: the final video must look like real filmed footage, with no grid, no borders and no numbers anywhere. STAGING: in every talking or presentation shot the woman stands BEHIND THE TABLE with the product placed on the table in front of her; feature and detail beats are close-ups of the product."'
          : '6. kf_prompt: prompt tạo MỘT ảnh keyframe = khung hình MỞ ĐẦU của cảnh — so với ảnh chuẩn chỉ thay tư thế, hành động, biểu cảm theo khoảnh khắc mở đầu; từ cảnh 2 trở đi kf_prompt phải ghi rõ bối cảnh, bố cục phòng, vị trí đồ đạc và ánh sáng khớp CHÍNH XÁC keyframe của cảnh 1 để mọi cảnh chung một địa điểm. vid_prompt phải chứa thêm khối: "MULTI-SHOT EDITING (mandatory): build this clip from 4 to 5 quick shots with hard jump cuts — alternate (1) medium shots of the woman speaking to the camera (standing behind the table, product on the table in front of her) with (2) close-up shots of the product; every close-up must show the exact part, function, benefit or real-use moment the dialogue is describing at that second — use the attached product photos as the reference for those close-ups. Push in on the single most important detail of each beat, change angle or framing at every cut, cut exactly ON the dialogue beats. This clip must NEVER be one continuous static shot."',
     '7. Mọi vid_prompt phải chứa khối: "VOICE COMPLETION (mandatory): the woman starts speaking immediately at second 0 with no pause, beginning with the exact first word of the dialogue (never add your own introductory or linking sentence before it), speaks at a steady, natural pace with no long pauses, and paces herself so the ENTIRE dialogue is spoken completely and finishes by second '+(dur-1).toFixed(1)+' of this clip — the complete final sentence must be fully delivered inside this clip: never trail off, never leave a sentence unfinished, the final word must be fully spoken before the clip ends. Speak every word exactly once, in order, word for word: never repeat any word or phrase, never stutter, never drop or swallow the ending of the line. When she is not in frame, her voice continues as voiceover without interruption." — và nhúng NGUYÊN VĂN dialogue của cảnh vào vid_prompt.',
-    'TRẢ VỀ JSON: {"profile":{"product_lock":"tiếng Anh: hình dáng, màu sắc, chất liệu nhìn thấy, TỪNG bộ phận kèm đúng ký hiệu/số/chữ in trên đó","wardrobe":"MỘT bộ trang phục cụ thể, hợp loại sản phẩm và tình huống dùng","environment":"MỘT địa điểm cụ thể — nơi sản phẩm thật sự được dùng, mô tả rõ cái bàn và vị trí sản phẩm trên bàn","lighting":"hướng và chất lượng ánh sáng","style":"phong cách hình ảnh"},"anchor_prompt":"prompt tiếng Anh tạo ẢNH CHUẨN: nhân vật theo ảnh tham chiếu mặc wardrobe, đứng sau bàn trong environment, sản phẩm đặt trên bàn trước mặt, ánh sáng lighting, phong cách style","scenes":[{"purpose":"'+(isRev?'[mã hook nếu là cảnh 1] ':'')+'mục đích cảnh ngắn gọn","scene_script":"2–4 câu tiếng Việt: bối cảnh, hành động chính, góc quay, cảm xúc","dialogue":"thoại theo luật 1",'+(board?'"sb_prompt":"..."':'"kf_prompt":"..."')+',"vid_prompt":"...","end_state":"1–2 câu tiếng Việt: trạng thái kết thúc cảnh để cảnh sau kế thừa"}]} — đủ '+st.scenes+' cảnh, "scenes" là MẢNG mở bằng [ đóng bằng ].'
+    'TRẢ VỀ JSON THUẦN (không markdown, không giải thích): {"prompts":[{"'+(board? 'sb_prompt' : 'kf_prompt')+'":"...","vid_prompt":"..."}]} — đúng '+scenes.length+' mục, theo đúng thứ tự cảnh.'
   ].filter(Boolean).join('\n');
-  /* V10.22 (TD chốt 24/11): lệnh kịch bản CHỈ gửi chữ, KHÔNG đính ảnh — điểm bán đã chứa mô tả nhìn thấy từ khâu phân tích ảnh; lệnh có ảnh từng mất 139–244s và hay đứt 'Load failed' trên điện thoại, lệnh chữ thuần chỉ ~20s. */
-  const a = await askChatJSON(sys, usr);
-  if(!a || !a.profile || !Array.isArray(a.scenes) || !a.scenes.length) return null;
-  const profile={ product_lock:String(a.profile.product_lock||''), wardrobe:String(a.profile.wardrobe||''), environment:String(a.profile.environment||''), lighting:String(a.profile.lighting||''), style:String(a.profile.style||'Chân thực như quay bằng điện thoại xịn, phong cách UGC TikTok') };
-  if(isRev && !profile.product_lock) return null;
-  const anchor_prompt=String(a.anchor_prompt||'');
-  let scenesA=a.scenes.slice(0, st.scenes).map(o=>{ const rawP=String(o.purpose||''); const hm=rawP.match(/\[(a|b|c|d|e|f)\]/i); return { purpose:rawP, hookFormula: hm? hm[1].toLowerCase() : '', scene_script:String(o.scene_script||''), dialogue: st.dialogue===false? '' : String(o.dialogue||''), kf_prompt:String(o.kf_prompt||''), sb_prompt:String(o.sb_prompt||''), vid_prompt:String(o.vid_prompt||''), end_state:String(o.end_state||'') }; });
-  while(scenesA.length<st.scenes) scenesA.push({ purpose:'', hookFormula:'', scene_script:'', dialogue:'', kf_prompt:'', sb_prompt:'', vid_prompt:'', end_state:'' });
-  /* V10.22 (TD chốt 24/11): GIỮ NGUYÊN VĂN thoại Gemini trả về — bỏ hẳn vòng sửa thoại lẻ và dao capWords (từng cắt cụt thoại giữa câu: Gemini trả 56–61 từ trọn câu, app xén còn 46 từ mất nghĩa). Thoại dài hơn dải thì kệ: prompt video đã ép model video nói hết trọn vẹn. */
-  const scenes=scenesA.map(sc=>({ purpose:sc.purpose, dialogue:sc.dialogue, scene_script:sc.scene_script||'', kf_prompt:sc.kf_prompt||'', sb_prompt:sc.sb_prompt||'', vid_prompt:sc.vid_prompt||'', end_state:sc.end_state||'' }));
-  if(scenes.some(s=>!s.vid_prompt || (board? !s.sb_prompt : !s.kf_prompt))) return null;
-  return { profile, scenes, anchor_prompt };
+  const sys='Bạn viết prompt gen hình/video tiếng Anh cho video affiliate. Chỉ trả JSON thuần, không markdown.';
+  return askChatJSON(sys, usr);
 }
+
 function compileImagePromptV2(p,s){
   const sc=s.scene2, pr=p.script2.profile;
   const parts=[ 'Ảnh keyframe — khung hình mở đầu của một đoạn video 10 giây, dọc 9:16.',
@@ -2942,7 +2968,7 @@ async function scriptIntoProject(proj, prod, st){
   if(v2){
     proj.schema='v3'; proj.scriptMode='v3';
     proj.script2={ profile:v2.profile, voice:voiceProfile(st) };
-    proj.anchorPrompt=v2.anchor_prompt||'';
+    proj.anchorPrompt=v2.anchor_prompt||''; proj.promptsPending=(v2.promptsOk===false);
     proj.sceneDur=st.sceneDur||10;
     v2.scenes.forEach((sc,i)=>{ const sg=proj.segments[i]; if(!sg) return;
       sg.scene2={ purpose:sc.purpose||'', dialogue:sc.dialogue||'', end_state_text:sc.end_state||'',
