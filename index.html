@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.35</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.36</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -1209,11 +1209,41 @@ function isPolicyError(msg){ return /child|minor|underage|teen|celebrity|famous|
 async function rewritePromptSafe(kind, prompt){
   const sys='Bạn sửa prompt tạo '+(kind==='video'?'video':'ảnh')+' để tránh bị bộ lọc của Google chặn nhầm vì nghi liên quan tới trẻ em hoặc người nổi tiếng, trong khi nội dung thực tế hoàn toàn lành mạnh (một phụ nữ trưởng thành review sản phẩm). Chỉ trả về DUY NHẤT prompt đã sửa, không giải thích, không bọc trong dấu ngoặc kép.';
   const usr=[ 'PROMPT GỐC (tiếng Anh):', String(prompt||''), '',
-    'QUY TẮC SỬA: (1) Nhân vật là phụ nữ trưởng thành bình thường — ghi rõ "an ordinary adult woman"; xoá mọi từ gợi ý trẻ/vị thành niên: young girl, young woman, young adult, teen, schoolgirl, student, school uniform, youthful, cute young... (2) Xoá mọi tên người thật/người nổi tiếng VÀ tên nhân vật hư cấu nổi tiếng (nhân vật phim, hoạt hình, game, thương hiệu), cùng mọi cụm so sánh ngoại hình với người thật hay nhân vật ("looks like", "resembling a celebrity"...). (3) Giữ nguyên 100% phần mô tả sản phẩm, bối cảnh, hành động, timeline từng giây và lời thoại tiếng Việt (nếu có). (4) Không thêm nội dung mới ngoài các sửa đổi trên.' ].join('\n');
+    'QUY TẮC SỬA: (1) Nhân vật là phụ nữ trưởng thành bình thường — ghi rõ "an ordinary adult woman"; xoá mọi từ gợi ý trẻ/vị thành niên: young girl, young woman, young adult, teen, schoolgirl, student, school uniform, youthful, cute young... (2) Xoá mọi tên người thật/người nổi tiếng VÀ tên nhân vật hư cấu nổi tiếng (nhân vật phim, hoạt hình, game, thương hiệu), cùng mọi cụm so sánh ngoại hình với người thật hay nhân vật ("looks like", "resembling a celebrity"...). (3) Giữ nguyên phần mô tả sản phẩm, bối cảnh, hành động và timeline từng giây; lời thoại tiếng Việt giữ nguyên Ý và độ dài tương đương, nhưng BẮT BUỘC thay/xoá mọi từ kích lọc nằm trong thoại (sinh viên, học sinh, trẻ em, teen...) bằng từ trung tính — vd "sinh viên" thì bỏ hẳn hoặc thay bằng "người ở trọ" — miễn câu vẫn trọn nghĩa. (4) Không thêm nội dung mới ngoài các sửa đổi trên.' ].join('\n');
   const data=await aiChat([{role:'system',content:sys},{role:'user',content:usr}], { json:false });
   const t=((data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'').trim();
   if(!t) throw new Error('Không viết lại được prompt');
   return t;
+}
+/* V10.36: lớp lọc từ kích hoạt TẠI CHỖ (tất định, không cần gọi AI) — phủ lên bản
+   Gemini viết lại và tự đứng ra sửa khi Gemini viết lại lỗi. Chỉ thay/xoá các từ
+   đã biết là kích bộ lọc người của Flow; giữ nguyên mọi nội dung còn lại. */
+function sanitizePromptLocal(t){
+  let s=String(t||'');
+  const reps=[
+    [/\byoung adult\b/gi,'adult'],
+    [/\byoung woman\b/gi,'adult woman'],
+    [/\byoung female\b/gi,'adult female'],
+    [/\byoung lady\b/gi,'adult woman'],
+    [/\byoung girl\b/gi,'adult woman'],
+    [/\bstudent dorm(?:\s+room)?\b/gi,'small rented room'],
+    [/\bschoolgirl\b/gi,'adult woman'],
+    [/\bschool girl\b/gi,'adult woman'],
+    [/\bteenage\b/gi,'adult'],
+    [/\bteenager\b/gi,'adult woman'],
+    [/\bteen girl\b/gi,'adult woman'],
+    [/\bteen\b/gi,'adult'],
+    [/\b(1[0-9]|2[0-9])-year-old\b/gi,'adult'],
+    [/\byouthful\b/gi,'natural'],
+    [/\byoung\b/gi,'adult'],
+    [/\bgirl\b/gi,'woman'],
+    [/\bstudents?\b/gi,'residents'],
+    [/sinh viên/gi,''],
+    [/học sinh/gi,''],
+    [/trẻ em/gi,''],
+  ];
+  for(const [re,to] of reps) s=s.replace(re,to);
+  return s.replace(/\s{2,}/g,' ').replace(/\s+([.,;:!?])/g,'$1');
 }
 async function flowGenGuarded(kind, prompt, images, ratio, onTaskId, dur, proj, seg){
   try{ return await flowGen(kind, prompt, images, ratio, onTaskId, dur); }
@@ -1221,7 +1251,9 @@ async function flowGenGuarded(kind, prompt, images, ratio, onTaskId, dur, proj, 
     /* V10.35 (TD chốt 25/11, GHI ĐÈ V10.29): lỗi lọc người thật / người nổi tiếng / nhân vật / trẻ em → app TỰ sửa prompt cho an toàn rồi gen lại đúng 1 lần; prompt đã sửa được LƯU LẠI vào scene để TD thấy, các lần gen sau dùng bản sạch. Lỗi khác: trả thẳng như cũ. */
     if(!isPolicyError(e && e.message)) throw e;
     let fixed='';
-    try{ fixed=await rewritePromptSafe(kind, prompt); }catch(_e){ throw e; }
+    try{ fixed=await rewritePromptSafe(kind, prompt); }catch(_e){ fixed=''; }
+    /* V10.36: lớp 2 — lọc từ tại chỗ phủ lên bản viết lại; bản viết lại lỗi/rỗng/trùng thì lọc thẳng trên prompt gốc. */
+    fixed=sanitizePromptLocal(fixed && fixed!==prompt ? fixed : prompt);
     if(!fixed || fixed===prompt) throw e;
     if(seg){
       if(kind==='video') seg.promptVid=fixed;
@@ -1324,7 +1356,21 @@ async function startVideoTask(proj,seg,fromRetry){
     /* V10.23 (TD chốt 24/11): prompt video của Gemini dùng NGUYÊN VĂN — gỡ toàn bộ lớp bọc cũ của app (khoá cuối, preamble storyboard/multi-shot, khoá sản phẩm/diễn xuất, voice completion). Mọi chỉ dẫn cần thiết Gemini đã tự viết trong prompt theo luật của lệnh đạo diễn. */
     if(seg.vid.engine==='flow'){
       seg.vid.status='processing'; save(); renderProductionZone();
-      const furl=await flowGenGuarded('video', effVP, vimgs, proj.ratio, id=>{ seg.vid.flowTaskId=id; save(); }, seg.dur||proj.sceneDur||10, proj, seg);
+      let furl;
+      try{
+        furl=await flowGenGuarded('video', effVP, vimgs, proj.ratio, id=>{ seg.vid.flowTaskId=id; save(); }, seg.dur||proj.sceneDur||10, proj, seg);
+      }catch(e){
+        /* V10.36 (TD chốt 25/11): prompt đã sửa + gen lại vẫn dính lọc người → khả năng cao chính SHEET tham chiếu bị chấm → tự gen lại storyboard đúng 1 lần rồi gen lại video bằng sheet mới + prompt đã sửa. */
+        if(!isBoardVid || !isPolicyError(e && e.message)) throw e;
+        const oldSheet=seg.board.url;
+        toast('⚠️ Đã sửa prompt mà vẫn bị lọc người — app tự gen lại storyboard rồi thử lại video', 6000);
+        try{ await genBoardInternal(proj, seg); }catch(_e){}
+        if(!seg.board || seg.board.status!=='done' || !seg.board.url || seg.board.url===oldSheet) throw e;
+        const sheetRef2=(seg.board.numberedUrl||seg.board.url);
+        const vimgs2=[ sheetRef2.startsWith('data:') ? sheetRef2 : await urlToDataURI(sheetRef2) ];
+        if(seg.promptVid && seg.promptVid.trim()) effVP=seg.promptVid;
+        furl=await flowGenGuarded('video', effVP, vimgs2, proj.ratio, id=>{ seg.vid.flowTaskId=id; save(); }, seg.dur||proj.sceneDur||10, proj, seg);
+      }
       const okImp=await importFlowClip(proj,seg,furl);
       seg.vid.status='done'; seg.vid.progress=100; seg.vid.error=''; seg.vid.autoRetries=0; seg.vid.autoNextAt=0; save(); renderProductionZone();
       toast(okImp? 'Video (Flow) xong — đã nhập kho, ghép trong app được: '+seg.title : 'Video (Flow) xong — chưa nhập kho được nên ghép ở CapCut: '+seg.title); return;
