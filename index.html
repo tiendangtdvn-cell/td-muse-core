@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.32</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.33</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -991,6 +991,7 @@ $$('#tabs button').forEach(b=>b.addEventListener('click',()=>{
   $$('#tabs button').forEach(x=>x.classList.toggle('active',x===b));
   ['control','projects','library','settings'].forEach(v=>$('#view-'+v).classList.toggle('hidden', v!==b.dataset.view));
   if(b.dataset.view==='library') loadLibrary();
+  if(b.dataset.view==='projects'){ renderProjects(); if(S.activeId) renderWorkspace(); }
   if(b.dataset.view==='settings'){ renderAccRoles(); renderFlowCfg(); renderGemCfg(); if(!poolAccounts) loadPoolAccounts(); }
   window.scrollTo({top:0});
   const appEl=document.getElementById('app'); if(appEl && typeof appEl.scrollTo==='function') appEl.scrollTo({top:0});
@@ -1029,6 +1030,7 @@ function projStatus(p){
 function renderProjects(){
   const _sv=_svPos();
   const el=$('#projectList'); const ws=$('#workspace');
+  if(S.activeId && !S.projects.some(x=>x.id===S.activeId)){ S.activeId=null; save(); }
   if(S.activeId){ el.classList.add('hidden'); ws.classList.remove('hidden'); return; }
   ws.classList.add('hidden'); el.classList.remove('hidden');
   el.innerHTML = `<div class="card"><h3>Dự án video <span class="sub">— mỗi dự án là 1 video</span></h3>
