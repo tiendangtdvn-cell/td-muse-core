@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.30</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.31</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -518,7 +518,7 @@ const DEFAULT_SETTINGS={ charMode:'review', bgImage:'', charRefs:[], template:'r
   dialogue:true, format:'review', fmtStore:{},
   flow:{ engImage:'muse', engVideo:'muse', url:'', key:'', vidModel:'omni11', adminUser:'', adminPass:'' },
   gemini:{ engine:'gemini', key:'', model:'gemini-3.5-flash-lite', modelCustom:'', rotate:true, webKey:'', webUrl:'' } };
-const ASM_DEFAULTS={ trimSilence:true, subOn:true, subSize:'vua', subPos:'duoi', subStyle:'tiktok',
+const ASM_DEFAULTS={ trimSilence:true, subOn:false, subSize:'vua', subPos:'duoi', subStyle:'tiktok',
   subColor:'trang', coverTitle:'', ctaEnd:false, logo:'', speed:'1', musicName:'', headCut:'0' };
 let S = loadState();
 function loadState(){
@@ -1652,6 +1652,7 @@ function sceneHTML(p,s,si){
 }
 window.__renderProduction=function(p){
   const zone=document.getElementById('productionZone'); if(!zone) return;
+  if(p.caption){ const fx=fixMojibake(p.caption); if(fx!==p.caption){ p.caption=fx; save(); } }
   zone.innerHTML=`
   
   <div class="card"><div class="btnrow" style="margin-top:0">
@@ -1665,6 +1666,11 @@ window.__renderProduction=function(p){
   <div class="scenenav"><b>Các scene</b><span class="sdots">${p.segments.map((s,si)=>{ const b=s.board||{}; const err=s.kf.status==='error'||s.vid.status==='error'||b.status==='error'; const doneV=s.vid.status==='done'; const appr=(p.boardMode==='board')? b.approved : s.kf.approved; const doneK=(p.boardMode==='board')? b.status==='done' : s.kf.status==='done'; const cls= err?'err': doneV?'done': (doneK&&appr)?'mid': doneK?'wait':''; const tip= err?'Có lỗi': doneV?'Đã có clip': (doneK&&appr)?'Đã duyệt — chờ gen video': doneK?'Chờ duyệt':'Chưa gen'; return '<button class="sdot '+cls+'" title="'+esc(s.title)+' — '+tip+'" onclick="App.sceneGo(\''+s.id+'\')">'+(si+1)+'</button>'; }).join('')}</span><button class="btn small" onclick="document.getElementById('sec3').scrollIntoView({behavior:'smooth'})">${p.segments.filter(x=>x.vid.status==='done').length}/${p.segments.length} Clip - Ghép Nối</button><span style="flex:1"></span><button class="btn small" onclick="App.sceneNav(-1)">◀</button><button class="btn small" onclick="App.sceneNav(1)">▶</button></div>
   <div class="scenestrip" id="sceneStrip">${p.segments.map((s,si)=>sceneHTML(p,s,si)).join('')}</div>
   <div class="steptitle" id="sec3">3 · Ghép nối</div>
+  <div class="card"><h3>Caption đăng bài</h3>
+    <div class="btnrow" style="margin-top:0"><button class="btn" onclick="App.genCaption()">✨ Viết caption + hashtag</button>
+    ${p.caption?'<button class="btn" onclick="App.copyCaption()">Copy caption</button>':''}</div>
+    ${p.caption?`<textarea style="min-height:90px" oninput="App.setP('caption',this.value)">${esc(p.caption)}</textarea>`:'<p class="muted">Chưa có caption. AI gợi ý caption gồm tiêu đề giật tít ~5 từ + đúng 5 hashtag.</p>'}
+  </div>
   <div class="card"><h3>Ghép phim ngay trong app</h3>
     ${asmHTML(p)}
   </div>
@@ -1675,11 +1681,7 @@ window.__renderProduction=function(p){
       <button class="btn" onclick="App.scriptPack()">⬇ Tải gói kịch bản (.txt)</button>
     </div>
     <p class="muted">${p.segments.every(s=>s.vid.status==='done') ? '🎉 Đủ clip — bấm GHÉP ở mục 3 để nối thành video hoàn chỉnh.' : 'Dự án hoàn thiện khi mọi đoạn đều có clip.'}</p></div>
-  <div class="card"><h3>Caption đăng bài</h3>
-    <div class="btnrow" style="margin-top:0"><button class="btn" onclick="App.genCaption()">✨ Viết caption + hashtag</button>
-    ${p.caption?'<button class="btn" onclick="App.copyCaption()">Copy caption</button>':''}</div>
-    ${p.caption?`<textarea style="min-height:90px" oninput="App.setP('caption',this.value)">${esc(p.caption)}</textarea>`:'<p class="muted">Chưa có caption. AI gợi ý caption gồm tiêu đề giật tít ~5 từ + đúng 5 hashtag.</p>'}
-  </div>`;
+`;
 };
 
 function kfStatusText(s){
@@ -3268,6 +3270,20 @@ async function genCover(){
     poll();
   }catch(e){ a.coverStatus='Lỗi: '+e.message; save(); renderProductionZone(); }
 }
+/* V10.31: tự chữa chữ Việt bị mã hoá 2 lớp (UTF-8 bị đọc nhầm thành Latin-1/Windows-1252 — dạng "Ngháº¹t mÅ©i...").
+   Chỉ sửa khi thấy dấu hiệu mã hoá hỏng rõ ràng VÀ giải mã lại ra UTF-8 hợp lệ; chữ bình thường giữ nguyên. */
+function fixMojibake(s){
+  s=String(s||''); if(!s) return s;
+  if(!/(Ã|Å|Ä|Æ|áº|á»|â€)/.test(s)) return s;
+  try{
+    const CP={0x20AC:0x80,0x201A:0x82,0x0192:0x83,0x201E:0x84,0x2026:0x85,0x2020:0x86,0x2021:0x87,0x02C6:0x88,0x2030:0x89,0x0160:0x8A,0x2039:0x8B,0x0152:0x8C,0x017D:0x8E,0x2018:0x91,0x2019:0x92,0x201C:0x93,0x201D:0x94,0x2022:0x95,0x2013:0x96,0x2014:0x97,0x02DC:0x98,0x2122:0x99,0x0161:0x9A,0x203A:0x9B,0x0153:0x9C,0x017E:0x9E,0x0178:0x9F};
+    const bytes=[];
+    for(const ch of s){ const c=ch.codePointAt(0); if(c<0x80) bytes.push(c); else if(CP[c]!==undefined) bytes.push(CP[c]); else if(c<=0xFF) bytes.push(c); else return s; }
+    const out=new TextDecoder('utf-8',{fatal:true}).decode(new Uint8Array(bytes));
+    if(!out || out===s || out.includes('\uFFFD')) return s;
+    return out;
+  }catch(e){ return s; }
+}
 async function genCaption(){
   const p=activeProject(); if(!p) return; toast('AI đang viết caption...');
   const ctx=['Sản phẩm: '+(p.product||p.name), p.category? 'Loại sản phẩm: '+p.category : '', p.points? 'Điểm bán hàng: '+p.points : '',
@@ -3276,7 +3292,7 @@ async function genCaption(){
     const data=await aiChat([
         {role:'system',content:'Bạn viết caption đăng TikTok/Reels cho video affiliate. CẤU TRÚC BẮT BUỘC — CHỈ 2 DÒNG: dòng 1 là TIÊU ĐỀ giật tít khoảng 5 từ (4–6 từ) liên quan trực tiếp tới sản phẩm, đánh mạnh tâm lý tò mò / sợ bỏ lỡ, không chứa hashtag; dòng 2 là ĐÚNG 5 hashtag liên quan nhất tới sản phẩm và loại sản phẩm. KHÔNG viết thêm bất kỳ câu mô tả nào khác. Chỉ trả caption, không giải thích.'},
         {role:'user',content:ctx}], { json:false });
-    const rawCap=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||'').trim();
+    const rawCap=fixMojibake((data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content||'').trim());
     const capTags=(rawCap.match(/#[\p{L}\p{N}_]+/gu)||[]).slice(0,5);
     let capTitle=rawCap.split('\n').map(x=>x.trim()).filter(x=>x && !x.startsWith('#'))[0]||'';
     capTitle=capTitle.replace(/^["'“”]+|["'“”]+$/g,'').trim();
