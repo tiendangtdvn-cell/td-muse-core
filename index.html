@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.25</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.26</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -447,13 +447,24 @@
         <select id="flowVidModel"><option value="omni11">Omni 1.1 Flash — đã test chạy được, Google bỏ sau 5/12</option><option value="omni12">Omni 1.2 Flash — dùng lâu dài</option></select>
         <label class="fl">API key của cổng Flow</label>
         <input type="password" id="flowKey" placeholder="Key của cổng Flow (flow2api)">
+        <label class="fl">Địa chỉ cổng Flow</label>
+        <input type="text" id="flowUrl" placeholder="https://...-8000.app.github.dev">
+        <label class="fl">Tài khoản quản trị bể Flow (đăng nhập panel flow2api)</label>
+        <input type="text" id="flowAdminUser" placeholder="admin">
+        <label class="fl">Mật khẩu quản trị bể Flow</label>
+        <input type="password" id="flowAdminPass" placeholder="Mật khẩu panel flow2api">
+        <div class="btnrow"><button class="btn" id="flowPoolBtn">↻ Tải danh sách làn Flow</button></div>
+        <div id="flowPoolBox" style="margin-top:6px"></div>
+        <div class="log" id="flowPoolLog" style="margin-top:8px"></div>
         <div class="btnrow"><button class="btn" id="flowTest">Kiểm tra kết nối</button><button class="btn" id="warmBtn" onclick="App.warmFlow()">🔥 Làm nóng Flow</button><span id="warmState" style="margin-left:4px;font-size:11px;opacity:.85"></span></div>
         <div class="log" id="flowLog" style="margin-top:8px">Chưa kiểm tra.</div>
       </div>
       <details class="card foldcard">
         <summary>🔌 Kết nối & tài khoản — ít khi đụng, bấm để mở</summary>
-        <label class="fl">Địa chỉ Worker (cầu nối tới bridge)</label>
-        <input type="url" id="cfgUrl" placeholder="https://...workers.dev">
+        <label class="fl">Địa chỉ cầu Muse (bridge) — đi thẳng thì dán địa chỉ cổng 18610 của codespace</label>
+        <input type="url" id="cfgUrl" placeholder="https://...-18610.app.github.dev">
+        <label class="fl">API key cầu Muse (chỉ khi đi thẳng vào cầu; qua Worker thì để trống)</label>
+        <input type="password" id="cfgKey" placeholder="Key của cầu — tự đặt qua Codespaces secret rồi nhập tại đây">
         <div class="btnrow"><button class="btn" id="cfgTest">Kiểm tra kết nối</button></div>
         <div class="log" id="cfgLog" style="margin-top:8px">Sẵn sàng.</div>
         <h4 style="margin:18px 0 4px">Nạp tài khoản Muse (cookie)</h4>
@@ -505,7 +516,7 @@ const DEFAULT_SETTINGS={ charMode:'review', bgImage:'', charRefs:[], template:'r
   style:'chan-thuc', presets:[], hookStyle:'ai', speakMode:'tnhien',
   expression:'tnhien', animalTalk:false, retry:0, boardMode:'board', charLib:[], activeChar:'', char2:'', useChar2:false,
   dialogue:true, format:'review', fmtStore:{},
-  flow:{ engImage:'muse', engVideo:'muse', url:'', key:'', vidModel:'omni11' },
+  flow:{ engImage:'muse', engVideo:'muse', url:'', key:'', vidModel:'omni11', adminUser:'', adminPass:'' },
   gemini:{ engine:'gemini', key:'', model:'gemini-3.5-flash-lite', modelCustom:'', rotate:true, webKey:'', webUrl:'' } };
 const ASM_DEFAULTS={ trimSilence:true, subOn:true, subSize:'vua', subPos:'duoi', subStyle:'tiktok',
   subColor:'trang', coverTitle:'', ctaEnd:false, logo:'', speed:'1', musicName:'', headCut:'0' };
@@ -529,8 +540,8 @@ function save(){ clearTimeout(saveTimer); saveTimer=setTimeout(async ()=>{ const
   if(!okIdb && !okLs && !quotaWarned){ quotaWarned=true; toast('Bộ nhớ trình duyệt đầy — hãy xuất JSON dự phòng!', 5000); }
 },250); }
 const DEFAULT_WORKER='https://tdstudio.tiendang-tdvn.workers.dev';
-const DEFAULT_GEMWEB_URL='https://expert-xylophone-gx79jj6ww5wwcpv9x-8083.app.github.dev';
-function cfg(){ return { url:((localStorage.getItem(LS_URL)||'').trim()||DEFAULT_WORKER).replace(/\/+$/,''), key:'' }; }
+const DEFAULT_GEMWEB_URL='https://didactic-potato-5v9px444p6x637p7q-8083.app.github.dev';
+function cfg(){ return { url:((localStorage.getItem(LS_URL)||'').trim()||DEFAULT_WORKER).replace(/\/+$/,''), key:((localStorage.getItem(LS_KEY)||'').trim()) }; }
 function activeProject(){ return S.projects.find(p=>p.id===S.activeId) || null; }
 
 /* ---------------- API ---------------- */
@@ -570,10 +581,11 @@ async function api(path, opts={}){
   return data;
 }
 /* ---------------- Cổng Flow (flow2api) ---------------- */
-const DEFAULT_FLOW_URL='https://expert-xylophone-gx79jj6ww5wwcpv9x-8000.app.github.dev';
+const DEFAULT_FLOW_URL='https://didactic-potato-5v9px444p6x637p7q-8000.app.github.dev';
 function flowCfg(){ const f=(typeof S!=='undefined' && S.settings && S.settings.flow)||{};
   return { engImage:f.engImage||'muse', engVideo:f.engVideo||'muse',
-    url:((f.url||'').trim()||DEFAULT_FLOW_URL).replace(/\/+$/,''), key:(f.key||'').trim(), vidModel:f.vidModel||'omni11' }; }
+    url:((f.url||'').trim()||DEFAULT_FLOW_URL).replace(/\/+$/,''), key:(f.key||'').trim(), vidModel:f.vidModel||'omni11',
+    adminUser:(f.adminUser||'').trim(), adminPass:(f.adminPass||'') }; }
 let __wakeLock=null;
 async function keepAwake(on){
   try{
@@ -615,6 +627,7 @@ function renderFlowCfg(){
   const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
   set('flowEngImage', f.engImage); set('flowEngVideo', f.engVideo);
   set('flowUrl', f.url); set('flowKey', f.key); set('flowVidModel', f.vidModel);
+  set('flowAdminUser', f.adminUser); set('flowAdminPass', f.adminPass);
 }
 async function testFlowConn(){
   const lg=$('#flowLog'); const f=flowCfg();
@@ -1852,9 +1865,58 @@ function paintWarmBtn(){
   const ws=$('#warmState'); if(ws) ws.textContent= warm? ('từ '+new Date(at).toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'})) : '';
 }
 window.App = window.App || {}; Object.assign(window.App,{ warmFlow });
+/* ---------------- V10.26: quản trị bể Flow đi thẳng flow2api (không qua Worker, không qua cầu) ---------------- */
+let __flowAdminToken='';
+async function flowAdminLogin(){
+  const f=flowCfg(); const u=(f.adminUser||'admin')||'admin'; const p=f.adminPass||'';
+  const res=await fetch(f.url+'/api/admin/login',{method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({username:u, password:p})});
+  let d=null; try{ d=await res.json(); }catch(e){}
+  if(!res.ok || !d || !d.token) throw new Error((d&&(d.detail||d.message))||('Đăng nhập quản trị Flow thất bại (HTTP '+res.status+') — kiểm tra tài khoản/mật khẩu panel và địa chỉ cổng Flow.'));
+  __flowAdminToken=d.token; return d.token;
+}
+async function flowApi(path, opts={}){
+  const f=flowCfg();
+  if(!__flowAdminToken) await flowAdminLogin();
+  const call=async tok=>{
+    const r=await fetch(f.url+path, Object.assign({}, opts, {headers:Object.assign({'Content-Type':'application/json','Authorization':'Bearer '+tok}, opts.headers||{})}));
+    let d=null; try{ d=await r.json(); }catch(e){}
+    if(r.status===401){ const er=new Error('Phiên quản trị Flow hết hạn'); er.code=401; throw er; }
+    if(!r.ok) throw new Error((d&&(d.detail||d.message))||('HTTP '+r.status));
+    return d;
+  };
+  try{ return await call(__flowAdminToken); }
+  catch(e){ if(e && e.code===401){ __flowAdminToken=''; await flowAdminLogin(); return await call(__flowAdminToken); } throw e; }
+}
+function renderFlowLaneCount(on,total){ try{ flowLanes={enabled:on,total:total,at:Date.now()}; localStorage.setItem('td_flow_lanes', JSON.stringify(flowLanes)); renderCfgStrip(); }catch(e){} }
+async function flowPoolLoad(){
+  const box=$('#flowPoolBox'), lg=$('#flowPoolLog'); if(!box) return;
+  if(lg) lg.textContent='Đang tải danh sách làn...';
+  try{
+    const list=await flowApi('/api/tokens');
+    const arr=Array.isArray(list)? list : ((list&&(list.tokens||list.data))||[]);
+    if(!arr.length){ box.innerHTML='<p class="muted">Bể đang trống — chưa có làn Flow nào. Nạp làn ở panel flow2api.</p>'; if(lg) lg.textContent='Bể trống (0 làn).'; renderFlowLaneCount(0,0); return; }
+    let on=0, h='';
+    arr.forEach(t=>{ const act=t.is_active!==false; if(act) on++;
+      const name=esc(t.remark||t.name||t.email||('Làn '+t.id));
+      h+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid rgba(127,127,127,.25)">'
+        +'<div style="flex:1"><b>'+name+'</b>'+(t.credits!=null? ' <span class="muted">'+esc(t.credits)+' credits</span>':'')
+        +'<br><span class="muted" style="font-size:11px">'+(act?'\uD83D\uDFE2 đang bật':'\u26AA đang tắt')+(t.ban_reason? ' · \u26A0\uFE0F '+esc(t.ban_reason):'')+'</span></div>'
+        +'<button class="btn" data-lane="'+esc(String(t.id))+'" data-act="'+(act?'disable':'enable')+'">'+(act?'Tắt':'Bật')+'</button></div>'; });
+    box.innerHTML=h; if(lg) lg.textContent='\u2705 '+on+'/'+arr.length+' làn đang bật.';
+    renderFlowLaneCount(on, arr.length);
+  }catch(e){ if(lg) lg.textContent='\u274C '+(e.message||e); }
+}
+async function flowPoolToggle(id, act){
+  const lg=$('#flowPoolLog');
+  try{ await flowApi('/api/tokens/'+encodeURIComponent(id)+'/'+act,{method:'POST'}); if(lg) lg.textContent='\u2705 Đã '+(act==='enable'?'bật':'tắt')+' làn.'; }
+  catch(e){ if(lg) lg.textContent='\u274C '+(e.message||e); }
+  flowPoolLoad();
+}
+Object.assign(window.App,{ flowPoolLoad, flowPoolToggle, flowAdminLogin });
+
 /* ---------------- V10.8: nút nguồn xưởng (Bật/Tắt codespace qua Worker) ---------------- */
 async function powerApi(path, method){
-  const {url}=cfg();
+  const url=DEFAULT_WORKER; /* V10.26: nút nguồn vẫn qua Worker như cũ — đường nguồn xử lý riêng, không đi theo địa chỉ cầu */
   let res;
   try{ res=await fetch(url+path, { method:method||'GET', headers:{ 'Content-Type':'application/json' } }); }
   catch(e){ throw new Error('Không gọi được Worker'); }
@@ -1947,7 +2009,8 @@ window.App = window.App || {}; Object.assign(window.App,{ togglePower, paintPowe
 function flashSaved(){ const n=$('#saveNote'); if(n){ n.textContent='Đã lưu ✓'; clearTimeout(flashSaved._t); flashSaved._t=setTimeout(()=>{ n.textContent=''; },1600); } }
 function paintSetSummary(){ const el=$('#setSummary'); if(!el) return; const g=gemCfg(), f=flowCfg();
   el.textContent='Đạo diễn: '+(g.engine==='muse'?'Muse':(g.engine==='gemini-web'?'Gemini Web · Hydrogen (Pro)':('Gemini · '+g.model)))+' · Ảnh: '+(f.engImage==='flow'?'Flow':'Muse')+' · Video: '+(f.engVideo==='flow'?('Flow '+(f.vidModel==='omni12'?'Omni 1.2':'Omni 1.1')):'Muse'); }
-$('#cfgUrl').addEventListener('change',()=>{ localStorage.setItem(LS_URL, $('#cfgUrl').value.trim()); localStorage.setItem(LS_KEY, ''); flashSaved(); });
+$('#cfgUrl').addEventListener('change',()=>{ localStorage.setItem(LS_URL, $('#cfgUrl').value.trim()); flashSaved(); });
+$('#cfgKey').addEventListener('change',()=>{ localStorage.setItem(LS_KEY, $('#cfgKey').value.trim()); flashSaved(); });
 $('#cfgTest').addEventListener('click',async()=>{ logTo('#cfgLog','Đang kiểm tra...'); await ping(); });
 function toCookieDict(text){
   text=(text||'').trim(); if(!text) return {};
@@ -2186,6 +2249,9 @@ $('#accRolesLoad').addEventListener('click', loadPoolAccounts);
 function saveFlowCfgAuto(){ if(!S.settings.flow) S.settings.flow={};
   S.settings.flow.engImage=$('#flowEngImage').value; S.settings.flow.engVideo=$('#flowEngVideo').value;
   S.settings.flow.key=$('#flowKey').value.trim(); S.settings.flow.vidModel=$('#flowVidModel').value;
+  const __fu=$('#flowUrl'); if(__fu) S.settings.flow.url=__fu.value.trim();
+  const __fau=$('#flowAdminUser'); if(__fau) S.settings.flow.adminUser=__fau.value.trim();
+  const __fap=$('#flowAdminPass'); if(__fap) S.settings.flow.adminPass=__fap.value;
   save(); renderCfgStrip(); flashSaved(); }
 function saveGemCfgAuto(){ if(!S.settings.gemini) S.settings.gemini={};
   S.settings.gemini.engine=$('#gemEngine').value; S.settings.gemini.key=$('#gemKey').value.trim();
@@ -2200,6 +2266,9 @@ function saveGemCfgAuto(){ if(!S.settings.gemini) S.settings.gemini={};
 const gemRotEl=$('#gemRotate'); if(gemRotEl) gemRotEl.addEventListener('change', saveGemCfgAuto);
 let _svT=null; const _svDeb=f=>{ clearTimeout(_svT); _svT=setTimeout(f,600); };
 $('#flowKey').addEventListener('input', ()=>_svDeb(saveFlowCfgAuto));
+['#flowUrl','#flowAdminUser','#flowAdminPass'].forEach(sel=>{ const el=$(sel); if(el) el.addEventListener('input', ()=>_svDeb(saveFlowCfgAuto)); });
+const __fpbBtn=$('#flowPoolBtn'); if(__fpbBtn) __fpbBtn.addEventListener('click', flowPoolLoad);
+const __fpbBox=$('#flowPoolBox'); if(__fpbBox) __fpbBox.addEventListener('click', e=>{ const b=e.target.closest('button[data-lane]'); if(!b) return; b.disabled=true; flowPoolToggle(b.getAttribute('data-lane'), b.getAttribute('data-act')); });
 $('#gemKey').addEventListener('input', ()=>_svDeb(saveGemCfgAuto));
 $('#gemModelCustom').addEventListener('input', ()=>_svDeb(saveGemCfgAuto));
 const gwkEl=$('#gemWebKey'); if(gwkEl) gwkEl.addEventListener('input', ()=>_svDeb(saveGemCfgAuto));
@@ -3319,6 +3388,7 @@ function fmtPrice(p){ const n=parseInt(String(p||'').replace(/\D/g,''),10); retu
 /* ---------------- Init ---------------- */
 (function init(){
   $('#cfgUrl').value=localStorage.getItem(LS_URL)||DEFAULT_WORKER;
+  const __ck=$('#cfgKey'); if(__ck) __ck.value=localStorage.getItem(LS_KEY)||'';
   renderProjects(); if(S.activeId) renderWorkspace();
   // Resume polling for tasks that were running when the app was closed
   sweepFlowStuck(); paintWarmBtn();
