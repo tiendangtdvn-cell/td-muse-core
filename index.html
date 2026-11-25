@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.26</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.27</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -1251,7 +1251,9 @@ async function startImageTask(proj,seg){
     /* V10.15 (TD chốt): có ẢNH CHUẨN thì keyframe chỉ bám [ảnh chuẩn + ảnh SP] — khoá 100% mặt/tóc/trang phục/bối cảnh, chỉ đổi tư thế/hành động/biểu cảm theo cảnh. Chưa có ảnh chuẩn thì giữ đường cũ (ảnh nhân vật + SP + nối khung cuối + neo keyframe cảnh 1). */
     let imgs, kfPrompt=(seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg);
     if(proj.anchorImg){
-      imgs=[proj.anchorImg, ...proj.refsProd.slice(0,2)];
+      let anchorRefK=proj.anchorImg;
+      if(!anchorRefK.startsWith('data:')){ try{ anchorRefK=await urlToDataURI(anchorRefK); }catch(e){} }
+      imgs=[anchorRefK, ...proj.refsProd.slice(0,2)];
     } else {
       imgs= seg.hasProduct===false ? [...proj.refsChar] : [...proj.refsChar, ...proj.refsProd];
       const pvI=prevSeg(proj,seg); if(pvI && pvI.endFrame){ try{ imgs.push(await urlToDataURI(pvI.endFrame)); }catch(e){} }
@@ -1502,7 +1504,9 @@ function gridStateOf(g){ return g? {cols:g.cols, rows:g.rows, ok:(g.cols===2&&g.
 /* V10.14: gom việc dựng prompt + ảnh ref của 1 lượt gen sheet vào một chỗ — gen thẳng và resume dùng chung */
 async function buildBoardGen(proj, seg){
   const useAnchor= !!proj.anchorImg;
-  const imgs= useAnchor ? [proj.anchorImg, ...proj.refsProd.slice(0,2)] : (seg.hasProduct===false ? [...proj.refsChar.slice(0,3)] : [...proj.refsChar.slice(0,2), ...proj.refsProd.slice(0,2)]);
+  let anchorRef=proj.anchorImg||'';
+  if(anchorRef && !anchorRef.startsWith('data:')){ try{ anchorRef=await urlToDataURI(anchorRef); }catch(e){} }
+  const imgs= useAnchor ? [anchorRef, ...proj.refsProd.slice(0,2)] : (seg.hasProduct===false ? [...proj.refsChar.slice(0,3)] : [...proj.refsChar.slice(0,2), ...proj.refsProd.slice(0,2)]);
   const idx=proj.segments.indexOf(seg); const pvB=idx>0? proj.segments[idx-1] : null;
   let chainRef='';
   if(!useAnchor && pvB && pvB.board){
@@ -2971,7 +2975,9 @@ async function batchStartKF(proj,seg){
     /* V10.15: đường keyframe hàng loạt (batchStartKF) cũng bám ảnh chuẩn khi dự án đã có — cùng luật với startImageTask */
     let imgs, kfPromptB=(seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg);
     if(proj.anchorImg){
-      imgs=[proj.anchorImg, ...proj.refsProd.slice(0,2)];
+      let anchorRefK=proj.anchorImg;
+      if(!anchorRefK.startsWith('data:')){ try{ anchorRefK=await urlToDataURI(anchorRefK); }catch(e){} }
+      imgs=[anchorRefK, ...proj.refsProd.slice(0,2)];
     } else {
       imgs= seg.hasProduct===false ? [...proj.refsChar] : [...proj.refsChar, ...proj.refsProd];
       if(S.settings.bgImage) imgs.push(S.settings.bgImage);
