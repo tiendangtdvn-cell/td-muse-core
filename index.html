@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.37</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.38</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -418,9 +418,8 @@
         <label class="fl">Đạo diễn chính</label>
         <select id="gemEngine"><option value="gemini">Gemini (đạo diễn chính)</option><option value="gemini-web">Gemini Web — nick Pro qua cầu (Hydrogen)</option><option value="muse">Muse (như cũ)</option></select>
         <label class="fl">Model Gemini</label>
-        <select id="gemModel"><option value="gemini-4-hydrogen">Gemini 4 Hydrogen — mạnh nhất, trần free thấp (5 lượt/phút)</option><option value="gemini-3.8-flash">Gemini 3.8 Flash — mạnh, trần free 5 lượt/phút · tối đa 20 lượt/ngày</option><option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite — nhanh nhất, ít quá tải (khuyên dùng)</option></select>
-        <label class="fl" style="display:flex;align-items:center;gap:8px;margin-top:8px"><input type="checkbox" id="gemRotate" checked> Xoay tua 3 model Gemini (cao → thấp khi lỗi)</label>
-        <p class="muted" style="margin:0 0 6px">Chuỗi xoay tua: Gemini 4 Hydrogen → Gemini 3.8 Flash → Gemini 3.5 Flash Lite</p>
+        <select id="gemModel"><option value="gemini-3.5-flash-lite">Gemini 3.5 Flash Lite — nhanh nhất, ít quá tải</option></select>
+        <p class="muted" style="margin:0 0 6px">Làn API cố định Gemini 3.5 Flash Lite (TD chốt 26/11: bỏ hẳn xoay tua model — Lite chạy nhanh và chắc; đạo diễn chính vẫn là Gemini Web Hydrogen qua cầu).</p>
         <details class="morefold"><summary>Ít dùng — tự nhập model ID khác</summary>
         <label class="fl">Model ID tự nhập (để trống thì dùng model chọn ở trên)</label>
         <input type="text" id="gemModelCustom" placeholder="Để trống thì dùng model chọn ở trên">
@@ -517,7 +516,7 @@ const DEFAULT_SETTINGS={ charMode:'review', bgImage:'', charRefs:[], template:'r
   expression:'tnhien', animalTalk:false, retry:0, boardMode:'board', charLib:[], activeChar:'', char2:'', useChar2:false,
   dialogue:true, format:'review', fmtStore:{},
   flow:{ engImage:'muse', engVideo:'muse', url:'', key:'', vidModel:'omni11', adminUser:'', adminPass:'' },
-  gemini:{ engine:'gemini', key:'', model:'gemini-3.5-flash-lite', modelCustom:'', rotate:true, webKey:'', webUrl:'' } };
+  gemini:{ engine:'gemini', key:'', model:'gemini-3.5-flash-lite', modelCustom:'', webKey:'', webUrl:'' } };
 const ASM_DEFAULTS={ trimSilence:true, subOn:false, subSize:'vua', subPos:'duoi', subStyle:'tiktok',
   subColor:'trang', coverTitle:'', ctaEnd:false, logo:'', speed:'1', musicName:'', headCut:'0' };
 let S = loadState();
@@ -639,16 +638,13 @@ async function testFlowConn(){
   }catch(e){ if(lg) lg.textContent='❌ Không nối được cầu: '+(e.message||e)+' — kiểm tra xưởng đã mở chưa và cổng 18610 đã để Public chưa.'; }
 }
 /* ---------------- Đạo diễn Gemini ---------------- */
-/* V10.16 (TD chốt 23/11): chuỗi xoay tua Gemini cao -> thấp + trần mềm free-tier từng model (lượt/60s). */
-const GEM_CHAIN=['gemini-4-hydrogen','gemini-3.8-flash','gemini-3.5-flash-lite'];
-const GEM_CAPS={'gemini-4-hydrogen':4,'gemini-3.8-flash':4,'gemini-3.5-flash-lite':12};
-const GEM_CAP_DEFAULT=12;
+/* V10.38 (TD chốt 26/11): BỎ HẲN xoay tua model — làn API Gemini cố định gemini-3.5-flash-lite; model ID tự nhập (nếu TD điền) vẫn được tôn trọng như lựa chọn tay. */
+const GEM_API_MODEL='gemini-3.5-flash-lite';
 function gemCfg(){ const g=(typeof S!=='undefined' && S.settings && S.settings.gemini)||{};
-  let sel = g.model || 'gemini-3.5-flash-lite';
-  if(GEM_CHAIN.indexOf(sel)<0) sel='gemini-3.5-flash-lite';
+  const sel = GEM_API_MODEL;
   return { engine:g.engine||'gemini', key:(g.key||'').trim(),
     model:(g.modelCustom||'').trim() || sel,
-    modelSel:sel, modelCustom:(g.modelCustom||''), rotate:g.rotate!==false,
+    modelSel:sel, modelCustom:(g.modelCustom||''),
     webKey:(g.webKey||'').trim(), webUrl:((g.webUrl||'').trim()||DEFAULT_GEMWEB_URL).replace(/\/+$/,'') }; }
 let lastGemToastAt=0;
 const __dsCache=new Map();
@@ -703,50 +699,8 @@ async function geminiChat(messages, jsonMode, modelOverride){
   if(!joined){ const er=new Error('Gemini trả về rỗng'); er.gemKind='empty'; throw er; }
   return joined;
 }
-/* V10.16: GIỚI HẠN MỀM theo trần free của từng model — cửa sổ trượt 60s, mọi lượt HTTP (kể cả thử lại) đều đếm. */
-const GEM_DAY_KEY='td_gem_day';
-const __gemTs={}; window.__gemThrottle=__gemTs;
-const __gemSkip=new Set(); window.__gemSkip=__gemSkip;
+/* V10.38: đã gỡ trần mềm theo model, trần ngày và hàm xoay tua; gemSleep giữ lại vì làn Gemini Web còn dùng. */
 const gemSleep=ms=>new Promise(r=>setTimeout(r,ms));
-function gemCapFor(model){ return GEM_CAPS[model]||GEM_CAP_DEFAULT; }
-function gemPrune(model){ const now=Date.now(); const arr=(__gemTs[model]||[]).filter(t=>now-t<60000); __gemTs[model]=arr; return arr; }
-function gemWaitMs(model){ const arr=gemPrune(model); if(arr.length>=gemCapFor(model)) return Math.max(0,(arr[0]+60000)-Date.now()); return 0; }
-function gemStamp(model){ gemPrune(model).push(Date.now()); }
-function gemDayLoad(){ const today=new Date().toDateString(); let d=null; try{ d=JSON.parse(localStorage.getItem(GEM_DAY_KEY)||'null'); }catch(e){}
-  if(!d || d.d!==today || !d.c) d={ d:today, c:{} }; return d; }
-function gemDayCount(model){ return gemDayLoad().c[model]||0; }
-function gemDayBump(model){ const d=gemDayLoad(); d.c[model]=(d.c[model]||0)+1; try{ localStorage.setItem(GEM_DAY_KEY, JSON.stringify(d)); }catch(e){} }
-function gemDayBlocked(model){ return model==='gemini-3.8-flash' && gemDayCount(model)>=18; }
-function gemClassify(e){ const msg=String((e&&e.message)||e); const st=e&&e.gemStatus; const code=String((e&&e.gemCode)||'');
-  if(e&&e.gemKind==='local') return 'fatal';
-  if(st===503 || code==='UNAVAILABLE' || /high demand|overloaded|unavailable|503/i.test(msg)) return 'overload';
-  if(st===429 || code==='RESOURCE_EXHAUSTED' || /quota|rate limit|resource_exhausted|429/i.test(msg)) return 'quota';
-  if(st===404 || code==='NOT_FOUND' || /not found|404/i.test(msg)) return 'notfound';
-  if(e&&e.gemKind==='network') return 'network';
-  if(e&&e.gemKind==='empty') return 'empty';
-  return 'fatal'; }
-/* V10.16: XOAY TUA — thử model cao trước; 503 thử lại cùng model tối đa 3 lượt (chờ 6s, 15s) rồi hạ; 429/mạng hạ ngay; 404 hạ + bỏ qua cả phiên; lỗi 4xx thật thì văng ngay. */
-async function geminiChatRotated(messages, jsonMode){
-  let lastErr=null;
-  for(let mi=0; mi<GEM_CHAIN.length; mi++){
-    const model=GEM_CHAIN[mi];
-    if(__gemSkip.has(model) || gemDayBlocked(model)) continue;
-    const isLast = mi===GEM_CHAIN.length-1;
-    const waits=[6000,15000];
-    for(let att=0; att<3; att++){
-      const w=gemWaitMs(model);
-      if(w>0){ if(!isLast && w>20000) break; await gemSleep(Math.min(w,90000)); }
-      gemStamp(model); gemDayBump(model);
-      try{ const t=await geminiChat(messages, jsonMode, model); window.__lastGemModel=model; return t; }
-      catch(e){ lastErr=e; const cls=gemClassify(e);
-        if(cls==='fatal') throw e;
-        if(cls==='notfound'){ __gemSkip.add(model); break; }
-        if(cls==='overload' && att<2){ await gemSleep(waits[att]); continue; }
-        break; }
-    }
-  }
-  throw lastErr || new Error('Gemini: cả 3 model trong chuỗi xoay tua đều đang bị bỏ qua (lỗi 404 trước đó hoặc hết lượt ngày)');
-}
 /* V10.18: làn đạo diễn Gemini Web — nick Pro qua cầu gw2api (OpenAI-compatible), model cố định gemini-4-hydrogen (TD chốt 24/11). */
 /* V10.19: chuyển sang STREAMING (SSE) — bản không-stream bị cầu retry khi upstream ì, 1 lượt gọi có thể kéo 540 giây (180s × 3). Streaming cho chữ chảy liên tục, tổng thời gian = đúng thời gian model sinh. */
 async function gemWebChatOnce(messages, stream){
@@ -857,19 +811,9 @@ async function aiChat(messages, opts){
     return gemWebRun(messages);
   }
   if(g.engine==='gemini' && g.key){
-    if(g.rotate){
-      try{ const t=await geminiChatRotated(messages, !!opts.json); return { choices:[{ message:{ content:t } }] }; }
-      catch(err){ const msg=String((err&&err.message)||err); const overload=/high demand|overloaded|unavailable|503/i.test(msg);
-        const now=Date.now(); if(now-lastGemToastAt>60000){ lastGemToastAt=now;
-          toast(overload ? 'Cả 3 model Gemini đang quá tải — app đã xoay tua hết chuỗi vẫn bận. Chờ vài phút bấm lại nhé'
-                         : 'Gemini lỗi: '+msg.slice(0,110)+' — app đã thử cả 3 model trong chuỗi xoay tua', 7000); }
-        throw err; }
-    }
     let err=null;
     const waits=[6000,15000,30000,50000,80000];
     for(let att=0; att<6; att++){
-      const wL=gemWaitMs(g.model); if(wL>0) await gemSleep(Math.min(wL,90000));
-      gemStamp(g.model); gemDayBump(g.model);
       try{ const t=await geminiChat(messages, !!opts.json); window.__lastGemModel=g.model; return { choices:[{ message:{ content:t } }] }; }
       catch(e){ err=e; const msg=String((e&&e.message)||e);
         if(att<5 && /high demand|overloaded|unavailable|503/i.test(msg)){ await new Promise(r=>setTimeout(r,waits[att])); continue; }
@@ -877,8 +821,8 @@ async function aiChat(messages, opts){
     }
     if(err){ const msg=String(err.message||err); const overload=/high demand|overloaded|unavailable|503/i.test(msg);
       const now=Date.now(); if(now-lastGemToastAt>60000){ lastGemToastAt=now;
-        toast(overload ? 'Gemini đang quá tải — app đã tự thử lại 6 lần trong ~3 phút vẫn bận. Chờ vài phút bấm lại, hoặc đổi model khác trong Cài đặt (app không tự chuyển Muse)'
-                       : 'Gemini lỗi: '+msg.slice(0,110)+' — app KHÔNG tự chuyển Muse (đang chọn tay model này)', 7000); }
+        toast(overload ? 'Gemini đang quá tải — app đã tự thử lại 6 lần trong ~3 phút vẫn bận. Chờ vài phút bấm lại nhé (làn API cố định 3.5 Flash Lite)'
+                       : 'Gemini lỗi: '+msg.slice(0,110)+' — app KHÔNG tự chuyển Muse', 7000); }
       throw err; }
   }
   return api('/v1/chat/completions',{ method:'POST', body:JSON.stringify({ model:'muse-spark', stream:false, messages }) });
@@ -888,7 +832,6 @@ function renderGemCfg(){
   const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
   set('gemEngine', g.engine); set('gemKey', g.key); set('gemModel', g.modelSel); set('gemModelCustom', g.modelCustom);
   set('gemWebKey', g.webKey); set('gemWebUrl', (S.settings.gemini&&S.settings.gemini.webUrl)||'');
-  const rotEl=document.getElementById('gemRotate'); if(rotEl) rotEl.checked=!!g.rotate;
   updGemWebVis();
 }
 function updGemWebVis(){
@@ -920,26 +863,6 @@ async function testGemConn(){
   }
   if(!g.key){ if(lg) lg.textContent='Chưa nhập API key Gemini.'; return; }
   if(lg) lg.textContent='Đang gọi thử Gemini một câu thật...';
-  if(g.rotate){
-    let lastEm='';
-    for(let mi=0; mi<GEM_CHAIN.length; mi++){
-      const model=GEM_CHAIN[mi];
-      if(__gemSkip.has(model) || gemDayBlocked(model)) continue;
-      for(let att=0; att<3; att++){
-        gemStamp(model); gemDayBump(model);
-        try{ const out=await geminiPingOnce(model, g.key); window.__lastGemModel=model;
-          if(lg) lg.textContent = out ? ('✅ Gemini trả lời thật — model '+model+' dùng được với key này.') : '⚠️ Gemini trả lời rỗng — thử lại sau.';
-          return;
-        }catch(e){ const em=String((e&&e.message)||e); lastEm=em; const cls=gemClassify(e);
-          if(cls==='fatal'){ if(lg) lg.textContent='❌ Model '+model+' chưa dùng được: '+em; return; }
-          if(cls==='notfound'){ __gemSkip.add(model); break; }
-          if(cls==='overload' && att<2){ if(lg) lg.textContent='Google đang quá tải (giờ cao điểm) — tự thử lại sau 8 giây... (lần '+(att+1)+'/2)'; await gemSleep(8000); continue; }
-          break; }
-      }
-    }
-    if(lg) lg.textContent='❌ Cả 3 model trong chuỗi xoay tua đều chưa dùng được: '+lastEm;
-    return;
-  }
   for(let att=0; att<3; att++){
   try{
     const res=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+encodeURIComponent(g.model)+':generateContent',
@@ -2370,12 +2293,10 @@ function saveGemCfgAuto(){ if(!S.settings.gemini) S.settings.gemini={};
   S.settings.gemini.model=$('#gemModel').value; S.settings.gemini.modelCustom=$('#gemModelCustom').value.trim();
   const wk=$('#gemWebKey'); if(wk) S.settings.gemini.webKey=wk.value.trim();
   const wu=$('#gemWebUrl'); if(wu) S.settings.gemini.webUrl=wu.value.trim();
-  const rotEl2=$('#gemRotate'); if(rotEl2) S.settings.gemini.rotate=!!rotEl2.checked;
   updGemWebVis();
   save(); renderCfgStrip(); flashSaved(); }
 ['#flowEngImage','#flowEngVideo','#flowVidModel'].forEach(sel=>$(sel).addEventListener('change', saveFlowCfgAuto));
 ['#gemEngine','#gemModel'].forEach(sel=>$(sel).addEventListener('change', saveGemCfgAuto));
-const gemRotEl=$('#gemRotate'); if(gemRotEl) gemRotEl.addEventListener('change', saveGemCfgAuto);
 let _svT=null; const _svDeb=f=>{ clearTimeout(_svT); _svT=setTimeout(f,600); };
 $('#flowKey').addEventListener('input', ()=>_svDeb(saveFlowCfgAuto));
 ['#flowUrl','#flowAdminUser','#flowAdminPass'].forEach(sel=>{ const el=$(sel); if(el) el.addEventListener('input', ()=>_svDeb(saveFlowCfgAuto)); });
