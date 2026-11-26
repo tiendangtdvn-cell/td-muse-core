@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.38</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.39</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -437,13 +437,8 @@
         <div class="log" id="gemLog" style="margin-top:8px">Chưa kiểm tra.</div>
       </div>
       <div class="card">
-        <h3>⚙️ Động cơ gen — ảnh & video</h3>
-        <label class="fl">Gen ảnh (keyframe/storyboard) qua</label>
-        <select id="flowEngImage"><option value="muse">Muse (mặc định)</option><option value="flow">Flow — Nano Banana</option></select>
-        <label class="fl">Gen video qua</label>
-        <select id="flowEngVideo"><option value="muse">Muse (mặc định)</option><option value="flow">Flow — Omni</option></select>
-        <label class="fl">Model video Flow</label>
-        <select id="flowVidModel"><option value="omni11">Omni 1.1 Flash — đã test chạy được, Google bỏ sau 5/12</option><option value="omni12">Omni 1.2 Flash — dùng lâu dài</option></select>
+        <h3>⚙️ Cổng Flow — key, địa chỉ & bể làn</h3>
+        <p class="muted" style="margin:0 0 6px">Ô chọn động cơ/model gen (ảnh qua Muse hay Flow, video qua Muse hay Flow, model Omni) đã dời vào tab Xưởng — ngay trên hàng nút sản xuất — để chọn tại chỗ trước khi gen. Mục này chỉ còn key, địa chỉ và bể làn.</p>
         <label class="fl">API key của cổng Flow</label>
         <input type="password" id="flowKey" placeholder="Key của cổng Flow (flow2api)">
         <label class="fl">Địa chỉ cổng Flow</label>
@@ -1061,7 +1056,10 @@ function renderWorkspace(){
 function wordCount(t){ const w=String(t||'').trim().split(/\s+/).filter(Boolean); return String(t||'').trim()? w.length:0; }
 function setP(k,v){ const p=activeProject(); if(!p) return; p[k]=v; save(); }
 function setSeg(id,k,v){ const p=activeProject(); if(!p) return; const s=p.segments.find(x=>x.id===id); if(!s) return; s[k]=v; save();
-  if(k==='dialogue'){ const el=document.getElementById('wc-'+id); if(el) el.textContent=wordCount(v); } }
+  if(k==='dialogue'){ const el=document.getElementById('wc-'+id); if(el) el.textContent=wordCount(v);
+    const bad=!!String(v||'').trim() && !dialogueViolations(v, s.dur||p.sceneDur||10).ok; s.dialogueFlag=bad;
+    const fl=document.getElementById('dflag-'+id); if(fl){ fl.style.display=bad?'':'none'; if(bad){ fl.className='err'; fl.style.marginTop='4px'; fl.textContent='⚠ Thoại vẫn dài hơn luật (số câu theo thời lượng / mỗi câu 8–12 từ) — chốt chặn đã sửa 2 vòng chưa đạt. M sửa tay cho đạt hoặc giữ nguyên tuỳ ý.'; } }
+    save(); } }
 async function addRefs(kind,input){ const p=activeProject(); if(!p) return; const files=[...input.files].slice(0,6);
   for(const f of files){ try{ const d=await downscaleImage(f); (kind==='char'?p.refsChar:p.refsProd).push(d); }catch(e){} }
   input.value=''; save(); renderWorkspace(); toast('Đã thêm ảnh tham chiếu'); }
@@ -1647,7 +1645,7 @@ function sceneHTML(p,s,si){
   const stage='<div class="stage2">'+leftCell+rightCell+'</div>';
   return '<div class="scene" data-scene="'+s.id+'">'+
    '<div class="scene-head"><b>'+esc(s.title)+'</b><span style="flex:1"></span>'+
-   (s.kf.approved?'<span class="badge done">ĐÃ DUYỆT</span>':'')+(s.vid.status==='done'?'<span class="badge done">CÓ CLIP</span>':'')+'</div>'+
+   (s.kf.approved?'<span class="badge done">ĐÃ DUYỆT</span>':'')+(s.dialogueFlag?'<span class="badge" style="background:#6b2222;color:#ffd7d7">⚠ THOẠI DÀI HƠN LUẬT</span>':'')+(s.vid.status==='done'?'<span class="badge done">CÓ CLIP</span>':'')+'</div>'+
    '<div class="scene-body">'+
    (isBoard? boardCardHTML(p,s) : '')+
    (isBoard?'':'<div class="statusline" id="kf-status-'+s.id+'">'+kfStatusText(s)+'</div>')+
@@ -1661,6 +1659,7 @@ function sceneHTML(p,s,si){
      '<label class="fl">Mô tả hình ảnh / hành động của đoạn</label><textarea oninput="App.setSeg(\''+s.id+'\',\'visual\',this.value)" placeholder="VD: Cô gái cầm máy thổi lá, lá khô bay tung trên sân gạch...">'+esc(s.visual)+'</textarea>'+
      '<label class="fl">Lời thoại (nếu có — sẽ đưa vào prompt gen video)</label><textarea style="min-height:44px" oninput="App.setSeg(\''+s.id+'\',\'dialogue\',this.value)" placeholder="Thoại nói tự nhiên như người thật: các câu ngắn, mỗi câu 8–12 từ, mỗi câu đúng 1 ý, kết thúc bằng dấu chấm">'+esc(s.dialogue)+'</textarea>'+
      '<div class="muted">Độ dài lời thoại: <span id="wc-'+s.id+'">'+wordCount(s.dialogue)+'</span> từ — nên viết khoảng '+wTgtMin+'–'+wTgt+' từ cho đoạn '+dur+'s, chia '+(dur>=10? '3–4' : dur>=8? '3' : '2')+' câu ngắn (mỗi câu 8–12 từ, mỗi câu 1 ý) để nói hết trọn câu</div>'+
+     (s.dialogueFlag? '<div class="err" id="dflag-'+s.id+'" style="margin-top:4px">⚠ Thoại vẫn dài hơn luật (số câu theo thời lượng / mỗi câu 8–12 từ) — chốt chặn đã sửa 2 vòng chưa đạt. M sửa tay cho đạt hoặc giữ nguyên tuỳ ý.</div>' : '<div id="dflag-'+s.id+'" style="display:none"></div>')+
      '<label class="fl">Góc máy</label><textarea style="min-height:36px" oninput="App.setSeg(\''+s.id+'\',\'camera\',this.value)" placeholder="VD: Cận cảnh ngang tầm mắt, máy tĩnh">'+esc(s.camera||'')+'</textarea>'+
      '<label class="fl">Timeline trong đoạn (theo mốc giây)</label><textarea style="min-height:44px" oninput="App.setSeg(\''+s.id+'\',\'timeline\',this.value)" placeholder="VD: 0–2s: ...; 2–6s: ...; 6–10s: ...">'+esc(s.timeline||'')+'</textarea>'+
      '<div style="display:flex; gap:18px; flex-wrap:wrap"><label class="checkrow"><input type="checkbox" '+(s.hasProduct!==false?'checked':'')+' onchange="App.setSegBool(\''+s.id+'\',\'hasProduct\',this.checked)"> Có sản phẩm trong cảnh</label>'+
@@ -1674,11 +1673,22 @@ function sceneHTML(p,s,si){
    stage+
    '</div></div>';
 }
+/* V10.39 (TD chốt 26/11): ô chọn động cơ/model gen nằm ngay trong tab Xưởng — trên hàng nút thao tác — để xem kịch bản xong là chọn model rồi bấm gen tại chỗ. Giá trị vẫn lưu vào đúng khoá S.settings.flow qua saveFlowCfgAuto (nghe bằng uỷ quyền sự kiện vì thẻ này render theo dự án). */
+function engSelCardHTML(p){ const f=flowCfg(); const sel=(v,c)=> v===c? ' selected' : '';
+  return '<div class="card" id="engSelCard"><h3>🎛 Động cơ gen — chọn trước khi bấm tạo</h3>'+
+  '<label class="fl">Gen ảnh (keyframe/storyboard) qua</label><select id="flowEngImage"><option value="muse"'+sel(f.engImage,'muse')+'>Muse (mặc định)</option><option value="flow"'+sel(f.engImage,'flow')+'>Flow — Nano Banana</option></select>'+
+  '<label class="fl">Gen video qua</label><select id="flowEngVideo"><option value="muse"'+sel(f.engVideo,'muse')+'>Muse (mặc định)</option><option value="flow"'+sel(f.engVideo,'flow')+'>Flow — Omni</option></select>'+
+  '<label class="fl">Model video Flow</label><select id="flowVidModel"><option value="omni11"'+sel(f.vidModel,'omni11')+'>Omni 1.1 Flash — đã test chạy được, Google bỏ sau 5/12</option><option value="omni12"'+sel(f.vidModel,'omni12')+'>Omni 1.2 Flash — dùng lâu dài</option></select>'+
+  '<p class="muted" style="margin:6px 0 0">Đổi là áp dụng ngay cho các lượt gen tiếp theo. Key và địa chỉ cổng Flow vẫn ở tab Cài đặt.</p></div>'; }
 window.__renderProduction=function(p){
   const zone=document.getElementById('productionZone'); if(!zone) return;
   if(p.caption){ const fx=fixMojibake(p.caption); if(fx!==p.caption){ p.caption=fx; save(); } }
   zone.innerHTML=`
   
+  ${anchorCardHTML(p)}
+  <div class="scenenav"><b>Các scene</b><span class="sdots">${p.segments.map((s,si)=>{ const b=s.board||{}; const err=s.kf.status==='error'||s.vid.status==='error'||b.status==='error'; const doneV=s.vid.status==='done'; const appr=(p.boardMode==='board')? b.approved : s.kf.approved; const doneK=(p.boardMode==='board')? b.status==='done' : s.kf.status==='done'; const cls= err?'err': doneV?'done': (doneK&&appr)?'mid': doneK?'wait':''; const tip= err?'Có lỗi': doneV?'Đã có clip': (doneK&&appr)?'Đã duyệt — chờ gen video': doneK?'Chờ duyệt':'Chưa gen'; return '<button class="sdot '+cls+'" title="'+esc(s.title)+' — '+tip+'" onclick="App.sceneGo(\''+s.id+'\')">'+(si+1)+'</button>'; }).join('')}</span><button class="btn small" onclick="document.getElementById('sec3').scrollIntoView({behavior:'smooth'})">${p.segments.filter(x=>x.vid.status==='done').length}/${p.segments.length} Clip - Ghép Nối</button><span style="flex:1"></span><button class="btn small" onclick="App.sceneNav(-1)">◀</button><button class="btn small" onclick="App.sceneNav(1)">▶</button></div>
+  <div class="scenestrip" id="sceneStrip">${p.segments.map((s,si)=>sceneHTML(p,s,si)).join('')}</div>
+  ${engSelCardHTML(p)}
   <div class="card"><div class="btnrow" style="margin-top:0">
     <button class="btn primary" id="runAllBtn" onclick="App.runAll()">🚀 Chạy hết dự án — 1 chạm</button>
     <button class="btn primary" onclick="App.makeAnchor()">🖼 Tạo ảnh chuẩn</button>
@@ -1686,9 +1696,6 @@ window.__renderProduction=function(p){
     <button class="btn primary" onclick="App.approveAll()">✓ Duyệt hàng loạt</button>
     <button class="btn primary" onclick="App.queueAll()">▶ Tạo video loạt</button></div>
 </div>
-  ${anchorCardHTML(p)}
-  <div class="scenenav"><b>Các scene</b><span class="sdots">${p.segments.map((s,si)=>{ const b=s.board||{}; const err=s.kf.status==='error'||s.vid.status==='error'||b.status==='error'; const doneV=s.vid.status==='done'; const appr=(p.boardMode==='board')? b.approved : s.kf.approved; const doneK=(p.boardMode==='board')? b.status==='done' : s.kf.status==='done'; const cls= err?'err': doneV?'done': (doneK&&appr)?'mid': doneK?'wait':''; const tip= err?'Có lỗi': doneV?'Đã có clip': (doneK&&appr)?'Đã duyệt — chờ gen video': doneK?'Chờ duyệt':'Chưa gen'; return '<button class="sdot '+cls+'" title="'+esc(s.title)+' — '+tip+'" onclick="App.sceneGo(\''+s.id+'\')">'+(si+1)+'</button>'; }).join('')}</span><button class="btn small" onclick="document.getElementById('sec3').scrollIntoView({behavior:'smooth'})">${p.segments.filter(x=>x.vid.status==='done').length}/${p.segments.length} Clip - Ghép Nối</button><span style="flex:1"></span><button class="btn small" onclick="App.sceneNav(-1)">◀</button><button class="btn small" onclick="App.sceneNav(1)">▶</button></div>
-  <div class="scenestrip" id="sceneStrip">${p.segments.map((s,si)=>sceneHTML(p,s,si)).join('')}</div>
   <div class="steptitle" id="sec3">3 · Ghép nối</div>
   <div class="card"><h3>Caption đăng bài</h3>
     <div class="btnrow" style="margin-top:0"><button class="btn" onclick="App.genCaption()">✨ Viết caption + hashtag</button>
@@ -2282,8 +2289,10 @@ function setAccRole(k,v){
 Object.assign(window.App,{ setAccRole });
 $('#accRolesLoad').addEventListener('click', loadPoolAccounts);
 function saveFlowCfgAuto(){ if(!S.settings.flow) S.settings.flow={};
-  S.settings.flow.engImage=$('#flowEngImage').value; S.settings.flow.engVideo=$('#flowEngVideo').value;
-  S.settings.flow.key=$('#flowKey').value.trim(); S.settings.flow.vidModel=$('#flowVidModel').value;
+  const __ei=$('#flowEngImage'); if(__ei) S.settings.flow.engImage=__ei.value;
+  const __ev=$('#flowEngVideo'); if(__ev) S.settings.flow.engVideo=__ev.value;
+  S.settings.flow.key=$('#flowKey').value.trim();
+  const __vm=$('#flowVidModel'); if(__vm) S.settings.flow.vidModel=__vm.value;
   const __fu=$('#flowUrl'); if(__fu) S.settings.flow.url=__fu.value.trim();
   const __fau=$('#flowAdminUser'); if(__fau) S.settings.flow.adminUser=__fau.value.trim();
   const __fap=$('#flowAdminPass'); if(__fap) S.settings.flow.adminPass=__fap.value;
@@ -2295,7 +2304,8 @@ function saveGemCfgAuto(){ if(!S.settings.gemini) S.settings.gemini={};
   const wu=$('#gemWebUrl'); if(wu) S.settings.gemini.webUrl=wu.value.trim();
   updGemWebVis();
   save(); renderCfgStrip(); flashSaved(); }
-['#flowEngImage','#flowEngVideo','#flowVidModel'].forEach(sel=>$(sel).addEventListener('change', saveFlowCfgAuto));
+/* V10.39: 3 ô chọn động cơ đã dời vào tab Xưởng (render theo dự án, không có sẵn lúc nạp trang) — nghe change bằng uỷ quyền trên document. */
+document.addEventListener('change', e=>{ const __id=e.target&&e.target.id; if(__id==='flowEngImage'||__id==='flowEngVideo'||__id==='flowVidModel') saveFlowCfgAuto(); });
 ['#gemEngine','#gemModel'].forEach(sel=>$(sel).addEventListener('change', saveGemCfgAuto));
 let _svT=null; const _svDeb=f=>{ clearTimeout(_svT); _svT=setTimeout(f,600); };
 $('#flowKey').addEventListener('input', ()=>_svDeb(saveFlowCfgAuto));
@@ -2856,6 +2866,50 @@ function dialogueStartsFragment(t){
   const ch=s.charAt(0);
   return ch===ch.toLowerCase() && ch!==ch.toUpperCase();
 }
+/* V10.39 (TD chốt 26/11): CHỐT CHẶN THOẠI giữa lệnh A và lệnh B. App chỉ ĐẾM theo luật câu/từ (tuyệt đối không tự sửa/cắt chữ — capWords vẫn bỏ hẳn); cảnh nào vượt thì gửi riêng thoại cảnh đó cho Gemini — đúng làn + model đạo diễn đã viết kịch bản, qua aiChat — viết lại, tối đa 2 vòng; vẫn vượt thì giữ bản ít vi phạm nhất và gắn cờ dialogueFlag cho TD quyết. Lượt sửa bị lỗi (vd cầu web 502) thì đi thẳng đường gắn cờ — không bao giờ treo luồng sản xuất. */
+function dialogueRule(dur){ dur=+dur||10; if(dur>=10) return { min:3, max:4 }; if(dur>=7) return { min:3, max:3 }; return { min:2, max:2 }; }
+function dialogueViolations(t, dur){ const r=dialogueRule(dur); const ss=splitSentences(t); let score=0;
+  if(ss.length<r.min) score+=(r.min-ss.length)*100; else if(ss.length>r.max) score+=(ss.length-r.max)*100;
+  for(const s of ss){ const w=wordCountOf(s); if(w>12) score+=w-12; else if(w<8) score+=8-w; }
+  return { ok:score===0, score, count:ss.length, rule:r }; }
+async function repairSceneDialogue(prod, st, sc, idx, total, viol){
+  const r=viol.rule;
+  const sys='Bạn là biên tập thoại video TikTok. Chỉ trả về DUY NHẤT một JSON object, không giải thích, không markdown.';
+  const usr=[ 'CHỐT THOẠI — viết lại LỜI THOẠI của cảnh '+(idx+1)+'/'+total+' cho video review sản phẩm "'+(prod.name||'')+'"'+(prod.category? ' (loại: '+prod.category+')':'')+'.',
+    'Mục đích cảnh: '+(sc.purpose||''),
+    'Kịch bản cảnh: '+(sc.scene_script||''),
+    'Thoại hiện tại chưa đạt luật (đang có '+viol.count+' câu, điểm vi phạm '+viol.score+'): "'+sc.dialogue+'"',
+    'LUẬT BẮT BUỘC: '+(r.min===r.max? ('đúng '+r.min+' câu') : ('từ '+r.min+' đến '+r.max+' câu'))+'; mỗi câu 8–12 từ, đúng 1 ý, kết bằng dấu chấm; giữ nguyên ý và điểm bán của thoại hiện tại; '+(idx===0? 'câu đầu vẫn là HOOK gây tò mò ngay 3 giây đầu; ' : '')+(idx===total-1? 'câu cuối vẫn là CTA (giỏ hàng / chốt đơn / xem thêm); ' : '')+'gọi sản phẩm bằng tên loại chung, tuyệt đối không đọc tên hãng hay mã model; số và thông số viết thành chữ tiếng Việt; không dùng "...", không viết tắt lửng.',
+    'Chỉ trả về JSON: {"dialogue":"thoại mới"}' ].join('\n');
+  const data=await aiChat([{role:'system',content:sys},{role:'user',content:usr}], { json:true });
+  const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+  const o=parseLooseJSON(text);
+  if(o && typeof o.dialogue==='string' && o.dialogue.trim()) return o.dialogue;
+  return null;
+}
+async function gateDialogueScenes(scenes, st, prod){
+  if(!st || st.dialogue===false) return;
+  const dur=+st.sceneDur||10; let flagged=0;
+  for(let i=0;i<scenes.length;i++){
+    const sc=scenes[i];
+    if(!sc.dialogue || !String(sc.dialogue).trim()){ sc.dialogueFlag=false; continue; }
+    let best=String(sc.dialogue), bestV=dialogueViolations(best, dur);
+    if(bestV.ok){ sc.dialogueFlag=false; continue; }
+    let passed=false;
+    for(let round=0; round<2; round++){
+      let nd=null;
+      try{ nd=await repairSceneDialogue(prod, st, { purpose:sc.purpose, scene_script:sc.scene_script, dialogue:best }, i, scenes.length, bestV); }
+      catch(e){ nd=null; break; }
+      if(nd==null) break;
+      const v=dialogueViolations(nd, dur);
+      if(v.score<bestV.score){ best=nd; bestV=v; }
+      if(v.ok){ passed=true; break; }
+    }
+    sc.dialogue=best; sc.dialogueFlag=!passed;
+    if(!passed) flagged++;
+  }
+  if(flagged) toast('Chốt thoại: '+flagged+' cảnh vẫn dài hơn luật sau 2 lượt sửa — đã gắn cờ ⚠ trên cảnh để m quyết', 7000);
+}
 async function genScriptV2(prod, st){
   /* V10.21 (TD chốt 24/11): ĐẠO DIỄN 1 LỆNH — prompt GỌN theo đúng ý TD: đọc dữ liệu có sẵn, trả về trong MỘT lần gọi: profile + prompt ẢNH CHUẨN + kịch bản từng cảnh + prompt ảnh (storyboard HOẶC keyframe tuỳ chế độ đang chọn, không trả cả hai) + prompt video. Luật gen ảnh/video phía app giữ nguyên không đổi. */
   const sys='Bạn là đạo diễn video review TikTok. Chỉ trả về DUY NHẤT một JSON object, không giải thích, không markdown.';
@@ -2889,6 +2943,8 @@ async function genScriptV2(prod, st){
     scenes.push({ purpose:String(s.purpose||('Cảnh '+(i+1))), hookFormula:hookOf(s.purpose), scene_script:String(s.scene_script||''), dialogue:String(s.dialogue||''), end_state:String(s.end_state||''), prev_end_state:prevEnd, kf_prompt:'', sb_prompt:'', vid_prompt:'' });
     prevEnd=String(s.end_state||'');
   }
+  /* V10.39: CHỐT CHẶN THOẠI trước lệnh B — lệnh B dùng kịch bản đã qua chốt. */
+  await gateDialogueScenes(scenes, st, prod);
   /* Lệnh 2: viết prompt cho các cảnh vừa chốt — lỗi lệnh này KHÔNG làm mất kịch bản */
   let pr = await genPromptsV2(prod, st, a.profile, scenes);
   if(!pr) pr = await genPromptsV2(prod, st, a.profile, scenes);
@@ -3083,7 +3139,7 @@ async function scriptIntoProject(proj, prod, st){
         end_state:{character:sc.end_state||'',product:'',camera:'',environment:''},
         transition:{from:'',action:sc.purpose||'',to:''},
         camera_timeline:[{span:'0–'+(st.sceneDur||10)+'s', shot:'Multi-shot', action:sc.purpose||''}], image_prompt:'' };
-      sg.dialogue=sc.dialogue||'';
+      sg.dialogue=sc.dialogue||''; sg.dialogueFlag=!!sc.dialogueFlag;
       sg.sceneScript=sc.scene_script||'';
       sg.promptKf=sc.kf_prompt||''; sg.promptVid=sc.vid_prompt||''; sg.promptSb=sc.sb_prompt||'';
       sg.board={status:'idle',url:'',panels:[],approved:false,error:''};
@@ -3096,7 +3152,7 @@ async function scriptIntoProject(proj, prod, st){
   try{ scenes=await genScriptAI(prod, st); }catch(e){ scenes=null; }
   if(!scenes){ scenes=genScriptFallback(prod, st); usedAI=false; }
   proj.scriptMode = usedAI? 'ai' : 'fallback';
-  scenes.forEach((sc,i)=>{ if(proj.segments[i]){ const sg=proj.segments[i]; sg.visual=sc.visual||''; sg.dialogue=sc.dialogue||''; sg.sceneScript=sc.visual||''; sg.camera=sc.camera||''; sg.timeline=sc.timeline||''; } });
+  scenes.forEach((sc,i)=>{ if(proj.segments[i]){ const sg=proj.segments[i]; sg.dialogueFlag=false; sg.visual=sc.visual||''; sg.dialogue=sc.dialogue||''; sg.sceneScript=sc.visual||''; sg.camera=sc.camera||''; sg.timeline=sc.timeline||''; } });
   return usedAI;
 }
 async function rescript(){
