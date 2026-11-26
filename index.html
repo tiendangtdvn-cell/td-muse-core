@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.36</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.37</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -1292,12 +1292,22 @@ async function importFlowClip(proj, seg, flowUrl){
   }catch(e){}
   seg.vid.url=flowUrl; save(); return false;
 }
+/* V10.37: ảnh Flow trả về là link flow-content CÓ HẠN (vài giờ là chết — vụ mất sheet + ảnh chuẩn sáng 26/11). Gen xong phải nhập kho media của cầu NGAY để dự án giữ ảnh vĩnh viễn; nhập kho lỗi thì giữ link gốc, không chặn gen. Chỉ xử lý link flow-content; link khác (data:, /v1/media/, ảnh Muse) trả nguyên. */
+async function importFlowImage(url){
+  if(!url || typeof url!=='string' || !/flow-content\.google/.test(url)) return url;
+  try{
+    const d=await api('/v1/media/import',{method:'POST', body:JSON.stringify({url})});
+    if(d && d.url) return d.url;
+  }catch(e){}
+  return url;
+}
 function _svPos(){ const el=document.getElementById('app'); const strip=document.querySelector('#productionZone .scenestrip'); return [el? el.scrollTop:0, strip? strip.scrollLeft:0]; }
 function _rsPos(sv){ try{ const el=document.getElementById('app'); if(el) el.scrollTop=sv[0]; const strip=document.querySelector('#productionZone .scenestrip'); if(strip) strip.scrollLeft=sv[1]; }catch(e){} }
 function renderProductionZone(){ const sv=_svPos(); const p=activeProject(); if(p && window.__renderProduction) window.__renderProduction(p); _rsPos(sv); }
 
-async function startImageTask(proj,seg){
+async function startImageTask(proj,seg,fromRetry){
   if(['queued','processing'].includes(seg.kf.status)){ toast('Đoạn này đang gen keyframe rồi — chờ xong đã (chống gen trùng)'); return; }
+  if(!fromRetry){ seg.kf.autoRetries=0; seg.kf.autoNextAt=0; }
   const cm=proj.charMode||'review';
   if(cm==='review' && !proj.refsChar.length){ toast('Thiếu ảnh nhân vật (chặng 1)'); return; }
   if(cm!=='none' && !proj.refsProd.length){ toast('Thiếu ảnh sản phẩm (chặng 1)'); return; }
@@ -1319,14 +1329,14 @@ async function startImageTask(proj,seg){
     if(seg.kf.engine==='flow'){
       seg.kf.status='processing'; save(); renderProductionZone();
       const furl=await flowGenGuarded('image', kfPrompt, imgs, proj.ratio, id=>{ seg.kf.flowTaskId=id; save(); }, 10, proj, seg);
-      seg.kf.url=furl; seg.kf.status='done'; seg.kf.error=''; save(); renderProductionZone();
+      seg.kf.url=await importFlowImage(furl); seg.kf.status='done'; seg.kf.error=''; save(); renderProductionZone();
       toast('Keyframe (Flow) xong: '+seg.title); return;
     }
     const data=await api('/v1/images/tasks',{method:'POST', body:JSON.stringify({
       prompt:kfPrompt, model:'muse-image', aspect_ratio:proj.ratio,
       response_format:'url', images: imgs })});
     seg.kf.taskId=data.id||data.task_id; seg.kf.status='processing'; save(); renderProductionZone(); pollTask('image',proj.id,seg.id);
-  }catch(e){ seg.kf.status='failed'; seg.kf.error=e.message; save(); renderProductionZone(); }
+  }catch(e){ seg.kf.status='failed'; seg.kf.error=e.message; save(); renderProductionZone(); maybeAutoRetry(proj,seg,'kf'); }
 }
 async function startVideoTask(proj,seg,fromRetry){
   if(!(seg.kf.status==='done' && seg.kf.approved)){ toast('Đoạn này chưa có keyframe được duyệt'); return; }
@@ -1369,7 +1379,20 @@ async function startVideoTask(proj,seg,fromRetry){
         const sheetRef2=(seg.board.numberedUrl||seg.board.url);
         const vimgs2=[ sheetRef2.startsWith('data:') ? sheetRef2 : await urlToDataURI(sheetRef2) ];
         if(seg.promptVid && seg.promptVid.trim()) effVP=seg.promptVid;
-        furl=await flowGenGuarded('video', effVP, vimgs2, proj.ratio, id=>{ seg.vid.flowTaskId=id; save(); }, seg.dur||proj.sceneDur||10, proj, seg);
+        try{
+          furl=await flowGenGuarded('video', effVP, vimgs2, proj.ratio, id=>{ seg.vid.flowTaskId=id; save(); }, seg.dur||proj.sceneDur||10, proj, seg);
+        }catch(e2){
+          /* V10.37 (kiểm chứng thật 26/11): sheet mới NGUYÊN TẤM vẫn dính lọc người nổi tiếng → nấc cuối: chỉ gửi PANEL 1 (ô đầu của sheet) + prompt đầy đủ. Lượt test tay: prompt Đoạn 3 nguyên văn + panel 1 → completed ~84s, trong khi cả sheet fail 8 lần. Lượt cuối dùng flowGen thẳng, không qua lớp sửa prompt nữa, để không lặp vòng sửa. */
+          if(!isPolicyError(e2 && e2.message)) throw e2;
+          let p1=(seg.board.panels && seg.board.panels[0]) || '';
+          if(!p1 && seg.kf && seg.kf.url) p1=seg.kf.url;
+          let p1ref='';
+          if(p1){ try{ p1ref= p1.startsWith('data:') ? p1 : await urlToDataURI(p1); }catch(_e){ p1ref=''; } }
+          if(!p1ref) throw e2;
+          seg.vid.panel1=true; save();
+          toast('⚠️ Cả sheet vẫn bị lọc người — app chuyển nấc cuối: chỉ gửi panel 1 + prompt đầy đủ', 6000);
+          furl=await flowGen('video', effVP, [p1ref], proj.ratio, id=>{ seg.vid.flowTaskId=id; save(); }, seg.dur||proj.sceneDur||10);
+        }
       }
       const okImp=await importFlowClip(proj,seg,furl);
       seg.vid.status='done'; seg.vid.progress=100; seg.vid.error=''; seg.vid.autoRetries=0; seg.vid.autoNextAt=0; save(); renderProductionZone();
@@ -1383,25 +1406,41 @@ async function startVideoTask(proj,seg,fromRetry){
   }catch(e){ seg.vid.status='failed'; seg.vid.error=e.message; save(); renderProductionZone(); handleVideoFailure(proj,seg); }
 }
 const NO_AUTORETRY=/policy|chính sách|quota|credit|hết lượt|không đủ|violat|bị chặn|人物安全过滤|安全过滤|名人|未成年/i;
+/* V10.37 (TD chốt 26/11): gen lỗi thoáng qua thì app TỰ gen lại sau 5 giây, tối đa 2 lần — áp cho keyframe, storyboard và video. Lỗi chính sách (đã có dây sửa prompt + leo thang riêng) và lỗi hết quota/credit thì KHÔNG gen lại kiểu này: gen lại vô ích, lại dồn lỗi lên làn Flow (3 lỗi liên tiếp là làn bị tắt). */
+function maybeAutoRetry(proj, seg, kind){
+  const slot= kind==='kf'? seg.kf : kind==='board'? seg.board : seg.vid;
+  if(!slot) return false;
+  const err=String(slot.error||'');
+  if(NO_AUTORETRY.test(err)) return false;
+  slot.autoRetries=slot.autoRetries||0;
+  if(slot.autoRetries>=2) return false;
+  slot.autoRetries++;
+  slot.autoNextAt=Date.now()+5000;
+  slot.error='Gen lỗi — app tự gen lại lần '+slot.autoRetries+'/2 sau 5 giây. ('+err+')';
+  save(); renderProductionZone();
+  return true;
+}
 function handleVideoFailure(proj,seg){
   if(!seg || !seg.vid) return;
-  const err=String(seg.vid.error||'');
-  seg.vid.autoRetries=seg.vid.autoRetries||0;
-  if(NO_AUTORETRY.test(err)) return; // lỗi chính sách / hết credit: gen lại cũng vô ích
-  if(seg.vid.autoRetries>=2) return; // tối đa 2 lần tự gen lại cho mỗi lần bấm gen
-  seg.vid.autoRetries++;
-  const waitS= seg.vid.autoRetries===1? 20: 60;
-  seg.vid.autoNextAt=Date.now()+waitS*1000;
-  seg.vid.error='Gen lỗi — app tự gen lại lần '+seg.vid.autoRetries+'/2 sau '+waitS+' giây. ('+err+')';
-  save(); renderProductionZone();
+  maybeAutoRetry(proj, seg, 'vid');
 }
 function sweepAutoRetry(){
   const now=Date.now();
   for(const p of (S.projects||[])) for(const s of (p.segments||[])){
-    const v=s.vid; if(!v) continue;
-    if(v.status==='failed' && v.autoNextAt && v.autoNextAt<=now){
+    const v=s.vid;
+    if(v && v.status==='failed' && v.autoNextAt && v.autoNextAt<=now){
       v.autoNextAt=0; save();
       startVideoTask(p,s,true);
+    }
+    const k=s.kf;
+    if(k && k.status==='failed' && k.autoNextAt && k.autoNextAt<=now){
+      k.autoNextAt=0; save();
+      startImageTask(p,s,true);
+    }
+    const b=s.board;
+    if(b && b.status==='failed' && b.autoNextAt && b.autoNextAt<=now){
+      b.autoNextAt=0; save();
+      genBoardInternal(p,s,true);
     }
   }
 }
@@ -1414,7 +1453,7 @@ async function resumeFlowSlot(p, s, kind){
     const url=await pollFlowTask(myTaskId, kind);
     if(sl.flowTaskId!==myTaskId) return; // V9.4: đã có lượt gen mới thay thế — bỏ kết quả của lượt cũ, tránh video ma
     if(kind==='video'){ await importFlowClip(p, s, url); sl.progress=100; }
-    else sl.url=url;
+    else sl.url=await importFlowImage(url);
     sl.status='done'; sl.error=''; save(); renderProductionZone();
     toast((kind==='image'?'Keyframe':'Video')+' (Flow) đã lấy về: '+s.title);
   }catch(e){
@@ -1448,12 +1487,13 @@ async function resumeBoardSlot(p, s){
     if(grid && (grid.cols!==2||grid.rows!==3) && s.board.engine==='flow'){
       try{ const ctx=await buildBoardGen(p, s); const u2=await runBoardSheetGen(p, s, ctx.prompt, ctx.imgs); /* V10.29: gen lại bằng prompt NGUYÊN VĂN, không chắp thêm hậu tố lưới */ if(u2){ url=u2; grid=await checkSheetGrid(u2); } }catch(e){}
     }
-    s.board.url=url; s.board.status='done'; s.board.error='';
+    const storedUrlB=await importFlowImage(url); /* V10.37: sheet lấy về qua resume cũng nhập kho ngay */
+    s.board.url=storedUrlB; s.board.status='done'; s.board.error='';
     s.board.grid=gridStateOf(grid);
     /* V10.14: lưới sai thì KHÔNG đánh số (đóng số theo 2×3 lên sheet 2×2 sẽ ghi sai ô) — video tự lùi về khoá sheet thường */
     s.board.numberedUrl= (s.board.grid && s.board.grid.ok===false)? '' : await numberBoardPanels(url);
     const panels=await cropBoardPanels(url); s.board.panels=panels;
-    s.kf.url= panels[0] || url; s.kf.status='done'; s.kf.error='';
+    s.kf.url= panels[0] || storedUrlB; s.kf.status='done'; s.kf.error='';
     save(); renderProductionZone(); toast('Storyboard (Flow) đã lấy về: '+s.title);
   }catch(e){ if(s.board.flowTaskId===myTaskId){ s.board.status='failed'; s.board.error=e.message; save(); renderProductionZone(); } }
   finally{ __flowResuming.delete(key); }
@@ -1598,13 +1638,14 @@ async function runBoardSheetGen(proj, seg, prompt, imgs){
   }
   throw new Error('Quá thời gian chờ storyboard');
 }
-async function genBoardInternal(proj, seg){
+async function genBoardInternal(proj, seg, fromRetry){
   if(!seg.board) seg.board={status:'idle',url:'',panels:[],approved:false,error:'',numberedUrl:'',grid:null};
   if(seg.board.status==='processing'){ toast('Đoạn này đang gen storyboard rồi — chờ xong đã (chống gen trùng)'); return; }
   const cm=proj.charMode||'review';
   if(cm==='review' && !proj.refsChar.length){ toast('Thiếu ảnh nhân vật (chặng 1)'); return; }
   if(cm!=='none' && !proj.refsProd.length){ toast('Thiếu ảnh sản phẩm (chặng 1)'); return; }
   if(proj.anchorImg && !proj.anchorApproved){ toast('Ảnh chuẩn chưa được duyệt — xem ảnh chuẩn ở đầu mục Xưởng rồi bấm ✓ Duyệt ảnh chuẩn trước khi gen storyboard.'); return; }
+  if(!fromRetry){ seg.board.autoRetries=0; seg.board.autoNextAt=0; }
   seg.board.status='processing'; seg.board.error=''; seg.board.approved=false; seg.board.numberedUrl=''; seg.board.grid=null;
   seg.kf.status='processing'; seg.kf.error=''; seg.kf.approved=false; save(); renderProductionZone();
   try{
@@ -1617,17 +1658,18 @@ async function genBoardInternal(proj, seg){
     if(grid && (grid.cols!==2||grid.rows!==3)){
       try{ const u2=await runBoardSheetGen(proj, seg, ctx.prompt, ctx.imgs); /* V10.29: gen lại bằng prompt NGUYÊN VĂN, không chắp thêm hậu tố lưới */ if(u2){ url=u2; grid=await checkSheetGrid(u2); } }catch(e){}
     }
-    seg.board.url=url; seg.board.status='done'; seg.board.error='';
+    const storedUrl=await importFlowImage(url); /* V10.37: nhập kho sheet ngay — link Flow hết hạn là dự án mất sheet */
+    seg.board.url=storedUrl; seg.board.status='done'; seg.board.error='';
     seg.board.grid=gridStateOf(grid);
     /* V10.14: chỉ đánh số khi lưới đạt hoặc không kết luận được — lưới sai (vd 2×2) mà đóng số theo 2×3 sẽ ghi sai ô */
     seg.board.numberedUrl= (seg.board.grid && seg.board.grid.ok===false)? '' : await numberBoardPanels(url); // V10.13: đánh số ô lên bản sao (độc lập với cắt ô — cắt hỏng vẫn đánh số được; lỗi thì để '' và video dùng sheet sạch)
     const panels=await cropBoardPanels(url);
     seg.board.panels=panels;
-    seg.kf.url= panels[0] || url; seg.kf.status='done'; seg.kf.error='';
+    seg.kf.url= panels[0] || storedUrl; seg.kf.status='done'; seg.kf.error='';
     save(); renderProductionZone();
     if(seg.board.grid && seg.board.grid.ok===false) toast('⚠️ Sheet gen ra chỉ có '+seg.board.grid.cols+'×'+seg.board.grid.rows+' ô (chuẩn là 2×3 = 6 ô) — nên Gen lại storyboard: '+seg.title);
     else toast('Storyboard xong: '+seg.title+(panels.length?'':' (chưa cắt được 6 ô — dùng cả sheet làm khung đầu)'));
-  }catch(e){ seg.board.status='failed'; seg.board.error=e.message; seg.kf.status='failed'; seg.kf.error=e.message; save(); renderProductionZone(); }
+  }catch(e){ seg.board.status='failed'; seg.board.error=e.message; seg.kf.status='failed'; seg.kf.error=e.message; save(); renderProductionZone(); maybeAutoRetry(proj,seg,'board'); }
 }
 async function genBoard(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(!s) return; if(p.boardMode==='board' && p.segments.length>1 && !p.anchorImg && !p.anchorBusy){ toast('Đang tạo ảnh chuẩn ngầm để các storyboard khớp mặt, tóc và trang phục...'); await ensureAnchor(p); } genBoardInternal(p,s); }
 function approveBoard(segId){ const p=activeProject(); const s=p&&p.segments.find(x=>x.id===segId); if(!s||!s.board||s.board.status!=='done') return; s.board.approved=true; s.kf.approved=true; save(); renderProductionZone(); toast('Đã duyệt storyboard'); }
@@ -1799,7 +1841,7 @@ async function ensureAnchor(proj){
         if(t.status==='failed') throw new Error(t.error||'Việc ảnh chuẩn thất bại'); }
     }
     if(!url) throw new Error('Không tạo được ảnh chuẩn');
-    proj.anchorImg=url; save(); toast('Ảnh chuẩn đã xong — xem ở đầu mục Xưởng, bấm ✓ Duyệt ảnh chuẩn rồi gen storyboard.');
+    proj.anchorImg=await importFlowImage(url); save(); toast('Ảnh chuẩn đã xong — xem ở đầu mục Xưởng, bấm ✓ Duyệt ảnh chuẩn rồi gen storyboard.');
     return true;
   }catch(e){ toast('Không tạo được ảnh chuẩn ('+e.message+') — tạo storyboard theo cách nối tiếp cũ'); return false; }
   finally{ proj.anchorBusy=false; uiTaskDone('anchor:'+proj.id); save(); try{ renderProductionZone(); }catch(e){} }
@@ -3039,7 +3081,7 @@ function createAutoProject(prod, st, version){
   S.projects.unshift(p); return p;
 }
 async function batchStartKF(proj,seg){
-  seg.kf.status='queued'; seg.kf.error=''; seg.kf.approved=false; save();
+  seg.kf.status='queued'; seg.kf.error=''; seg.kf.approved=false; seg.kf.autoRetries=0; seg.kf.autoNextAt=0; save();
   try{
     /* V10.15: đường keyframe hàng loạt (batchStartKF) cũng bám ảnh chuẩn khi dự án đã có — cùng luật với startImageTask */
     let imgs, kfPromptB=(seg.promptKf&&seg.promptKf.trim())||buildImagePrompt(proj,seg);
@@ -3057,13 +3099,13 @@ async function batchStartKF(proj,seg){
     if(seg.kf.engine==='flow'){
       seg.kf.status='processing'; save();
       const furl=await flowGenGuarded('image', kfPromptB, imgs, proj.ratio, id=>{ seg.kf.flowTaskId=id; save(); }, 10, proj, seg);
-      seg.kf.url=furl; seg.kf.status='done'; seg.kf.error=''; save(); return;
+      seg.kf.url=await importFlowImage(furl); seg.kf.status='done'; seg.kf.error=''; save(); return;
     }
     const data=await api('/v1/images/tasks',{method:'POST', body:JSON.stringify({
       prompt:kfPromptB, model:'muse-image', aspect_ratio:proj.ratio,
       response_format:'url', images:imgs })});
     seg.kf.taskId=data.id||data.task_id; seg.kf.status='processing'; save(); pollTask('image',proj.id,seg.id);
-  }catch(e){ seg.kf.status='failed'; seg.kf.error=e.message; save(); }
+  }catch(e){ seg.kf.status='failed'; seg.kf.error=e.message; save(); maybeAutoRetry(proj,seg,'kf'); }
 }
 async function waitSettled(proj, kind){
   const t0=Date.now();
