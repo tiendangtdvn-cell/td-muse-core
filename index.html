@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.42</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.43</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -616,9 +616,13 @@ async function flowGen(kind, prompt, images, ratio, onTaskId, dur){
     return await pollFlowTask(id, kind);
   } finally { keepAwake(false); }
 }
+/* V10.43: ô text/mật khẩu chỉ được ghi ngược vào settings khi ĐÃ nạp giá trị trong phiên — chống ghi đè key/pass bằng ô DOM còn trống. */
+const __cfgPop=new Set();
+function __cfgSet(id,v){ const el=document.getElementById(id); if(el){ el.value=v; __cfgPop.add(id); } }
+document.addEventListener('input', e=>{ if(e.target&&e.target.id) __cfgPop.add(e.target.id); }, true);
 function renderFlowCfg(){
   const f=flowCfg();
-  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
+  const set=__cfgSet;
   set('flowEngImage', f.engImage); set('flowEngVideo', f.engVideo);
   set('flowUrl', f.url); set('flowKey', f.key); set('flowVidModel', f.vidModel);
   set('flowAdminUser', f.adminUser); set('flowAdminPass', f.adminPass);
@@ -824,7 +828,7 @@ async function aiChat(messages, opts){
 }
 function renderGemCfg(){
   const g=gemCfg();
-  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v; };
+  const set=__cfgSet;
   set('gemEngine', g.engine); set('gemKey', g.key); set('gemModel', g.modelSel); set('gemModelCustom', g.modelCustom);
   set('gemWebKey', g.webKey); set('gemWebUrl', (S.settings.gemini&&S.settings.gemini.webUrl)||'');
   updGemWebVis();
@@ -2305,17 +2309,19 @@ $('#accRolesLoad').addEventListener('click', loadPoolAccounts);
 function saveFlowCfgAuto(){ if(!S.settings.flow) S.settings.flow={};
   const __ei=$('#flowEngImage'); if(__ei) S.settings.flow.engImage=__ei.value;
   const __ev=$('#flowEngVideo'); if(__ev) S.settings.flow.engVideo=__ev.value;
-  S.settings.flow.key=$('#flowKey').value.trim();
+  if(__cfgPop.has('flowKey')) S.settings.flow.key=$('#flowKey').value.trim();
   const __vm=$('#flowVidModel'); if(__vm) S.settings.flow.vidModel=__vm.value;
-  const __fu=$('#flowUrl'); if(__fu) S.settings.flow.url=__fu.value.trim();
-  const __fau=$('#flowAdminUser'); if(__fau) S.settings.flow.adminUser=__fau.value.trim();
-  const __fap=$('#flowAdminPass'); if(__fap) S.settings.flow.adminPass=__fap.value;
+  if(__cfgPop.has('flowUrl')) S.settings.flow.url=$('#flowUrl').value.trim();
+  if(__cfgPop.has('flowAdminUser')) S.settings.flow.adminUser=$('#flowAdminUser').value.trim();
+  if(__cfgPop.has('flowAdminPass')) S.settings.flow.adminPass=$('#flowAdminPass').value;
   save(); renderCfgStrip(); flashSaved(); }
 function saveGemCfgAuto(){ if(!S.settings.gemini) S.settings.gemini={};
-  S.settings.gemini.engine=$('#gemEngine').value; S.settings.gemini.key=$('#gemKey').value.trim();
-  S.settings.gemini.model=$('#gemModel').value; S.settings.gemini.modelCustom=$('#gemModelCustom').value.trim();
-  const wk=$('#gemWebKey'); if(wk) S.settings.gemini.webKey=wk.value.trim();
-  const wu=$('#gemWebUrl'); if(wu) S.settings.gemini.webUrl=wu.value.trim();
+  S.settings.gemini.engine=$('#gemEngine').value;
+  if(__cfgPop.has('gemKey')) S.settings.gemini.key=$('#gemKey').value.trim();
+  S.settings.gemini.model=$('#gemModel').value;
+  if(__cfgPop.has('gemModelCustom')) S.settings.gemini.modelCustom=$('#gemModelCustom').value.trim();
+  const wk=$('#gemWebKey'); if(wk&&__cfgPop.has('gemWebKey')) S.settings.gemini.webKey=wk.value.trim();
+  const wu=$('#gemWebUrl'); if(wu&&__cfgPop.has('gemWebUrl')) S.settings.gemini.webUrl=wu.value.trim();
   updGemWebVis();
   save(); renderCfgStrip(); flashSaved(); }
 /* V10.39: 3 ô chọn động cơ đã dời vào tab Xưởng (render theo dự án, không có sẵn lúc nạp trang) — nghe change bằng uỷ quyền trên document. */
@@ -3731,6 +3737,7 @@ function fmtPrice(p){ const n=parseInt(String(p||'').replace(/\D/g,''),10); retu
   }));
   ping(true); setInterval(()=>ping(true), 90000);
   renderCfgStrip(); fetchFlowLanes(); paintActBar(); enhanceFolds(document); loadPoolAccounts();
+  renderFlowCfg(); renderGemCfg(); /* V10.43: nạp ô cấu hình ngay lúc boot, không chờ mở Cài đặt */
   // Kho chính là IndexedDB (rộng hơn localStorage rất nhiều): nạp bản mới nhất từ đó rồi vẽ lại
   idbGet().then(txt=>{
     if(!txt){ idbSet(JSON.stringify(S)); return; }
@@ -3741,6 +3748,7 @@ function fmtPrice(p){ const n=parseInt(String(p||'').replace(/\D/g,''),10); retu
       S=s2;
       renderControl(); renderProjects(); if(S.activeId) renderWorkspace();
       sweepFlowStuck(); paintWarmBtn(); renderCfgStrip(); paintActBar(); paintPower();
+      renderFlowCfg(); renderGemCfg(); /* V10.43: nạp lại theo bản IndexedDB (bản chuẩn) */
       S.projects.forEach(p=>p.segments.forEach(s=>{
         if(s.kf.taskId && ['queued','processing'].includes(s.kf.status)) pollTask('image',p.id,s.id);
         if(s.vid.taskId && ['queued','processing'].includes(s.vid.status)) pollTask('video',p.id,s.id);
