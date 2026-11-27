@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.40</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.41</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -1637,7 +1637,7 @@ function sceneTextHTML(p,s,si){
   const dur=s.dur||p.sceneDur||10; const bandM=dialogueBand(dur); const wTgt=bandM.wMax, wTgtMin=bandM.wMin;
   return '<div class="scene" data-scene="'+s.id+'">'+
    '<div class="scene-head"><b>'+esc(s.title)+'</b><span style="flex:1"></span>'+
-   (s.dialogueFlag?'<span class="badge" style="background:#6b2222;color:#ffd7d7">⚠ THOẠI DÀI HƠN LUẬT</span>':'')+'</div>'+
+   (s.dialogueFlag?'<span class="badge" style="background:#6b2222;color:#ffd7d7">⚠ THOẠI DÀI HƠN LUẬT</span>':'')+(s.fashionFlag?'<span class="badge" style="background:#6b4a12;color:#ffe1a8">⚠ CHƯA ĐẠT LUẬT THỜI TRANG</span>':'')+'</div>'+
    '<div class="scene-body">'+
    (isBoard? boardPromptHTML(p,s) : '')+
    '<details class="promptbox"><summary>📝 Kịch bản của scene (xem / sửa)</summary>'+
@@ -1673,6 +1673,7 @@ function sceneMediaHTML(p,s,si){
    '<div class="scene-head"><b>'+esc(s.title)+'</b><span style="flex:1"></span>'+
    (s.kf.approved?'<span class="badge done">ĐÃ DUYỆT</span>':'')+(s.vid.status==='done'?'<span class="badge done">CÓ CLIP</span>':'')+'</div>'+
    '<div class="scene-body">'+
+   ((p.fmtKind==='fashion' && s.kf.url && p.refsProd && p.refsProd[0])? '<div style="display:flex;gap:8px;margin-bottom:8px"><div style="flex:1;text-align:center"><img src="'+esc(resolveUrl(s.kf.url))+'" style="width:100%;border-radius:10px;border:1px solid var(--line)"><div class="muted">👗 Ảnh mặc thử</div></div><div style="flex:1;text-align:center"><img src="'+esc(p.refsProd[0])+'" style="width:100%;border-radius:10px;border:1px solid var(--line)"><div class="muted">🛍 SP gốc — đối chiếu</div></div></div>' : '')+
    (isBoard? boardCardHTML(p,s) : '')+
    (isBoard?'':'<div class="statusline" id="kf-status-'+s.id+'">'+kfStatusText(s)+'</div>')+
    '<div class="btnrow">'+
@@ -2375,13 +2376,15 @@ const FORMATS={
   farm:{ name:'Farm', icon:'🌾', patch:{ charMode:'pov', template:'story', scenes:4, dialogue:false, noPrice:false, animalTalk:false, useChar2:false, speakMode:'longtieng' } },
   travel:{ name:'Travel', icon:'✈️', patch:{ charMode:'review', template:'story', scenes:5, dialogue:true, noPrice:false, animalTalk:false, useChar2:false, speakMode:'longtieng' } },
   pet:{ name:'Thú Cưng Biết Nói', icon:'🐱', patch:{ charMode:'review', template:'story', scenes:3, dialogue:true, noPrice:false, animalTalk:true, useChar2:false, speakMode:'tnhien' } },
-  story:{ name:'Kể Chuyện', icon:'📖', patch:{ charMode:'none', template:'story', scenes:5, dialogue:true, noPrice:false, animalTalk:false, useChar2:false, speakMode:'longtieng' } }
+  story:{ name:'Kể Chuyện', icon:'📖', patch:{ charMode:'none', template:'story', scenes:5, dialogue:true, noPrice:false, animalTalk:false, useChar2:false, speakMode:'longtieng' } },
+  fashion:{ name:'Thời trang', icon:'👗', patch:{ charMode:'review', template:'review', scenes:3, dialogue:true, noPrice:true, animalTalk:false, useChar2:false, speakMode:'tnhien' } }
 };
 const FMT_DEFAULTS={
   review:{ hookFirst:'demo' }, pov:{ action:'' },
   family:{ situation:'', homeScene:'bep', useProducts:false }, drama:{ plot:'', roles:'', openEnd:true, useProducts:false },
   farm:{ activity:'cham-cay', useProducts:false }, travel:{ places:'', useProducts:false }, pet:{ petTrait:'', useProducts:false },
-  story:{ genre:'tam-su', illust:'dien-anh', useProducts:false }
+  story:{ genre:'tam-su', illust:'dien-anh', useProducts:false },
+  fashion:{ fashMode:'talk', transDur1:8, transDur2:10, useProducts:true }
 };
 function curFmt(){ const st=S.settings; const f=st.format||'review';
   st.fmtStore=st.fmtStore||{}; if(!st.fmtStore[f]) st.fmtStore[f]=Object.assign({}, FMT_DEFAULTS[f]||{});
@@ -2403,6 +2406,7 @@ function fmtPromptText(st){
     case 'travel': return fm.places? ('Địa điểm & lịch trình theo thứ tự: '+String(fm.places).replace(/\n/g,' → ')+'.') : '';
     case 'pet': return fm.petTrait? ('Tính cách thú cưng: '+fm.petTrait+', lời thoại và biểu cảm đúng tính cách này.') : '';
     case 'story': return 'Thể loại câu chuyện: '+(genre[fm.genre]||'tâm sự')+'. Hình minh hoạ: '+(illust[fm.illust]||'phong cách điện ảnh')+', không xuất hiện người dẫn chuyện.';
+    case 'fashion': return '';
     case 'review': return 'Mở đầu bắt buộc: nhân vật nhìn thẳng camera nói câu hook trong 3–4 giây đầu; sau đó toàn bộ thời lượng tập trung vào sản phẩm: công năng, lợi ích, tiện lợi, hiệu quả, chất liệu.';
     default: return '';
   }
@@ -2413,7 +2417,7 @@ function bgAutoText(prodName, points, st){
     pov:'một mặt bàn làm việc cố định: bàn gỗ sáng màu, nền tường trắng trơn, ánh sáng ban ngày đều, không đồ vật thừa',
     family:'một phòng khách gia đình cố định: sofa vải xám, bàn trà gỗ, kệ tivi đối diện, ánh sáng ấm', drama:'một không gian cố định đúng với cốt truyện, tông màu điện ảnh, giữ nguyên bài trí xuyên suốt',
     farm:'một khu vườn quê Việt Nam cố định: luống rau xanh, hàng rào tre, nắng sáng tự nhiên', travel:'khung cảnh đúng địa điểm trong lịch trình, góc rộng, đẹp',
-    pet:'một phòng khách cố định: sàn gỗ sáng, thảm tròn màu kem, cửa sổ rèm trắng, ánh sáng mềm', story:'một không gian minh hoạ cố định, đúng với diễn biến câu chuyện, giữ nhất quán xuyên suốt' }[f]||'một không gian cố định, phù hợp với sản phẩm';
+    pet:'một phòng khách cố định: sàn gỗ sáng, thảm tròn màu kem, cửa sổ rèm trắng, ánh sáng mềm', fashion:'một góc phòng cố định với gương toàn thân lớn: sàn gỗ sáng, tường trắng, rèm cửa sổ mềm, ánh sáng ban ngày đều — nhân vật đứng trước gương mặc thử đồ', story:'một không gian minh hoạ cố định, đúng với diễn biến câu chuyện, giữ nhất quán xuyên suốt' }[f]||'một không gian cố định, phù hợp với sản phẩm';
   return 'Bối cảnh (MỘT địa điểm duy nhất cho toàn bộ video — mọi cảnh quay ở đúng nơi này, không đổi phòng, không đổi cách bài trí): '+base+(prodName?(' — xoay quanh sản phẩm "'+prodName+'"'):'')+(points?('. Điểm nhấn: '+String(points).split('\n')[0].slice(0,80)):'')+'.';
 }
 function renderFormats(){ const z=$('#fmtList'); if(!z) return;
@@ -2563,7 +2567,25 @@ function renderOptions(){
         <button class="${fm.illust==='anh-that'?'active':''}" onclick="App.setFmt('illust','anh-that'); App.renderOptionsOnly()">Ảnh thật</button>
         <button class="${fm.illust==='anime'?'active':''}" onclick="App.setFmt('illust','anime'); App.renderOptionsOnly()">Anime</button>
         <button class="${fm.illust==='tranh-ve'?'active':''}" onclick="App.setFmt('illust','tranh-ve'); App.renderOptionsOnly()">Tranh vẽ</button>
-      </div>`
+      </div>`,
+    fashion: `<label class="fl">Kiểu kịch bản</label>
+      <div class="segbtn">
+        <button class="${fm.fashMode!=='trans'?'active':''}" onclick="App.setFmt('fashMode','talk'); App.renderOptionsOnly()">🗣 Nói — mặc thử có thoại</button>
+        <button class="${fm.fashMode==='trans'?'active':''}" onclick="App.setFmt('fashMode','trans'); App.renderOptionsOnly()">💃 Transition — không thoại</button>
+      </div>
+      ${fm.fashMode==='trans'?`
+      <label class="fl">Thời lượng Scene 1</label>
+      <div class="segbtn">
+        <button class="${+fm.transDur1===10?'':'active'}" onclick="App.setFmt('transDur1',8); App.renderOptionsOnly()">8 giây · 6–7 shot</button>
+        <button class="${+fm.transDur1===10?'active':''}" onclick="App.setFmt('transDur1',10); App.renderOptionsOnly()">10 giây · 8–9 shot</button>
+      </div>
+      <label class="fl">Thời lượng Scene 2</label>
+      <div class="segbtn">
+        <button class="${+fm.transDur2===8?'active':''}" onclick="App.setFmt('transDur2',8); App.renderOptionsOnly()">8 giây · 6–7 shot</button>
+        <button class="${+fm.transDur2===8?'':'active'}" onclick="App.setFmt('transDur2',10); App.renderOptionsOnly()">10 giây · 8–9 shot</button>
+      </div>
+      <p class="muted">Transition: đúng 2 scene nối nhau — khung cuối Scene 1 = khung đầu Scene 2; đổi đồ/màu chỉ tại điểm che ống kính hoặc xoay người; ĐƯỢC thêm phụ kiện đổi theo bộ/màu.</p>`
+      :`<p class="muted">Kiểu Nói: thoại 8–12 từ/câu, bắt buộc có câu về DỊP MẶC; CẤM nhắc size; KHÔNG thêm phụ kiện cho nhân vật. Số cảnh + thời lượng mỗi cảnh chỉnh ở mục "Kịch bản &amp; giọng" bên dưới.</p>`}`
   };
   z.innerHTML=`
   <div class="card fmtbar">
@@ -2574,7 +2596,7 @@ function renderOptions(){
 
   <div class="card">
     <div class="sechead"><span class="secnum">1</span><span class="sectitle">Nhân vật</span>
-      <span class="secchip">${({review:'Có người review',family:'Có người review',drama:'Có người review',travel:'Có người review',pet:'Thú cưng',pov:'POV chỉ tay',farm:'POV chỉ tay',story:'Không nhân vật'})[st.format]||''}</span></div>
+      <span class="secchip">${({review:'Có người review',family:'Có người review',drama:'Có người review',travel:'Có người review',pet:'Thú cưng',pov:'POV chỉ tay',farm:'POV chỉ tay',story:'Không nhân vật',fashion:'Có người mặc thử'})[st.format]||''}</span></div>
     ${st.format==='story'?`
     <div class="choicegrid one"><div class="choice sel"><span class="cic">🎙️</span> <b>Không nhân vật — chỉ hình minh hoạ + giọng kể</b></div></div>`
     :`
@@ -2992,6 +3014,190 @@ async function genPromptsV2(prod, st, profile, scenes){
   return askChatJSON(sys, usr);
 }
 
+/* ================= V10.41 — NÃO ĐẠO DIỄN THỜI TRANG (TD chốt 27/11) =================
+   Bộ não ĐỘC LẬP hoàn toàn với não MC Review (genScriptV2/genPromptsV2): gói lệnh riêng, mẫu few-shot riêng,
+   chốt chặn riêng. Chỉ dự án Thời trang mới nạp gói này; sửa gói này không đụng luật ngách khác.
+   Luồng: fashionCallA (bóc phiếu SP từ ảnh + kịch bản/bảng shot) -> chốt chặn thời trang -> fashionCallB1 (prompt ảnh mặc thử) + fashionCallB2 (prompt video). */
+const FASHION_SAMPLES=`MẪU CHUẨN CỦA ĐẠO DIỄN THỜI TRANG (bắt chước đúng giọng, cấu trúc, luật):
+[MẪU A — MẶC THỬ BÁN HÀNG, có thoại] Phiếu SP mẫu: váy liền thân nữ; màu/họa tiết: nền kem, hoa nhí hồng nhỏ; cổ vuông; tay phồng ngắn; dáng chữ A xòe nhẹ; dài qua gối; chất liệu: voan lót trong, mềm rủ.
+Cảnh 1 (toàn thân trước gương — hook + khoe form): "Váy này mặc lên nhìn eo nhỏ hẳn luôn đó mọi người. Cổ vuông tay phồng ngắn che bắp tay cực khéo luôn. Mặc đi cà phê cuối tuần nhìn xinh nhẹ nhàng lắm."
+Cảnh 2 (cận chất vải + chi tiết): "Chất vải mềm rủ không nhăn không nóng mặc cả ngày. Hoa nhí nhỏ xinh nhìn gần càng thấy nét lắm nha. Dáng chữ A xòe nhẹ che bụng che đùi rất tốt."
+Cảnh 3 (cử động thật + chốt dịp mặc; tóc buộc nửa đầu, makeup hồng đất, giữ nguyên cả 3 cảnh, KHÔNG phụ kiện): "Đi lại xoay người váy vẫn xòe đều không bị xoắn. Mặc đi tiệc nhẹ cuối tuần cũng rất là hợp luôn. Đi làm đi chơi đều hợp không kén dáng đâu nha."
+Nhận xét mẫu A: mỗi câu 1 thông tin kiểm chứng bằng mắt (form/vải/họa tiết/dịp mặc); có câu về DỊP MẶC; KHÔNG nhắc size; KHÔNG phụ kiện.
+[MẪU B — TRANSITION, không thoại] Cùng 1 mẫu váy 3 màu (kem/hồng/xanh), 2 scene gen riêng rồi nối: Scene 1 = 8 giây 7 multi-shot, Scene 2 = 10 giây 9 multi-shot, mỗi shot ~1,1–1,3 giây. Khóa khung mọi shot: cùng vị trí đứng, cùng khung toàn thân, cùng ánh sáng; tư thế khóa: chân trái bước trước nửa bước, tay trái chống hông, tay phải cầm túi. Đổi màu/bộ chỉ tại điểm có vật che ống kính hoặc chuyển động xoay. Multi-shot cuối Scene 1 (tư thế khóa, váy hồng) = multi-shot đầu Scene 2 (mở đúng khung nối đó). Phụ kiện đổi theo màu: váy kem → túi cói, tóc xõa; váy hồng → kính râm cầm tay, tóc buộc cao; váy xanh → mũ rộng vành, makeup cam đào.`;
+function fashionModeOf(st){ const fm=(st.fmtStore&&st.fmtStore.fashion)||{}; return fm.fashMode==='trans'? 'trans' : 'talk'; }
+function fashionDurOf(st, idx){ const fm=(st.fmtStore&&st.fmtStore.fashion)||{}; return idx===0? (+fm.transDur1||8) : (+fm.transDur2||10); }
+function fashionShotRule(dur){ return (+dur>=10)? {min:8, max:9} : {min:6, max:7}; }
+const FASHION_OCCASION_RE=/đi làm|đi chơi|đi tiệc|cà phê|cafe|dạo phố|du lịch|hẹn hò|đi biển|đám cưới|đi sự kiện|sự kiện|cuối tuần|mặc đi|đi ăn|đi dạo/i;
+const FASHION_SIZE_RE=/\bsize\b|số đo|bảng size|vòng eo là|nặng \d|kg\b/i;
+function fashionDlgBad(t, needOcc){ return FASHION_SIZE_RE.test(t||'') || (needOcc && !FASHION_OCCASION_RE.test(t||'')); }
+async function fashionCallA(prod, st){
+  const mode=fashionModeOf(st); const vc=voiceProfile(st);
+  const sys='Bạn là ĐẠO DIỄN THỜI TRANG — stylist kiêm KOC thời trang viết kịch bản video TikTok/Reels. Đây là bộ não riêng của ngách thời trang, KHÔNG phải đạo diễn review sản phẩm: bạn nghĩ về form dáng, tỉ lệ cơ thể, độ rơi/rủ của vải, dịp mặc, phối màu, với từ vựng chuyên ngành (kiểu cổ, kiểu tay, chất liệu, dáng). Chỉ trả về DUY NHẤT một JSON object, không giải thích, không markdown.\n'+FASHION_SAMPLES;
+  const head=[ 'Sản phẩm trang phục: '+prod.name+(prod.category? ' — Loại: '+prod.category : ''),
+    prod.desc? 'Điểm bán TD nhập (nguồn phụ — phiếu SP bóc từ ảnh mới là nguồn sự thật chính): '+prod.desc : '',
+    'Ảnh sản phẩm đính kèm là NGUỒN SỰ THẬT DUY NHẤT về trang phục: trước khi viết, bóc PHIẾU THÔNG SỐ SP từ ảnh (loại đồ, màu và tên màu, họa tiết, kiểu cổ, kiểu tay, dáng/form, độ dài, chất liệu nhìn thấy được, các màu có trong ảnh). Kịch bản và mô tả trang phục TUYỆT ĐỐI không được nói khác phiếu này, không bịa chi tiết đồ không có trong ảnh.' ];
+  let usr='';
+  if(mode==='talk'){
+    const n=Math.max(1, Math.min(8, st.scenes||3)); const dur=+st.sceneDur||10; const band=dialogueBand(dur);
+    const sentRule= dur>=10? '3–4 câu' : dur>=8? 'đúng 3 câu' : 'đúng 2 câu';
+    usr=head.concat([
+      'CHẾ ĐỘ: NÓI — mặc thử bán hàng, '+n+' cảnh, mỗi cảnh đúng '+dur+' giây, khung '+(st.ratio||'9:16')+'. Giọng: '+vc.gender+', '+vc.region+', cảm xúc '+(vc.emotion||'tự nhiên, giàu năng lượng')+' — nói như KOC thử đồ thật, không đọc thông số như tờ rơi.',
+      'LUẬT THOẠI: mỗi cảnh '+band.wMin+'–'+band.wMax+' từ gồm '+sentRule+', mỗi câu 8–12 từ và đúng 1 ý, trọn câu kết bằng dấu chấm; mỗi câu phải chứa 1 thông tin KIỂM CHỨNG ĐƯỢC BẰNG MẮT (form dáng, độ rủ của vải, họa tiết, chi tiết cổ/tay); TOÀN VIDEO bắt buộc có ít nhất 1 câu nói rõ DỊP MẶC (bộ này hợp đi đâu / làm gì); CẤM TUYỆT ĐỐI nhắc size, số đo, cân nặng, chiều cao; KHÔNG nhắc phụ kiện (túi, kính, mũ, trang sức) — nhân vật chỉ mặc đúng bộ đồ SP; số viết thành CHỮ tiếng Việt; không dùng "...", không viết tắt lửng.',
+      'CẤU TRÚC CẢNH mặc thử: cảnh 1 = toàn thân (trước gương hoặc không gian cố định) hook khoe form ngay 3 giây đầu; các cảnh giữa = cận chất vải/chi tiết + cử động thật; cảnh cuối = cử động thật (đi lại, xoay người) + chốt dịp mặc. Tóc + makeup: chọn 1 kiểu hợp bộ đồ, ghi rõ trong scene_script và GIỮ NGUYÊN trong mọi cảnh của bộ đó.',
+      'Mỗi cảnh trả: purpose (nhãn ngắn), scene_script (tiếng Việt: khung hình, hành động, cử động — ghi rõ tóc/makeup), dialogue (nguyên văn), outfit (mô tả bộ đồ của cảnh theo đúng phiếu SP: màu, họa tiết, cổ, tay, dáng, độ dài), end_state (trạng thái cuối cảnh để cảnh sau nối tiếp).',
+      'Trả về JSON THUẦN: {"spec":{"item":"loại đồ","colors":"các tên màu","pattern":"họa tiết","collar":"kiểu cổ","sleeves":"kiểu tay","shape":"dáng/form","length":"độ dài","material":"chất liệu"},"profile":{"character_lock":"English summary locking her face and body proportions from the character reference","environment":"bối cảnh tiếng Anh — MỘT không gian cố định hợp mặc thử (gương toàn thân...)","lighting":"ánh sáng","style":"phong cách"},"scenes":[{"purpose":"...","scene_script":"...","dialogue":"...","outfit":"...","end_state":"..."}]} — đúng '+n+' cảnh.'
+    ]).join('\n');
+  } else {
+    const d1=fashionDurOf(st,0), d2=fashionDurOf(st,1); const r1=fashionShotRule(d1), r2=fashionShotRule(d2);
+    usr=head.concat([
+      'CHẾ ĐỘ: TRANSITION — KHÔNG thoại, nhạc trend. Đúng 2 scene gen riêng rồi nối lại: Scene 1 dài '+d1+' giây gồm '+r1.min+'–'+r1.max+' multi-shot; Scene 2 dài '+d2+' giây gồm '+r2.min+'–'+r2.max+' multi-shot; mỗi multi-shot ~1,1–1,3 giây, các mốc giây nối tiếp phủ kín thời lượng scene.',
+      'LUẬT TRANSITION: KHÓA KHUNG mọi multi-shot — cùng vị trí đứng, cùng khung toàn thân, cùng ánh sáng; định nghĩa 1 TƯ THẾ KHÓA và dùng lại ở các shot chốt. Đổi bộ/màu CHỈ tại multi-shot có vật che ống kính (túi, khăn, tay...) hoặc chuyển động xoay. Multi-shot CUỐI của Scene 1 phải mô tả ĐÚNG khung nối (tư thế khóa + bộ đồ tại điểm nối) và multi-shot ĐẦU của Scene 2 phải mô tả Y HỆT khung nối đó — hai mô tả phải khớp nhau từng ý chính. ĐƯỢC thêm phụ kiện và đổi phụ kiện theo từng bộ/màu (ghi rõ trong desc của shot); tóc + makeup được đổi theo bộ/màu, ghi rõ ở cấp scene. Shot 1 của Scene 1: nhân vật mặc đồ thường ngày ở tư thế khóa.',
+      'Mỗi scene trả: purpose (nhãn ngắn), outfit (bộ đồ CHÍNH mở đầu scene, theo phiếu SP), hair_makeup (tóc + makeup của scene), shots: mảng {"span":"0.0–1.1s","desc":"mô tả shot: khung hình, tư thế, bộ đồ/màu, phụ kiện, hành động"}, end_state.',
+      'Trả về JSON THUẦN: {"spec":{"item":"...","colors":"...","pattern":"...","collar":"...","sleeves":"...","shape":"...","length":"...","material":"..."},"profile":{"character_lock":"...","environment":"...","lighting":"...","style":"..."},"scenes":[{"purpose":"...","outfit":"...","hair_makeup":"...","shots":[{"span":"...","desc":"..."}],"end_state":"..."},{"purpose":"...","outfit":"...","hair_makeup":"...","shots":[...],"end_state":"..."}]} — đúng 2 scene.'
+    ]).join('\n');
+  }
+  return askChatJSONImg(sys, usr, prod.images||[]);
+}
+async function fashionRepairDialogue(prod, st, sc, idx, total, fixOccasion){
+  const dur=+st.sceneDur||10; const r=dialogueRule(dur);
+  const sys='Bạn là biên tập thoại video thời trang TikTok. Chỉ trả về DUY NHẤT một JSON object, không giải thích, không markdown.';
+  const usr=[ 'CHỐT THỜI TRANG — viết lại LỜI THOẠI cảnh '+(idx+1)+'/'+total+' cho video mặc thử bán hàng, sản phẩm trang phục: '+(prod.name||''),
+    'Mục đích cảnh: '+(sc.purpose||''), 'Kịch bản cảnh: '+(sc.scene_script||''),
+    'Thoại hiện tại: "'+sc.dialogue+'"',
+    'LUẬT BẮT BUỘC: '+(r.min===r.max? ('đúng '+r.min+' câu') : ('từ '+r.min+' đến '+r.max+' câu'))+', mỗi câu 8–12 từ, đúng 1 ý, kết bằng dấu chấm; giữ ý và thông tin về form dáng/chất vải/họa tiết của thoại hiện tại; TUYỆT ĐỐI không nhắc size, số đo, cân nặng, chiều cao; không nhắc phụ kiện (túi, kính, mũ, trang sức); '+(fixOccasion? 'BẮT BUỘC có ít nhất 1 câu nói rõ DỊP MẶC (bộ này hợp đi làm / đi chơi / đi tiệc / cà phê cuối tuần...); ' : '')+'gọi sản phẩm bằng tên loại chung; số viết thành chữ tiếng Việt.',
+    'Chỉ trả về JSON: {"dialogue":"thoại mới"}' ].join('\n');
+  const data=await aiChat([{role:'system',content:sys},{role:'user',content:usr}], { json:true });
+  const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+  const o=parseLooseJSON(text);
+  return (o && typeof o.dialogue==='string' && o.dialogue.trim())? o.dialogue : null;
+}
+async function fashionGateTalk(scenes, st, prod){
+  await gateDialogueScenes(scenes, st, prod);
+  const needOccIdx = scenes.some(sc=> FASHION_OCCASION_RE.test(sc.dialogue||''))? -1 : scenes.length-1;
+  let flagged=0;
+  for(let i=0;i<scenes.length;i++){
+    const sc=scenes[i]; if(!sc.dialogue || !String(sc.dialogue).trim()) continue;
+    const needOcc=(i===needOccIdx);
+    if(!fashionDlgBad(sc.dialogue, needOcc)) continue;
+    let cur=sc.dialogue;
+    for(let round=0; round<2; round++){
+      if(!fashionDlgBad(cur, needOcc)) break;
+      let nd=null;
+      try{ nd=await fashionRepairDialogue(prod, st, { purpose:sc.purpose, scene_script:sc.scene_script, dialogue:cur }, i, scenes.length, needOcc); }
+      catch(e){ break; }
+      if(nd==null) break;
+      cur=nd;
+    }
+    sc.dialogue=cur;
+    if(fashionDlgBad(cur, needOcc)){ sc.fashionFlag=true; flagged++; }
+  }
+  if(flagged) toast('Chốt thời trang: '+flagged+' cảnh còn vi phạm luật (nhắc size / thiếu dịp mặc) — đã gắn cờ ⚠ để m quyết', 7000);
+}
+function fashionShotsBad(shots, dur){ const r=fashionShotRule(dur); const n=Array.isArray(shots)? shots.length : 0; return n<r.min || n>r.max; }
+function fashionJoinOk(s1, s2){
+  if(!s1 || !s2 || !Array.isArray(s1.shots) || !Array.isArray(s2.shots) || !s1.shots.length || !s2.shots.length) return false;
+  const norm=t=> String(t||'').toLowerCase().replace(/[^a-zà-ỹ0-9 ]/gi,' ').split(/\s+/).filter(w=>w.length>=4);
+  const a=new Set(norm(s1.shots[s1.shots.length-1].desc)), b=norm(s2.shots[0].desc);
+  let shared=0; for(const w of b) if(a.has(w)) shared++;
+  return shared>=2;
+}
+async function fashionRepairTrans(prod, st, scenes, problem){
+  const d1=fashionDurOf(st,0), d2=fashionDurOf(st,1); const r1=fashionShotRule(d1), r2=fashionShotRule(d2);
+  const sys='Bạn là đạo diễn transition thời trang TikTok. Chỉ trả về DUY NHẤT một JSON object, không giải thích, không markdown.';
+  const usr=[ 'CHỐT SHOT THỜI TRANG — sửa BẢNG MULTI-SHOT của video transition 2 scene cho sản phẩm trang phục: '+(prod.name||''),
+    'Vấn đề phải sửa: '+problem,
+    'Bảng hiện tại: '+JSON.stringify(scenes.map(s=>({ purpose:s.purpose, outfit:s.outfit, shots:s.shots }))),
+    'LUẬT: Scene 1 đúng '+d1+' giây, '+r1.min+'–'+r1.max+' multi-shot; Scene 2 đúng '+d2+' giây, '+r2.min+'–'+r2.max+' multi-shot; mỗi shot ~1,1–1,3 giây, mốc giây nối tiếp phủ kín scene; khóa khung + tư thế khóa nhất quán; đổi đồ/màu chỉ tại điểm che ống kính hoặc xoay; multi-shot cuối Scene 1 và đầu Scene 2 mô tả Y HỆT một khung nối (cùng tư thế khóa, cùng bộ đồ, cùng khung hình); giữ nguyên các bộ đồ/màu và phụ kiện đã có.',
+    'Chỉ trả về JSON: {"scenes":[{"shots":[{"span":"0.0–1.1s","desc":"..."}]},{"shots":[...]}]}' ].join('\n');
+  const data=await aiChat([{role:'system',content:sys},{role:'user',content:usr}], { json:true });
+  const text=(data.choices&&data.choices[0]&&data.choices[0].message&&data.choices[0].message.content)||'';
+  const o=parseLooseJSON(text);
+  return (o && Array.isArray(o.scenes))? o.scenes : null;
+}
+async function fashionGateTrans(scenes, st, prod){
+  const badAll=()=> scenes.some((sc,i)=> fashionShotsBad(sc.shots, sc.dur)) || !fashionJoinOk(scenes[0], scenes[1]);
+  if(!badAll()) return;
+  let fixed=false;
+  for(let round=0; round<2 && !fixed; round++){
+    const probs=[];
+    scenes.forEach((sc,i)=>{ if(fashionShotsBad(sc.shots, sc.dur)) probs.push('Scene '+(i+1)+' đang có '+((sc.shots||[]).length)+' shot, cần '+fashionShotRule(sc.dur).min+'–'+fashionShotRule(sc.dur).max+' shot'); });
+    if(!fashionJoinOk(scenes[0], scenes[1])) probs.push('khung nối cuối Scene 1 và đầu Scene 2 chưa khớp mô tả');
+    let rep=null;
+    try{ rep=await fashionRepairTrans(prod, st, scenes, probs.join('; ')); }catch(e){ rep=null; break; }
+    if(!rep) break;
+    rep.forEach((rs,i)=>{ if(scenes[i] && Array.isArray(rs.shots) && rs.shots.length) scenes[i].shots=rs.shots.map(sh=>({ span:String(sh.span||''), desc:String(sh.desc||'') })); });
+    fixed=!badAll();
+  }
+  if(!fixed){ scenes.forEach(sc=>{ sc.fashionFlag=true; }); toast('Chốt thời trang: bảng shot transition chưa đạt chuẩn (mật độ / khung nối) — đã gắn cờ ⚠ để m quyết', 7000); }
+}
+async function fashionCallB1(prod, st, a){
+  const mode=fashionModeOf(st);
+  const sys='Bạn viết prompt gen ẢNH tiếng Anh cho video thời trang. Chỉ trả JSON thuần, không markdown.';
+  const usr=[ 'THỜI TRANG B1 — viết prompt ẢNH MẶC THỬ (nhân vật mặc trang phục SP) cho từng cảnh. Ảnh này là khung neo của cảnh: sai đồ ở đây là cả cảnh sai, nên khóa phải thật chặt.',
+    'PHIẾU THÔNG SỐ SP (nguồn sự thật duy nhất về trang phục): '+JSON.stringify(a.spec||{}),
+    'PROFILE: '+JSON.stringify(a.profile||{}),
+    'CÁC CẢNH:\n'+a.scenes.map((s,i)=> 'Cảnh '+(i+1)+': '+(s.purpose||'')+' | Bộ đồ: '+(s.outfit||'')+' | Kịch bản: '+(s.scene_script||'')).join('\n'),
+    'LUẬT B1 — mỗi kf_prompt viết bằng TIẾNG ANH và PHẢI chứa nguyên văn 2 khối khóa sau (điền đúng nội dung): (1) "CHARACTER LOCK: the woman\'s face and her body shape and proportions are 100% IDENTICAL to the character reference image in every shot — exactly the same face, same features, same body proportions; never beautify, reshape, slim or swap her face or body." (2) "OUTFIT LOCK: she wears EXACTLY this outfit, with every detail listed here and nothing else: <liệt kê ĐẦY ĐỦ chi tiết theo phiếu SP — loại đồ, màu và tên màu, họa tiết, kiểu cổ, kiểu tay, dáng/form, độ dài, chất liệu>. Never add any garment detail that is not listed: no extra pockets, buttons, lace, straps, belts or new patterns; never move or change a listed detail." Ngoài 2 khối: ghi rõ kiểu tóc + tông makeup của bộ (nhất quán trong các shot của cùng 1 bộ), tư thế/khoảnh khắc mở đầu của cảnh, bối cảnh cố định theo profile, ánh sáng, phong cách ảnh UGC chụp điện thoại chân thực. '+(mode==='talk'? 'TUYỆT ĐỐI không phụ kiện: không túi xách, không kính, không mũ, không trang sức trong ảnh.' : 'Phụ kiện (nếu scene có) ghi rõ đúng phụ kiện của đoạn mở đầu scene.')+' Không chữ, không logo mới, không watermark.',
+    'anchor_prompt: prompt TIẾNG ANH tạo ẢNH MẶC THỬ NỀN của cả video (nhân vật mặc bộ đồ của cảnh 1, toàn thân trước bối cảnh cố định) — cũng chứa CHARACTER LOCK + OUTFIT LOCK nguyên văn như trên; ảnh này làm khung neo mặt/dáng/trang phục cho mọi cảnh.',
+    'Trả về JSON THUẦN: {"anchor_prompt":"...","prompts":[{"kf_prompt":"..."}]} — đúng '+a.scenes.length+' mục, theo thứ tự cảnh.' ].join('\n');
+  return askChatJSON(sys, usr);
+}
+async function fashionCallB2(prod, st, a){
+  const mode=fashionModeOf(st); const vc=voiceProfile(st);
+  const sys='Bạn viết prompt gen VIDEO tiếng Anh cho video thời trang. Chỉ trả JSON thuần, không markdown.';
+  const usr=[ 'THỜI TRANG B2 — viết prompt VIDEO cho từng cảnh, bám đúng kịch bản/bảng shot ĐÃ CHỐT. KHÔNG viết lại kịch bản, KHÔNG sửa lời thoại.',
+    'PHIẾU THÔNG SỐ SP: '+JSON.stringify(a.spec||{}),
+    'PROFILE: '+JSON.stringify(a.profile||{}),
+    'Giọng thoại đã chốt: '+vc.gender+', '+vc.region+' (giọng '+vc.area+'), cảm xúc: '+(vc.emotion||'tự nhiên, giàu năng lượng')+'.',
+    'CÁC CẢNH ĐÃ CHỐT:\n'+a.scenes.map((s,i)=> 'Cảnh '+(i+1)+' ('+(s.dur||st.sceneDur||10)+' giây):\n- Mục đích: '+(s.purpose||'')+'\n- Kịch bản/bảng shot: '+(s.scene_script||'')+(mode==='talk'? '\n- Lời thoại (nhúng NGUYÊN VĂN vào vid_prompt, không sửa một chữ): '+s.dialogue : '')+'\n- Trạng thái cuối cảnh: '+(s.end_state||'')).join('\n'),
+    'LUẬT B2 — mỗi vid_prompt viết bằng TIẾNG ANH và PHẢI chứa nguyên văn các khối: (1) "CHARACTER LOCK: the woman\'s face and her body shape and proportions are 100% IDENTICAL to the character reference image in every shot — exactly the same face, same features, same body proportions; never beautify, reshape, slim or swap her face or body." và ghi rõ kiểu tóc + makeup của bộ trong cảnh. (2) "OUTFIT LOCK: she wears EXACTLY this outfit, with every detail listed here and nothing else: <chi tiết theo phiếu SP>" — LIỆT KÊ LẠI ĐẦY ĐỦ chi tiết trang phục theo phiếu SP TRONG TỪNG SHOT của timeline, không viết tắt kiểu "as above"; TUYỆT ĐỐI không có chi tiết đồ nào ngoài phiếu. (3) "CAMERA LOCK — JUMP CUTS ONLY: every shot is filmed with a STATIC, locked-off camera at one fixed angle and one fixed framing; the camera NEVER moves inside a shot — no push-in, no slow zoom, no dolly, no pan, no tracking, no handheld drift. Every change of angle or framing happens as a hard JUMP CUT to a new static shot." (4) TIMELINE CHI TIẾT: từng shot đúng 1 dòng "<từ giây>–<đến giây>s — Shot <số>: <khung hình + hành động> | Camera: <góc máy cố định — jump cut> | '+(mode==='talk'? 'Thoại: <phần thoại nguyên văn của shot>' : 'nhạc trend, không thoại')+'", các khoảng giây cộng dồn đúng bằng thời lượng cảnh.'+(mode==='talk'? ' (5) "VOICE PROFILE: the woman speaks VIETNAMESE with this exact voice — gender, regional accent and emotion filled in English from the Giọng thoại đã chốt line; she sounds like an adult woman; natural, lively delivery like a real TikTok fashion reviewer — never flat, never robotic, never monotone." + khối "VOICE COMPLETION (mandatory): the woman starts speaking immediately at second 0 with the exact first word of the dialogue, adjusts her pace so the ENTIRE dialogue finishes exactly by the final second of this clip, with NO silent empty tail; every word spoken exactly once, in order." — nhúng NGUYÊN VĂN toàn bộ dialogue của cảnh vào vid_prompt. Kiểu Nói TUYỆT ĐỐI không phụ kiện trong mọi shot.' : ' (5) TRANSITION: timeline bám ĐÚNG bảng multi-shot đã chốt (đúng số shot, đúng mốc giây); đổi bộ/màu CHỈ tại shot có vật che ống kính hoặc chuyển động xoay; phụ kiện ghi rõ theo từng đoạn/bộ và không tự nhảy giữa các shot trong cùng đoạn; scene 2 phải MỞ ĐÚNG khung nối — shot đầu của scene 2 giống hệt shot cuối của scene 1 (cùng tư thế khóa, cùng bộ đồ, cùng khung hình).'),
+    'Trả về JSON THUẦN: {"prompts":[{"vid_prompt":"..."}]} — đúng '+a.scenes.length+' mục, theo thứ tự cảnh.' ].join('\n');
+  return askChatJSON(sys, usr);
+}
+function fashionBlocksOk(kf, vid){
+  const has=(t,r)=> r.test(String(t||''));
+  return has(kf,/CHARACTER LOCK/) && has(kf,/OUTFIT LOCK/) && has(vid,/CHARACTER LOCK/) && has(vid,/OUTFIT LOCK/) && has(vid,/JUMP CUT/);
+}
+async function genScriptFashion(prod, st){
+  const mode=fashionModeOf(st);
+  const a=await fashionCallA(prod, st);
+  if(!a || !Array.isArray(a.scenes) || !a.scenes.length) return null;
+  const scenes=[];
+  if(mode==='talk'){
+    const n=Math.max(1, Math.min(8, st.scenes||3)); let prevEnd='';
+    for(let i=0;i<n;i++){ const s=a.scenes[i]||{};
+      scenes.push({ purpose:String(s.purpose||('Cảnh '+(i+1))), scene_script:String(s.scene_script||''), dialogue:String(s.dialogue||''), end_state:String(s.end_state||''), prev_end_state:prevEnd, kf_prompt:'', sb_prompt:'', vid_prompt:'', dur:+st.sceneDur||10, outfit:String(s.outfit||'') });
+      prevEnd=String(s.end_state||''); }
+    await fashionGateTalk(scenes, st, prod);
+  } else {
+    let prevEnd='';
+    a.scenes.slice(0,2).forEach((s,i)=>{ const dur=fashionDurOf(st,i);
+      const shots=(Array.isArray(s.shots)? s.shots : []).map(sh=>({ span:String(sh.span||''), desc:String(sh.desc||'') }));
+      scenes.push({ purpose:String(s.purpose||('Scene '+(i+1))), scene_script:'', dialogue:'', end_state:String(s.end_state||''), prev_end_state:prevEnd, kf_prompt:'', sb_prompt:'', vid_prompt:'', dur, shots, outfit:String(s.outfit||''), hair_makeup:String(s.hair_makeup||'') });
+      prevEnd=String(s.end_state||''); });
+    if(scenes.length<2) return null;
+    await fashionGateTrans(scenes, st, prod);
+    scenes.forEach(sc=>{ sc.scene_script='BẢNG MULTI-SHOT — '+sc.dur+' giây'+(sc.outfit? ' · Bộ mở đầu: '+sc.outfit : '')+(sc.hair_makeup? ' · Tóc/makeup: '+sc.hair_makeup : '')+':\n'+sc.shots.map((sh,k)=> (k+1)+'. '+(sh.span||'')+' — '+(sh.desc||'')).join('\n'); });
+  }
+  const profile=Object.assign({}, a.profile||{}, { fashionMode:mode, specSheet:a.spec||null });
+  const ctx={ spec:a.spec||{}, profile:a.profile||{}, scenes };
+  let b1=await fashionCallB1(prod, st, ctx); if(!b1) b1=await fashionCallB1(prod, st, ctx);
+  let b2=await fashionCallB2(prod, st, ctx); if(!b2) b2=await fashionCallB2(prod, st, ctx);
+  const merge=()=>{ scenes.forEach((sc,i)=>{ const p1=b1&&Array.isArray(b1.prompts)? b1.prompts[i] : null; const p2=b2&&Array.isArray(b2.prompts)? b2.prompts[i] : null;
+    if(p1&&p1.kf_prompt) sc.kf_prompt=String(p1.kf_prompt);
+    if(p2&&p2.vid_prompt) sc.vid_prompt=String(p2.vid_prompt); }); };
+  merge();
+  if(scenes.some(sc=> !fashionBlocksOk(sc.kf_prompt, sc.vid_prompt))){
+    const b1b=await fashionCallB1(prod, st, ctx); if(b1b) b1=b1b;
+    const b2b=await fashionCallB2(prod, st, ctx); if(b2b) b2=b2b;
+    merge();
+  }
+  let filled=0;
+  scenes.forEach(sc=>{ if(sc.kf_prompt&&sc.vid_prompt) filled++; if(!fashionBlocksOk(sc.kf_prompt, sc.vid_prompt)) sc.fashionFlag=true; });
+  return { profile, scenes, anchor_prompt:String((b1&&b1.anchor_prompt)||''), promptsOk: filled===scenes.length };
+}
+
 function compileImagePromptV2(p,s){
   const sc=s.scene2, pr=p.script2.profile;
   const parts=[ 'Ảnh keyframe — khung hình mở đầu của một đoạn video 10 giây, dọc 9:16.',
@@ -3065,9 +3271,10 @@ function createAutoProject(prod, st, version){
     identity, refsChar, refsProd:[...prod.images],
     voiceDir: voiceDirText(st), fmtText: fmtPromptText(st), charMode: st.charMode, bgText: S.settings.bgImage? '' : bgAutoText(prod.name, prod.desc, st), styleText:(STYLES[st.style]||'')+'. '+tone,
     exprText: emotionText(st), retryLimit: st.retry,
-    fmtKind: st.format, boardMode: st.boardMode==='board'?'board':'kf', noPrice: !!st.noPrice, idea: prod.note||'', category: prod.category||'', sceneDur: st.sceneDur||10, stylePara:'', caption:'', assembly:Object.assign({}, ASM_DEFAULTS),
+    fmtKind: st.format, boardMode: st.format==='fashion'? 'kf' : (st.boardMode==='board'?'board':'kf'), noPrice: !!st.noPrice, idea: prod.note||'', category: prod.category||'', sceneDur: st.sceneDur||10, stylePara:'', caption:'', assembly:Object.assign({}, ASM_DEFAULTS),
     segments:[], createdAt:Date.now(), auto:true };
-  for(let i=0;i<st.scenes;i++) p.segments.push(newSegment(i));
+  const nSegF=(st.format==='fashion' && ((st.fmtStore&&st.fmtStore.fashion)||{}).fashMode==='trans')? 2 : st.scenes;
+  for(let i=0;i<nSegF;i++) p.segments.push(newSegment(i));
   S.projects.unshift(p); return p;
 }
 async function batchStartKF(proj,seg){
@@ -3140,7 +3347,8 @@ async function runBatch(){
 }
 async function scriptIntoProject(proj, prod, st){
   lastAiError='';
-  let v2=null; try{ v2=await genScriptV2(prod, st); }catch(e){ if(e && e.transport){ lastAiError=String((e&&e.message)||e); throw e; } v2=null; }
+  const isFashion=(proj.fmtKind==='fashion'||st.format==='fashion');
+  let v2=null; try{ v2= isFashion? await genScriptFashion(prod, st) : await genScriptV2(prod, st); }catch(e){ if(e && e.transport){ lastAiError=String((e&&e.message)||e); throw e; } v2=null; }
   if(v2){
     proj.schema='v3'; proj.scriptMode='v3';
     proj.script2={ profile:v2.profile, voice:voiceProfile(st) };
@@ -3158,6 +3366,7 @@ async function scriptIntoProject(proj, prod, st){
       sg.board={status:'idle',url:'',panels:[],approved:false,error:''};
       sg.visual=sc.purpose||''; sg.camera='Multi-shot · jump cut'; sg.timeline='Timeline từng giây nằm trong prompt video';
       sg.dur=st.sceneDur||10;
+      sg.fashionFlag=!!sc.fashionFlag; if(sc.dur) sg.dur=+sc.dur;
     });
     return true;
   }
