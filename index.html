@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.45</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.46</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -1609,7 +1609,6 @@ function boardCardHTML(p,s){
    '<button class="btn small" onclick="App.genBoard(\''+s.id+'\')" '+(busy?'disabled':'')+'>'+(b.url?'Gen lại storyboard':'🎞 Gen storyboard')+'</button>'+
    '<button class="btn small ok" onclick="App.approveBoard(\''+s.id+'\')" '+((b.status==='done'&&!b.approved)?'':'disabled')+'>✓ Duyệt</button>'+
    '<button class="btn small primary" onclick="App.genVideo(\''+s.id+'\')" '+((s.kf.approved&&!['queued','processing'].includes(s.vid.status))?'':'disabled')+'>'+(s.vid.url?'Gen lại video':'Gen video')+'</button>'+
-   (b.url? '<button class="btn small" onclick="App.preview(\''+esc(resolveUrl(b.url))+'\',\'image\',\'storyboard\')">Xem sheet lớn</button>' : '')+
    '</div>';
 }
 
