@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.43</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.44</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -1690,6 +1690,15 @@ function sceneMediaHTML(p,s,si){
    stage+
    '</div></div>';
 }
+/* V10.44 (TD chốt 27/11): scene về MỘT khung duy nhất như cũ — gộp thẻ chữ + thẻ preview vào 1 thẻ .scene. */
+function sceneFullHTML(p,s,si){
+  const t=sceneTextHTML(p,s,si), m=sceneMediaHTML(p,s,si);
+  const mHead=m.slice(m.indexOf('<div class="scene-head">'), m.indexOf('<div class="scene-body">'));
+  const badges=(mHead.match(/<span class="badge[^"]*">[^<]*<\/span>/g)||[]).join('');
+  const mBody=m.slice(m.indexOf('<div class="scene-body">')+'<div class="scene-body">'.length, m.length-'</div></div>'.length);
+  const headEnd=t.indexOf('</div>', t.indexOf('<div class="scene-head">'));
+  return t.slice(0,headEnd)+badges+t.slice(headEnd, t.length-'</div></div>'.length)+mBody+'</div></div>';
+}
 /* V10.39 (TD chốt 26/11): ô chọn động cơ/model gen nằm ngay trong tab Xưởng — trên hàng nút thao tác — để xem kịch bản xong là chọn model rồi bấm gen tại chỗ. Giá trị vẫn lưu vào đúng khoá S.settings.flow qua saveFlowCfgAuto (nghe bằng uỷ quyền sự kiện vì thẻ này render theo dự án). */
 function engSelCardHTML(p){ const f=flowCfg(); const sel=(v,c)=> v===c? ' selected' : '';
   return '<div class="card" id="engSelCard"><h3>🎛 Động cơ gen — chọn trước khi bấm tạo</h3>'+
@@ -1702,9 +1711,6 @@ window.__renderProduction=function(p){
   if(p.caption){ const fx=fixMojibake(p.caption); if(fx!==p.caption){ p.caption=fx; save(); } }
   zone.innerHTML=`
   
-  ${anchorCardHTML(p)}
-  <div class="scenenav"><b>Các scene</b><span class="sdots">${p.segments.map((s,si)=>{ const b=s.board||{}; const err=s.kf.status==='error'||s.vid.status==='error'||b.status==='error'; const doneV=s.vid.status==='done'; const appr=(p.boardMode==='board')? b.approved : s.kf.approved; const doneK=(p.boardMode==='board')? b.status==='done' : s.kf.status==='done'; const cls= err?'err': doneV?'done': (doneK&&appr)?'mid': doneK?'wait':''; const tip= err?'Có lỗi': doneV?'Đã có clip': (doneK&&appr)?'Đã duyệt — chờ gen video': doneK?'Chờ duyệt':'Chưa gen'; return '<button class="sdot '+cls+'" title="'+esc(s.title)+' — '+tip+'" onclick="App.sceneGo(\''+s.id+'\')">'+(si+1)+'</button>'; }).join('')}</span><button class="btn small" onclick="document.getElementById('sec3').scrollIntoView({behavior:'smooth'})">${p.segments.filter(x=>x.vid.status==='done').length}/${p.segments.length} Clip - Ghép Nối</button><span style="flex:1"></span><button class="btn small" onclick="App.sceneNav(-1)">◀</button><button class="btn small" onclick="App.sceneNav(1)">▶</button></div>
-  <div class="scenestrip" id="sceneStrip">${p.segments.map((s,si)=>sceneTextHTML(p,s,si)).join('')}</div>
   ${engSelCardHTML(p)}
   <div class="card"><div class="btnrow" style="margin-top:0">
     <button class="btn primary" id="runAllBtn" onclick="App.runAll()">🚀 Chạy hết dự án — 1 chạm</button>
@@ -1713,7 +1719,10 @@ window.__renderProduction=function(p){
     <button class="btn primary" onclick="App.approveAll()">✓ Duyệt hàng loạt</button>
     <button class="btn primary" onclick="App.queueAll()">▶ Tạo video loạt</button></div>
 </div>
-  <div class="scenestrip" id="sceneMediaStrip">${p.segments.map((s,si)=>sceneMediaHTML(p,s,si)).join('')}</div>
+  ${p.promptsPending? '<div class="card" style="border:1px solid #b04040"><b>⚠ Đạo diễn chưa viết được prompt cho dự án này</b><div class="muted" style="margin:6px 0">Kịch bản và thoại đã có, nhưng prompt hình/video đang trống — ô prompt đang hiển thị prompt mẫu dự phòng của app, KHÔNG phải prompt của đạo diễn. Bấm nút dưới để đạo diễn viết lại prompt cho các cảnh còn thiếu, kịch bản giữ nguyên.</div><div class="btnrow" style="margin:0"><button class="btn primary" onclick="App.fixPrompts()">✨ Viết prompt còn thiếu</button></div></div>' : ''}
+  ${anchorCardHTML(p)}
+  <div class="scenenav"><b>Các scene</b><span class="sdots">${p.segments.map((s,si)=>{ const b=s.board||{}; const err=s.kf.status==='error'||s.vid.status==='error'||b.status==='error'; const doneV=s.vid.status==='done'; const appr=(p.boardMode==='board')? b.approved : s.kf.approved; const doneK=(p.boardMode==='board')? b.status==='done' : s.kf.status==='done'; const cls= err?'err': doneV?'done': (doneK&&appr)?'mid': doneK?'wait':''; const tip= err?'Có lỗi': doneV?'Đã có clip': (doneK&&appr)?'Đã duyệt — chờ gen video': doneK?'Chờ duyệt':'Chưa gen'; return '<button class="sdot '+cls+'" title="'+esc(s.title)+' — '+tip+'" onclick="App.sceneGo(\''+s.id+'\')">'+(si+1)+'</button>'; }).join('')}</span><button class="btn small" onclick="document.getElementById('sec3').scrollIntoView({behavior:'smooth'})">${p.segments.filter(x=>x.vid.status==='done').length}/${p.segments.length} Clip - Ghép Nối</button><span style="flex:1"></span><button class="btn small" onclick="App.sceneNav(-1)">◀</button><button class="btn small" onclick="App.sceneNav(1)">▶</button></div>
+  <div class="scenestrip" id="sceneStrip">${p.segments.map((s,si)=>sceneFullHTML(p,s,si)).join('')}</div>
   <div class="steptitle" id="sec3">3 · Ghép nối</div>
   <div class="card"><h3>Caption đăng bài</h3>
     <div class="btnrow" style="margin-top:0"><button class="btn" onclick="App.genCaption()">✨ Viết caption + hashtag</button>
@@ -2990,13 +2999,15 @@ async function genScriptV2(prod, st){
   /* V10.39: CHỐT CHẶN THOẠI trước lệnh B — lệnh B dùng kịch bản đã qua chốt. */
   await gateDialogueScenes(scenes, st, prod);
   /* Lệnh 2: viết prompt cho các cảnh vừa chốt — lỗi lệnh này KHÔNG làm mất kịch bản */
+  /* V10.44: đếm prompt theo ĐÚNG chế độ — board bắt buộc sb_prompt+vid_prompt, kf bắt buộc kf_prompt+vid_prompt; thiếu thì gọi lệnh B thêm 1 vòng, chỉ điền vào ô còn trống. */
+  const boardMode=(st.boardMode||'board')!=='kf';
+  const mergePr=(pr)=>{ if(pr && Array.isArray(pr.prompts)){ pr.prompts.forEach((pp,i)=>{ if(scenes[i] && pp){ if(pp.sb_prompt && !scenes[i].sb_prompt) scenes[i].sb_prompt=String(pp.sb_prompt); if(pp.kf_prompt && !scenes[i].kf_prompt) scenes[i].kf_prompt=String(pp.kf_prompt); if(pp.vid_prompt && !scenes[i].vid_prompt) scenes[i].vid_prompt=String(pp.vid_prompt); } }); } };
+  const strictFilled=()=> scenes.filter(sc=> boardMode? !!(sc.sb_prompt&&sc.vid_prompt) : !!(sc.kf_prompt&&sc.vid_prompt)).length;
   let pr = await genPromptsV2(prod, st, a.profile, scenes);
   if(!pr) pr = await genPromptsV2(prod, st, a.profile, scenes);
-  let filled=0;
-  if(pr && Array.isArray(pr.prompts)){
-    pr.prompts.forEach((pp,i)=>{ if(scenes[i] && pp){ if(pp.sb_prompt) scenes[i].sb_prompt=String(pp.sb_prompt); if(pp.kf_prompt) scenes[i].kf_prompt=String(pp.kf_prompt); if(pp.vid_prompt) scenes[i].vid_prompt=String(pp.vid_prompt); if(scenes[i].sb_prompt||scenes[i].kf_prompt||scenes[i].vid_prompt) filled++; } });
-  }
-  return { profile:a.profile, scenes, anchor_prompt:String(a.anchor_prompt||''), promptsOk: filled===n };
+  mergePr(pr);
+  if(strictFilled()<n){ const pr2=await genPromptsV2(prod, st, a.profile, scenes); mergePr(pr2); }
+  return { profile:a.profile, scenes, anchor_prompt:String(a.anchor_prompt||''), promptsOk: strictFilled()===n };
 }
 
 /* V10.25 lệnh 2 của đạo diễn: nhận profile + kịch bản/thoại ĐÃ CHỐT từ lệnh 1, chỉ viết prompt hình/video cho từng cảnh */
@@ -3386,6 +3397,30 @@ async function scriptIntoProject(proj, prod, st){
   scenes.forEach((sc,i)=>{ if(proj.segments[i]){ const sg=proj.segments[i]; sg.dialogueFlag=false; sg.visual=sc.visual||''; sg.dialogue=sc.dialogue||''; sg.sceneScript=sc.visual||''; sg.camera=sc.camera||''; sg.timeline=sc.timeline||''; } });
   return usedAI;
 }
+/* V10.44: viết lại prompt còn thiếu cho dự án promptsPending — chỉ điền prompt, giữ nguyên kịch bản/thoại. */
+async function fixPrompts(){
+  const p=activeProject(); if(!p) return;
+  const st=Object.assign({}, S.settings, { scenes:p.segments.length, ratio:p.ratio||S.settings.ratio, sceneDur:p.sceneDur||S.settings.sceneDur||10, boardMode:p.boardMode||'kf', format:p.fmtKind||S.settings.format });
+  const prod={ name:p.product||p.name, desc:p.points||'', note:p.idea||'', images:p.refsProd||[], category:p.category||'' };
+  toast('Đang viết lại prompt còn thiếu…');
+  let ok=false;
+  try{
+    if(p.fmtKind==='fashion'){
+      const v=await genScriptFashion(prod, st);
+      if(v){ v.scenes.forEach((sc,i)=>{ const sg=p.segments[i]; if(!sg) return; if(!sg.promptKf&&sc.kf_prompt) sg.promptKf=sc.kf_prompt; if(!sg.promptVid&&sc.vid_prompt) sg.promptVid=sc.vid_prompt; if(!sg.promptSb&&sc.sb_prompt) sg.promptSb=sc.sb_prompt; }); }
+      ok=p.segments.every(sg=> !!(sg.promptKf&&sg.promptVid));
+    } else {
+      const scenes=p.segments.map(sg=>({ purpose:(sg.scene2&&sg.scene2.purpose)||sg.visual||'', scene_script:sg.sceneScript||'', dialogue:sg.dialogue||'', end_state:(sg.scene2&&sg.scene2.end_state_text)||'', prev_end_state:'', kf_prompt:sg.promptKf||'', sb_prompt:sg.promptSb||'', vid_prompt:sg.promptVid||'' }));
+      const pr=await genPromptsV2(prod, st, (p.script2&&p.script2.profile)||{}, scenes);
+      if(pr && Array.isArray(pr.prompts)){ pr.prompts.forEach((pp,i)=>{ const sg=p.segments[i]; if(!sg||!pp) return; if(!sg.promptSb&&pp.sb_prompt) sg.promptSb=String(pp.sb_prompt); if(!sg.promptKf&&pp.kf_prompt) sg.promptKf=String(pp.kf_prompt); if(!sg.promptVid&&pp.vid_prompt) sg.promptVid=String(pp.vid_prompt); }); }
+      const boardMode=(p.boardMode||'kf')==='board';
+      ok=p.segments.every(sg=> boardMode? !!(sg.promptSb&&sg.promptVid) : !!(sg.promptKf&&sg.promptVid));
+    }
+  }catch(e){ ok=false; }
+  p.promptsPending=!ok; save(); renderWorkspace();
+  toast(ok? 'Đã viết đủ prompt cho mọi cảnh ✓' : 'Vẫn còn cảnh thiếu prompt — đạo diễn có thể đang quá tải; thử lại sau ít phút hoặc đổi làn đạo diễn sang Gemini Web trong Cài đặt', ok? undefined : 7000);
+}
+Object.assign(window.App,{ fixPrompts });
 async function rescript(){
   const p=activeProject(); if(!p) return;
   const busy=p.segments.some(s=>['done','queued','processing'].includes(s.kf.status)||['done','queued','processing'].includes(s.vid.status));
