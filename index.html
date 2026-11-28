@@ -376,7 +376,7 @@
 <body>
 <header>
   <button id="fmtBtn" onclick="App.openFormats()" aria-label="Chọn dạng video">☰</button>
-  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.47</span></div><span class="lanemini" id="laneMini"></span>
+  <div class="logo"><span class="mark">🎬</span><div>TD <span>STUDIO</span></div><span class="ver">V10.48</span></div><span class="lanemini" id="laneMini"></span>
   <div class="hactions"><div class="pill"><span class="dot" id="statusDot"></span><span id="statusText">Chưa kiểm tra</span></div><button class="btn small" id="pwBtn" style="margin-left:8px" onclick="App.togglePower()">⏻ Bật xưởng</button><button class="btn small" style="margin-left:8px" onclick="App.resetInputs()">↻ Làm mới</button><button class="btn small" id="libBtn" style="margin-left:8px" onclick="App.gotoLibrary()">🗂️ Thư viện</button></div>
 </header>
 <div id="cfgStrip" onclick="App.gotoSettings()" title="Cấu hình đang dùng — chạm để vào Cài đặt"></div>
@@ -1435,19 +1435,21 @@ function sweepFlowStuck(){
         else { sl.status='failed'; sl.error='Bị ngắt giữa chừng (việc Flow cũ không có mã việc) — bấm Gen lại'; changed=true; }
       }
       // V10: cứu việc từng bị báo lỗi oan vì mất kết nối trong lúc chờ (bản cũ < V10) — việc trên cầu có thể đã xong
-      if(sl.engine==='flow' && sl.status==='failed' && sl.flowTaskId && !sl.rescueTried && /Mất kết nối tới cầu|Quá 5 phút chưa xong|Việc Flow quá lâu/i.test(sl.error||'')){ rescueFlowSlot(p, s, kind); }
+      if(sl.engine==='flow' && sl.status==='failed' && sl.flowTaskId && !sl.rescueTried && /Mất kết nối tới cầu|Quá 5 phút chưa xong|Việc Flow quá lâu|Không lấy được kết quả từ cầu|Quá 5 phút/i.test(sl.error||'')){ rescueFlowSlot(p, s, kind); }
     });
     const bd=s.board;
     if(bd && bd.engine==='flow' && bd.status==='processing'){
       if(bd.flowTaskId) resumeBoardSlot(p, s);
       else { bd.status='failed'; bd.error='Bị ngắt giữa chừng (việc Flow cũ không có mã việc) — bấm Gen lại'; changed=true; }
     }
-    if(bd && bd.engine==='flow' && bd.status==='failed' && bd.flowTaskId && !bd.rescueTried && /Mất kết nối tới cầu|Quá 5 phút chưa xong|Việc Flow quá lâu/i.test(bd.error||'')){ rescueFlowSlot(p, s, 'board'); }
+    if(bd && bd.engine==='flow' && bd.status==='failed' && bd.flowTaskId && !bd.rescueTried && /Mất kết nối tới cầu|Quá 5 phút chưa xong|Việc Flow quá lâu|Không lấy được kết quả từ cầu|Quá 5 phút/i.test(bd.error||'')){ rescueFlowSlot(p, s, 'board'); }
   }));
   if(changed) save();
 }
 setInterval(()=>{ try{ sweepFlowStuck(); }catch(e){} }, 30000);
 window.addEventListener('online', ()=>{ try{ sweepFlowStuck(); }catch(e){} });
+let __wsTick=0; // V10.48: đồng hồ xưởng — tick 1s, đồng bộ lại mốc cầu mỗi 30s
+setInterval(()=>{ try{ __wsTick++; const el=document.getElementById('wsClock'); if(el) el.textContent=wsClockText(); if(__wsTick%30===0) syncWsClock(); }catch(e){} }, 1000);
 function pollTask(kind,projId,segId){
   const key=kind+':'+segId; if(pollers[key]) return; pollers[key]=true;
   const tick=async()=>{
@@ -1711,6 +1713,7 @@ function engSelCardHTML(p){ const f=flowCfg(); const sel=(v,c)=> v===c? ' select
   '<p class="muted" style="margin:6px 0 0">Đổi là áp dụng ngay cho các lượt gen tiếp theo. Key và địa chỉ cổng Flow vẫn ở tab Cài đặt.</p></div>'; }
 window.__renderProduction=function(p){
   const zone=document.getElementById('productionZone'); if(!zone) return;
+  const anchorDirectBtn=(p.fmtKind==='fashion'||p.boardMode!=='board')&&(p.charMode||'review')!=='none'; /* V10.48: luồng anchor-direct không có khâu ảnh loạt */
   if(p.caption){ const fx=fixMojibake(p.caption); if(fx!==p.caption){ p.caption=fx; save(); } }
   zone.innerHTML=`
   
@@ -1718,7 +1721,7 @@ window.__renderProduction=function(p){
   <div class="card"><div class="btnrow" style="margin-top:0">
     <button class="btn primary" id="runAllBtn" onclick="App.runAll()">🚀 Chạy hết dự án — 1 chạm</button>
     <button class="btn primary" onclick="App.makeAnchor()">🖼 Tạo ảnh chuẩn</button>
-    <button class="btn primary" onclick="App.produceAllKeyframes()">${producingAll? '■ Đang tạo ảnh loạt — bấm để dừng' : '⚡ Tạo ảnh loạt'}</button>
+    ${anchorDirectBtn? '' : '<button class="btn primary" onclick="App.produceAllKeyframes()">'+(producingAll? '■ Đang tạo ảnh loạt — bấm để dừng' : '⚡ Tạo ảnh loạt')+'</button>'}
     <button class="btn primary" onclick="App.approveAll()">✓ Duyệt hàng loạt</button>
     <button class="btn primary" onclick="App.queueAll()">▶ Tạo video loạt</button></div>
 </div>
@@ -1801,7 +1804,7 @@ async function ensureAnchor(proj){
         if(t.status==='failed') throw new Error(t.error||'Việc ảnh chuẩn thất bại'); }
     }
     if(!url) throw new Error('Không tạo được ảnh chuẩn');
-    proj.anchorImg=await importFlowImage(url); save(); toast('Ảnh chuẩn đã xong — xem ở đầu mục Xưởng, bấm ✓ Duyệt ảnh chuẩn rồi gen storyboard.');
+    proj.anchorImg=await importFlowImage(url); save(); toast('Ảnh chuẩn đã xong — xem ở đầu mục Xưởng, bấm ✓ Duyệt ảnh chuẩn rồi gen tiếp.');
     return true;
   }catch(e){ toast('Không tạo được ảnh chuẩn ('+e.message+') — tạo storyboard theo cách nối tiếp cũ'); return false; }
   finally{ proj.anchorBusy=false; uiTaskDone('anchor:'+proj.id); save(); try{ renderProductionZone(); }catch(e){} }
@@ -1814,12 +1817,12 @@ function anchorCardHTML(p){
   const ok=!!p.anchorApproved;
   return '<div class="card"><h3>\uD83D\uDDBC Ảnh chuẩn '+(ok?'— đã duyệt \u2713':'— CHƯA DUYỆT, xem kỹ trước khi gen storyboard')+'</h3>'+
    '<div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap"><img src="'+esc(resolveUrl(p.anchorImg))+'" style="width:120px;border-radius:12px;border:1px solid var(--line)" onclick="App.preview(\''+esc(resolveUrl(p.anchorImg))+'\',\'image\',\'anh-chuan\')">'+
-   '<div style="flex:1;min-width:200px"><p class="muted" style="margin-top:0">Tấm này là <b>nguồn tham chiếu duy nhất</b> cho mọi storyboard và keyframe: mặt, kiểu tóc, trang phục, bối cảnh và staging đứng sau bàn đều phải khớp tấm này 100%. Sai người ở đây là cả loạt sai theo — bấm Duyệt chỉ khi mặt/tóc/trang phục đúng với ảnh nhân vật của m.</p>'+
+   '<div style="flex:1;min-width:200px"><p class="muted" style="margin-top:0">Tấm này là <b>nguồn tham chiếu duy nhất</b> cho mọi storyboard, keyframe và video (chế độ keyframe + thời trang gen video thẳng từ tấm này): mặt, kiểu tóc, trang phục, bối cảnh và staging đứng sau bàn đều phải khớp tấm này 100%. Sai người ở đây là cả loạt sai theo — bấm Duyệt chỉ khi mặt/tóc/trang phục đúng với ảnh nhân vật của m.</p>'+
    '<div class="btnrow" style="margin-top:0"><button class="btn small" onclick="App.preview(\''+esc(resolveUrl(p.anchorImg))+'\',\'image\',\'anh-chuan\')">\u26F6 Xem lớn</button>'+
    (ok?'':'<button class="btn small ok" onclick="App.approveAnchor()">\u2713 Duyệt ảnh chuẩn</button>')+
    '<button class="btn small" onclick="App.regenAnchor()">\uD83D\uDD04 Gen lại ảnh chuẩn</button></div></div></div></div>';
 }
-function approveAnchor(){ const p=activeProject(); if(!p||!p.anchorImg) return; p.anchorApproved=true; save(); renderProductionZone(); toast('Đã duyệt ảnh chuẩn — giờ gen storyboard được.'); }
+function approveAnchor(){ const p=activeProject(); if(!p||!p.anchorImg) return; p.anchorApproved=true; save(); renderProductionZone(); toast('Đã duyệt ảnh chuẩn — giờ gen tiếp được.'); }
 /* V10.21: nút Tạo ảnh chuẩn — chưa có thì tạo, có rồi thì gen lại */
 async function makeAnchor(){ const p=activeProject(); if(!p) return; if(p.anchorBusy){ toast('Ảnh chuẩn đang được tạo rồi — chờ chút'); return; } p._anchorTried=false;
   if(p.anchorImg){ await regenAnchor(); } else { const ok=await ensureAnchor(p); renderProductionZone(); if(ok) toast('Ảnh chuẩn đã xong — xem kỹ rồi bấm ✓ Duyệt hàng loạt (hoặc duyệt ngay trên thẻ ảnh chuẩn)'); } }
@@ -2110,18 +2113,22 @@ try{ const fl=localStorage.getItem('td_flow_lanes'); if(fl) flowLanes=JSON.parse
 async function fetchFlowLanes(){
   if(flowLanes && flowLanes.at && (Date.now()-flowLanes.at)<60000) return;
   try{ const d=await api('/v1/flow/lanes');
+    if(d && d.started_at) __wsStart=Math.floor(d.started_at);
     if(d && typeof d.enabled==='number'){ flowLanes={enabled:d.enabled, total:d.total, at:Date.now()};
       try{ localStorage.setItem('td_flow_lanes', JSON.stringify(flowLanes)); }catch(e){}
       renderCfgStrip(); }
   }catch(e){ /* cầu chưa có endpoint lanes (bản cũ) — giữ số cũ hoặc để trống */ }
 }
+let __wsStart=0; // V10.48: epoch giây thời điểm cầu muse2api khởi động — đồng hồ tuổi xưởng ở đầu phải cfgStrip
+function wsClockText(){ if(!__wsStart) return 'Xưởng: off'; const s=Math.max(0, Math.floor(Date.now()/1000)-__wsStart); const pz=n=>String(n).padStart(2,'0'); return 'Xưởng: '+pz(Math.floor(s/3600))+':'+pz(Math.floor(s/60)%60)+':'+pz(s%60); }
+async function syncWsClock(){ try{ const d=await api('/v1/server-info'); if(!d || !d.started_at) throw new Error('no started_at'); __wsStart=Math.floor(d.started_at); }catch(e){ __wsStart=0; } const el=document.getElementById('wsClock'); if(el) el.textContent=wsClockText(); }
 function renderCfgStrip(){
   const el=document.getElementById('cfgStrip'); if(!el) return;
   const st=S.settings||{}; const g=st.gemini||{}; const f=st.flow||{};
   const dirTxt= g.engine==='muse' ? 'Muse' : (g.engine==='gemini-web' ? 'Gemini Web' : 'Gemini');
   const imgTxt= f.engImage==='flow' ? 'Flow' : 'Muse';
   const vidTxt= f.engVideo==='flow' ? (f.vidModel==='omni12'?'Omni 1.2':'Omni 1.1') : 'Muse';
-  el.innerHTML='Đạo diễn: <b>'+dirTxt+'</b> · Ảnh: <b>'+imgTxt+'</b> · Video: <b>'+vidTxt+'</b>';
+  el.innerHTML='Đạo diễn: <b>'+dirTxt+'</b> · Ảnh: <b>'+imgTxt+'</b> · Video: <b>'+vidTxt+'</b>'+'<span id="wsClock" style="float:right" title="Thời gian xưởng (cầu Muse) đã chạy kể từ lúc bật — xưởng tự ngủ sau ~120 phút không đụng editor">'+wsClockText()+'</span>';
   const lm=document.getElementById('laneMini');
   if(lm){ let mN='—'; if(Array.isArray(poolAccounts)) mN=poolAccounts.filter(a=>a.enabled!==false).length; else if(st.accCount!=null) mN=st.accCount;
     lm.textContent='Flow: '+(flowLanes? flowLanes.enabled : '—')+' online · Muse: '+mN+' online'; }
@@ -2204,7 +2211,8 @@ function driveAutoRun(){
   /* 1) Ảnh chuẩn + tự duyệt */
   if((p.charMode||'review')!=='none' && !p.anchorImg && !p._anchorTried){
     p._anchorTried=true; save(); autoDriveBusy=true;
-    ensureAnchor(p).finally(()=>{ autoDriveBusy=false; });
+    /* V10.48: trước đây 1 lần lỗi là _anchorTried chốt cứng vĩnh viễn — chạy hết dự án đứng im không tạo được ảnh chuẩn. Nay: lỗi thì mở lại để thử tiếp, 3 lần vẫn lỗi thì dừng hẳn và nói rõ lý do. */
+    ensureAnchor(p).then(ok=>{ if(!ok && !p.anchorImg){ p._anchorFails=(p._anchorFails||0)+1; if(p._anchorFails>=3){ p.autoRun=false; toast('⛔ Không tạo được ảnh chuẩn sau 3 lần thử — t dừng chạy tự động. M kiểm tra ảnh nhân vật/ảnh SP và cầu gen ảnh rồi bấm Chạy hết dự án lại'); } else { p._anchorTried=false; } } else { p._anchorFails=0; } save(); }).finally(()=>{ autoDriveBusy=false; });
     paintRunAll(); return;
   }
   if(p.anchorImg && !p.anchorApproved){ p.anchorApproved=true; save(); }
@@ -2249,6 +2257,7 @@ function runAll(){
   p.autoRun=!p.autoRun; save();
   if(p.autoRun){
     Object.keys(autoTries).forEach(k=>{ if(k.indexOf(p.id+':')===0) delete autoTries[k]; });
+    p._anchorTried=false; p._anchorFails=0; /* V10.48: bật chạy lại là cho khâu ảnh chuẩn thử lại từ đầu */
     toast('🚀 Chạy tự động BẬT: tạo ảnh chuẩn → tự duyệt → tạo ảnh loạt → tự duyệt → tạo video loạt → ghép nối. Tất cả tự động theo lô, bấm lại nút để dừng.');
     driveAutoRun();
   } else { toast('Đã dừng chạy tự động'); paintRunAll(); }
@@ -3813,7 +3822,7 @@ function fmtPrice(p){ const n=parseInt(String(p||'').replace(/\D/g,''),10); retu
     if(s.vid.taskId && ['queued','processing'].includes(s.vid.status)) pollTask('video',p.id,s.id);
   }));
   ping(true); setInterval(()=>ping(true), 90000);
-  renderCfgStrip(); fetchFlowLanes(); paintActBar(); enhanceFolds(document); loadPoolAccounts();
+  renderCfgStrip(); fetchFlowLanes(); syncWsClock(); paintActBar(); enhanceFolds(document); loadPoolAccounts();
   renderFlowCfg(); renderGemCfg(); /* V10.43: nạp ô cấu hình ngay lúc boot, không chờ mở Cài đặt */
   // Kho chính là IndexedDB (rộng hơn localStorage rất nhiều): nạp bản mới nhất từ đó rồi vẽ lại
   idbGet().then(txt=>{
